@@ -1,0 +1,44 @@
+services:
+
+  speed-dial:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: speed-dial
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8998}:80"       # http://localhost:8998  (override with PORT=9090)
+
+    volumes:
+      # ── Persistent data storage ──────────────────────────────────
+      # /data  → future: JSON config files, dial data exported from browser
+      # /uploads → future: user-uploaded icon images served as /uploads/<file>
+      - speed_dial_data:/data
+      - speed_dial_uploads:/uploads
+
+      # ── Live-reload during development ───────────────────────────
+      # Uncomment the line below to edit speed-dial.html and see changes
+      # instantly without rebuilding the image.
+      - ./speed-dial.html:/usr/share/nginx/html/index.html:ro
+
+    environment:
+      - TZ=${TZ:-Europe/Warsaw}   # Set your timezone
+
+    labels:
+      com.speed-dial.description: "Speed Dial Done Right - home page"
+      com.speed-dial.version: "1.0"
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ── Named volumes ────────────────────────────────────────────────
+# Docker manages these on the host under /var/lib/docker/volumes/
+# To back them up:  docker run --rm -v speed_dial_data:/data -v $(pwd):/backup alpine tar czf /backup/data.tar.gz /data
+volumes:
+  speed_dial_data:
+    driver: local
+  speed_dial_uploads:
+    driver: local

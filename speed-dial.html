@@ -1,913 +1,985 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Speed Dial</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
-
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #222534;
-    --surface3: #2a2e42;
-    --border: rgba(255,255,255,0.07);
-    --border-hover: rgba(255,255,255,0.15);
-    --accent: #f0a500;
-    --accent2: #e07b00;
-    --text: #e8eaf0;
-    --text-dim: #8b90a8;
-    --text-dimmer: #555a72;
-    --danger: #e05555;
-    --success: #4caf88;
-    --radius: 14px;
-    --radius-sm: 8px;
-    --shadow: 0 4px 24px rgba(0,0,0,0.4);
-    --shadow-hover: 0 8px 32px rgba(0,0,0,0.5);
-    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 0;
-    overflow-x: hidden;
-  }
-
-  /* Subtle background texture */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(240,165,0,0.04) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(100,120,255,0.04) 0%, transparent 60%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* ── HEADER ─────────────────────────────── */
-  header {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 28px;
-    background: rgba(15,17,23,0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .logo {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--accent);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  /* Edit toggle switch */
-  .edit-toggle {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    user-select: none;
-  }
-
-  .edit-toggle-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-dim);
-    transition: color var(--transition);
-    letter-spacing: 0.04em;
-  }
-
-  .edit-toggle.active .edit-toggle-label { color: var(--accent); }
-
-  .toggle-track {
-    width: 42px; height: 24px;
-    background: var(--surface3);
-    border-radius: 12px;
-    position: relative;
-    transition: background var(--transition);
-    border: 1px solid var(--border);
-  }
-
-  .edit-toggle.active .toggle-track {
-    background: var(--accent);
-    border-color: var(--accent);
-  }
-
-  .toggle-thumb {
-    width: 18px; height: 18px;
-    background: var(--text-dimmer);
-    border-radius: 50%;
-    position: absolute;
-    top: 2px; left: 2px;
-    transition: transform var(--transition), background var(--transition);
-  }
-
-  .edit-toggle.active .toggle-thumb {
-    transform: translateX(18px);
-    background: white;
-  }
-
-  .btn-export {
-    padding: 7px 14px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-dim);
-    font-size: 12px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition);
-    letter-spacing: 0.03em;
-  }
-
-  .btn-export:hover {
-    background: var(--surface3);
-    color: var(--text);
-    border-color: var(--border-hover);
-  }
-
-  /* ── MAIN ─────────────────────────────────── */
-  main {
-    position: relative;
-    z-index: 1;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 90px 28px 60px;
-  }
-
-  /* ── GROUPS ──────────────────────────────── */
-  .groups-container { display: flex; flex-direction: column; gap: 36px; }
-
-  .group {
-    position: relative;
-    transition: opacity var(--transition);
-  }
-
-  .group.drag-over > .dials-grid {
-    outline: 2px dashed var(--accent);
-    outline-offset: 4px;
-    border-radius: var(--radius);
-  }
-
-  .group-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
-    padding: 0 2px;
-  }
-
-  .group-emoji {
-    font-size: 22px;
-    line-height: 1;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-  }
-
-  .group-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-dim);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .group-edit-controls {
-    display: none;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-  }
-
-  body.edit-mode .group-edit-controls { display: flex; }
-
-  .btn-icon {
-    width: 28px; height: 28px;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-dim);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all var(--transition);
-  }
-
-  .btn-icon:hover { background: var(--surface3); color: var(--text); border-color: var(--border-hover); }
-  .btn-icon.danger:hover { background: rgba(224,85,85,0.15); color: var(--danger); border-color: rgba(224,85,85,0.3); }
-  .btn-icon.success:hover { background: rgba(76,175,136,0.15); color: var(--success); border-color: rgba(76,175,136,0.3); }
-
-  .group-drag-handle {
-    display: none;
-    cursor: grab;
-    color: var(--text-dimmer);
-    font-size: 14px;
-    padding: 4px;
-  }
-
-  body.edit-mode .group-drag-handle { display: flex; align-items: center; }
-  .group-drag-handle:active { cursor: grabbing; }
-
-  /* ── DIALS GRID ──────────────────────────── */
-  .dials-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 14px;
-    transition: all var(--transition);
-  }
-
-  /* ── DIAL CARD ───────────────────────────── */
-  .dial-card {
-    position: relative;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px 14px 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    text-decoration: none;
-    color: inherit;
-    transition: all var(--transition);
-    min-height: 110px;
-    overflow: hidden;
-  }
-
-  .dial-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 60%);
-    border-radius: var(--radius);
-    pointer-events: none;
-  }
-
-  body:not(.edit-mode) .dial-card:hover {
-    background: var(--surface2);
-    border-color: var(--border-hover);
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-hover);
-  }
-
-  body.edit-mode .dial-card {
-    cursor: default;
-  }
-
-  body.edit-mode .dial-card.dragging {
-    opacity: 0.4;
-    cursor: grabbing;
-  }
-
-  .dial-icon-wrap {
-    width: 52px; height: 52px;
-    border-radius: 12px;
-    background: var(--surface2);
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden;
-    flex-shrink: 0;
-    transition: all var(--transition);
-  }
-
-  body:not(.edit-mode) .dial-card:hover .dial-icon-wrap {
-    background: var(--surface3);
-  }
-
-  .dial-icon-wrap img {
-    width: 32px; height: 32px;
-    object-fit: contain;
-  }
-
-  .dial-icon-wrap .dial-emoji {
-    font-size: 26px;
-    line-height: 1;
-  }
-
-  .dial-name {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text);
-    text-align: center;
-    line-height: 1.4;
-    word-break: break-word;
-    max-width: 100%;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-
-  /* Edit overlay on dial */
-  .dial-edit-overlay {
-    display: none;
-    position: absolute;
-    inset: 0;
-    border-radius: var(--radius);
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    background: rgba(15,17,23,0.75);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    opacity: 0;
-    transition: opacity var(--transition);
-  }
-
-  body.edit-mode .dial-edit-overlay { display: flex; }
-  body.edit-mode .dial-card:hover .dial-edit-overlay { opacity: 1; }
-
-  .dial-drag-handle-overlay {
-    display: none;
-    position: absolute;
-    top: 6px; left: 6px;
-    color: var(--text-dimmer);
-    font-size: 13px;
-    cursor: grab;
-    padding: 3px;
-    border-radius: 4px;
-    background: rgba(255,255,255,0.05);
-    line-height: 1;
-  }
-
-  body.edit-mode .dial-drag-handle-overlay { display: flex; }
-
-  .dial-overlay-btns { display: flex; gap: 6px; }
-
-  /* Add dial button */
-  .dial-card.add-dial-btn {
-    border-style: dashed;
-    border-color: var(--surface3);
-    background: transparent;
-    cursor: pointer;
-    color: var(--text-dimmer);
-    display: none;
-    transition: all var(--transition);
-  }
-
-  body.edit-mode .dial-card.add-dial-btn { display: flex; }
-
-  .dial-card.add-dial-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(240,165,0,0.05);
-  }
-
-  .add-dial-btn .add-icon { font-size: 24px; }
-  .add-dial-btn .add-label { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; }
-
-  /* Add group button */
-  .add-group-btn {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 14px 24px;
-    border: 1px dashed var(--surface3);
-    border-radius: var(--radius);
-    background: transparent;
-    color: var(--text-dimmer);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition);
-    letter-spacing: 0.03em;
-  }
-
-  body.edit-mode .add-group-btn { display: flex; }
-
-  .add-group-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(240,165,0,0.05);
-  }
-
-  /* ── MODAL ───────────────────────────────── */
-  .modal-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.65);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 200;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  }
-
-  .modal-backdrop.open { display: flex; }
-
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border-hover);
-    border-radius: 18px;
-    padding: 28px;
-    width: 100%;
-    max-width: 420px;
-    max-height: 92vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-    animation: modal-in 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  @keyframes modal-in {
-    from { opacity: 0; transform: scale(0.95) translateY(8px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-  }
-
-  .modal-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 22px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .form-group { margin-bottom: 16px; }
-
-  .form-label {
-    display: block;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-dim);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 7px;
-  }
-
-  .form-input {
-    width: 100%;
-    padding: 10px 14px;
-    background: var(--surface2);
-    border: 1px solid var(--border-hover);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    outline: none;
-    transition: border-color var(--transition);
-  }
-
-  .form-input:focus { border-color: var(--accent); }
-  .form-input::placeholder { color: var(--text-dimmer); }
-
-  .emoji-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .emoji-preview {
-    width: 42px; height: 42px;
-    background: var(--surface2);
-    border: 1px solid var(--border-hover);
-    border-radius: var(--radius-sm);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px;
-    cursor: pointer;
-    transition: all var(--transition);
-    flex-shrink: 0;
-  }
-
-  .emoji-preview:hover { border-color: var(--accent); }
-
-  .btn-random-emoji {
-    padding: 9px 14px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-dim);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all var(--transition);
-    white-space: nowrap;
-  }
-
-  .btn-random-emoji:hover { background: var(--surface3); color: var(--text); }
-
-  .icon-source-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 6px;
-  }
-
-  .icon-source-btn {
-    padding: 7px 12px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-dim);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all var(--transition);
-  }
-
-  .icon-source-btn.active {
-    background: rgba(240,165,0,0.12);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .icon-source-btn:hover:not(.active) { background: var(--surface3); color: var(--text); }
-
-  .modal-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 24px;
-    justify-content: flex-end;
-  }
-
-  .btn-primary {
-    padding: 10px 22px;
-    background: var(--accent);
-    border: none;
-    border-radius: var(--radius-sm);
-    color: #1a1000;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition);
-    letter-spacing: 0.02em;
-  }
-
-  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
-
-  .btn-secondary {
-    padding: 10px 18px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-dim);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition);
-  }
-
-  .btn-secondary:hover { background: var(--surface3); color: var(--text); }
-
-  /* Custom icon upload */
-  .custom-icon-tabs {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 10px;
-  }
-
-  .custom-tab {
-    padding: 6px 14px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-dim);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition);
-  }
-
-  .custom-tab.active {
-    background: rgba(240,165,0,0.12);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .custom-tab:hover:not(.active) { background: var(--surface3); color: var(--text); }
-
-  .file-drop-zone {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    min-height: 80px;
-    border: 2px dashed var(--surface3);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: all var(--transition);
-    font-size: 13px;
-    color: var(--text-dimmer);
-    text-align: center;
-    padding: 16px;
-  }
-
-  .file-drop-zone:hover, .file-drop-zone.drag-over {
-    border-color: var(--accent);
-    background: rgba(240,165,0,0.05);
-    color: var(--accent);
-  }
-  .favicon-picker {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 10px;
-    background: var(--surface2);
-    border: 1px solid var(--border-hover);
-    border-radius: var(--radius-sm);
-    min-height: 58px;
-    align-items: center;
-  }
-
-  .favicon-hint {
-    font-size: 12px;
-    color: var(--text-dimmer);
-    font-style: italic;
-  }
-
-  .favicon-tile {
-    width: 48px; height: 48px;
-    background: var(--surface3);
-    border: 2px solid transparent;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: all var(--transition);
-    position: relative;
-    flex-shrink: 0;
-  }
-
-  .favicon-tile img {
-    width: 30px; height: 30px;
-    object-fit: contain;
-  }
-
-  .favicon-tile:hover {
-    border-color: var(--border-hover);
-    background: var(--surface);
-    transform: scale(1.08);
-  }
-
-  .favicon-tile.selected {
-    border-color: var(--accent);
-    background: rgba(240,165,0,0.1);
-    box-shadow: 0 0 0 1px var(--accent);
-  }
-
-  .favicon-tile .favicon-check {
-    display: none;
-    position: absolute;
-    top: -5px; right: -5px;
-    width: 16px; height: 16px;
-    background: var(--accent);
-    border-radius: 50%;
-    font-size: 10px;
-    align-items: center; justify-content: center;
-    color: #1a1000;
-    font-weight: 700;
-  }
-
-  .favicon-tile.selected .favicon-check { display: flex; }
-
-  .favicon-loading {
-    font-size: 12px;
-    color: var(--text-dimmer);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .spinner {
-    width: 14px; height: 14px;
-    border: 2px solid var(--surface3);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    flex-shrink: 0;
-  }
-  .emoji-picker {
-    display: none;
-    flex-direction: column;
-    background: var(--surface2);
-    border: 1px solid var(--border-hover);
-    border-radius: var(--radius-sm);
-    height: 300px;
-    margin-top: 8px;
-    overflow: hidden; /* clip, inner scroll handles it */
-  }
-
-  .emoji-picker.open { display: flex; }
-
-  .emoji-search-wrap {
-    flex-shrink: 0;
-    background: var(--surface2);
-    padding: 8px 10px 6px;
-    border-bottom: 1px solid var(--border);
-    z-index: 2;
-  }
-
-  /* Scrollable area below search */
-  .emoji-scroll-area {
-    flex: 1;
-    overflow-y: scroll; /* always show scrollbar */
-    overscroll-behavior: contain;
-  }
-
-  /* Always-visible scrollbar */
-  .emoji-scroll-area::-webkit-scrollbar { width: 7px; }
-  .emoji-scroll-area::-webkit-scrollbar-track { background: var(--surface3); border-radius: 4px; }
-  .emoji-scroll-area::-webkit-scrollbar-thumb { background: #555a72; border-radius: 4px; }
-  .emoji-scroll-area::-webkit-scrollbar-thumb:hover { background: #7b80a0; }
-
-  .emoji-search {
-    width: 100%;
-    padding: 6px 10px;
-    background: var(--surface3);
-    border: 1px solid var(--border-hover);
-    border-radius: 6px;
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    outline: none;
-  }
-
-  .emoji-search:focus { border-color: var(--accent); }
-  .emoji-search::placeholder { color: var(--text-dimmer); }
-
-  .emoji-category {
-    padding: 0 6px 6px;
-  }
-
-  .emoji-category-label {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-dimmer);
-    padding: 8px 4px 4px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .emoji-category-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-
-  .emoji-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-  }
-
-  .emoji-opt {
-    font-size: 20px;
-    cursor: pointer;
-    padding: 5px;
-    border-radius: 6px;
-    transition: background var(--transition);
-    line-height: 1;
-    width: 34px;
-    height: 34px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .emoji-opt:hover { background: var(--surface3); }
-
-  .emoji-no-results {
-    text-align: center;
-    padding: 20px;
-    color: var(--text-dimmer);
-    font-size: 13px;
-  }
-
-
-
-  /* Import modal */
-  .import-textarea {
-    width: 100%;
-    height: 140px;
-    padding: 10px 14px;
-    background: var(--surface2);
-    border: 1px solid var(--border-hover);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    outline: none;
-    resize: vertical;
-    transition: border-color var(--transition);
-  }
-
-  .import-textarea:focus { border-color: var(--accent); }
-
-  /* Empty state */
-  .empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-dimmer);
-  }
-
-  .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
-  .empty-state p { font-size: 14px; line-height: 1.6; }
-
-  /* Toast */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    background: var(--surface2);
-    border: 1px solid var(--border-hover);
-    border-radius: 100px;
-    padding: 10px 20px;
-    font-size: 13px;
-    color: var(--text);
-    box-shadow: var(--shadow);
-    z-index: 999;
-    opacity: 0;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: none;
-    white-space: nowrap;
-  }
-
-  .toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  .toast-undo {
-    margin-left: 12px;
-    padding: 3px 10px;
-    background: var(--accent);
-    border: none;
-    border-radius: 100px;
-    color: #1a1000;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    pointer-events: all;
-  }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speed Dial</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface2: #222534;
+            --surface3: #2a2e42;
+            --border: rgba(255,255,255,0.07);
+            --border-hover: rgba(255,255,255,0.15);
+            --accent: #f0a500;
+            --accent2: #e07b00;
+            --text: #e8eaf0;
+            --text-dim: #8b90a8;
+            --text-dimmer: #555a72;
+            --danger: #e05555;
+            --success: #4caf88;
+            --radius: 14px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 24px rgba(0,0,0,0.4);
+            --shadow-hover: 0 8px 32px rgba(0,0,0,0.5);
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* Subtle background texture */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 20% 10%, rgba(240,165,0,0.04) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(100,120,255,0.04) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── HEADER ─────────────────────────────── */
+        header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 28px;
+            background: rgba(15,17,23,0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Edit toggle switch */
+        .edit-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .edit-toggle-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-dim);
+            transition: color var(--transition);
+            letter-spacing: 0.04em;
+        }
+
+        .edit-toggle.active .edit-toggle-label { color: var(--accent); }
+
+        .toggle-track {
+            width: 42px; height: 24px;
+            background: var(--surface3);
+            border-radius: 12px;
+            position: relative;
+            transition: background var(--transition);
+            border: 1px solid var(--border);
+        }
+
+        .edit-toggle.active .toggle-track {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .toggle-thumb {
+            width: 18px; height: 18px;
+            background: var(--text-dimmer);
+            border-radius: 50%;
+            position: absolute;
+            top: 2px; left: 2px;
+            transition: transform var(--transition), background var(--transition);
+        }
+
+        .edit-toggle.active .toggle-thumb {
+            transform: translateX(18px);
+            background: white;
+        }
+
+        .btn-export {
+            padding: 7px 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            font-size: 12px;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+            letter-spacing: 0.03em;
+        }
+
+        .btn-export:hover {
+            background: var(--surface3);
+            color: var(--text);
+            border-color: var(--border-hover);
+        }
+
+        /* ── MAIN ─────────────────────────────────── */
+        main {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 90px 28px 60px;
+        }
+
+        /* ── GROUPS ──────────────────────────────── */
+        .groups-container { display: flex; flex-direction: column; gap: 36px; }
+
+        .group {
+            position: relative;
+            transition: opacity var(--transition);
+        }
+
+        .group.drag-over > .dials-grid {
+            outline: 2px dashed var(--accent);
+            outline-offset: 4px;
+            border-radius: var(--radius);
+        }
+
+        .group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            padding: 0 2px;
+        }
+
+        .group-emoji {
+            font-size: 22px;
+            line-height: 1;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+
+        .group-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dim);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .group-edit-controls {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        body.edit-mode .group-edit-controls { display: flex; }
+
+        .btn-icon {
+            width: 28px; height: 28px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .btn-icon:hover { background: var(--surface3); color: var(--text); border-color: var(--border-hover); }
+        .btn-icon.danger:hover { background: rgba(224,85,85,0.15); color: var(--danger); border-color: rgba(224,85,85,0.3); }
+        .btn-icon.success:hover { background: rgba(76,175,136,0.15); color: var(--success); border-color: rgba(76,175,136,0.3); }
+
+        .group-drag-handle {
+            display: none;
+            cursor: grab;
+            color: var(--text-dimmer);
+            font-size: 14px;
+            padding: 4px;
+        }
+
+        body.edit-mode .group-drag-handle { display: flex; align-items: center; }
+        .group-drag-handle:active { cursor: grabbing; }
+
+        /* ── DIALS GRID ──────────────────────────── */
+        .dials-grid {
+            display: grid;
+            /* --dial-size set inline per group; fallback 140px */
+            grid-template-columns: repeat(auto-fill, minmax(var(--dial-size, 140px), 1fr));
+            gap: 14px;
+            transition: all var(--transition);
+        }
+
+        /* ── DIAL CARD — unified size ────────────────────────────────── */
+        .dial-card {
+            position: relative;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 12px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            transition: all var(--transition);
+            /* Height is always the same as width → square card */
+            aspect-ratio: 1 / 1;
+            overflow: hidden;
+        }
+
+        .dial-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 60%);
+            border-radius: var(--radius);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        body:not(.edit-mode) .dial-card:hover {
+            background: var(--surface2);
+            border-color: var(--border-hover);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        body.edit-mode .dial-card { cursor: default; }
+        body.edit-mode .dial-card.dragging { opacity: 0.4; cursor: grabbing; }
+
+        /* Icon wrap — scales with card */
+        .dial-icon-wrap {
+            width: 52%;
+            aspect-ratio: 1 / 1;
+            border-radius: 14px;
+            background: var(--surface2);
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+            transition: all var(--transition);
+            position: relative;
+            z-index: 2;
+        }
+
+        body:not(.edit-mode) .dial-card:hover .dial-icon-wrap {
+            background: var(--surface3);
+            transform: scale(1.06);
+        }
+
+        .dial-icon-wrap img {
+            width: 100%; height: 100%;
+            object-fit: contain;
+            padding: 18%;
+        }
+
+        .dial-icon-wrap .dial-emoji {
+            font-size: clamp(18px, 2.2vw, 36px);
+            line-height: 1;
+        }
+
+        /* ── DIAL CARD — screenshot / full-bleed ────────────────────── */
+        .dial-card.dial-screenshot {
+            padding: 0;
+            background: var(--surface2);
+            gap: 0;
+        }
+
+        .dial-card.dial-screenshot::before { display: none; }
+
+        .dial-screenshot-img {
+            position: absolute;
+            inset: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            border-radius: var(--radius);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .dial-screenshot-img.loaded { opacity: 1; }
+
+        /* Name gradient overlay for screenshots */
+        .dial-card.dial-screenshot .dial-name {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            z-index: 3;
+            padding: 22px 8px 7px;
+            background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 100%);
+            border-radius: 0 0 var(--radius) var(--radius);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            -webkit-line-clamp: 1;
+        }
+
+        body:not(.edit-mode) .dial-card.dial-screenshot:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--border-hover);
+        }
+
+        body:not(.edit-mode) .dial-card.dial-screenshot:hover .dial-screenshot-img {
+            filter: brightness(1.08);
+        }
+
+        /* Standard name label */
+        .dial-name {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text);
+            text-align: center;
+            line-height: 1.4;
+            word-break: break-word;
+            max-width: 100%;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Edit overlay on dial */
+        .dial-edit-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            border-radius: var(--radius);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: rgba(15,17,23,0.75);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+
+        body.edit-mode .dial-edit-overlay { display: flex; }
+        body.edit-mode .dial-card:hover .dial-edit-overlay { opacity: 1; }
+
+        .dial-drag-handle-overlay {
+            display: none;
+            position: absolute;
+            top: 6px; left: 6px;
+            z-index: 11;
+            color: var(--text-dimmer);
+            font-size: 13px;
+            cursor: grab;
+            padding: 3px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.05);
+            line-height: 1;
+        }
+
+        body.edit-mode .dial-drag-handle-overlay { display: flex; }
+
+        .dial-overlay-btns { display: flex; gap: 6px; }
+
+        /* Add dial button */
+        .dial-card.add-dial-btn {
+            border-style: dashed;
+            border-color: var(--surface3);
+            background: transparent;
+            cursor: pointer;
+            color: var(--text-dimmer);
+            display: none;
+            transition: all var(--transition);
+        }
+
+        body.edit-mode .dial-card.add-dial-btn { display: flex; }
+
+        .dial-card.add-dial-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(240,165,0,0.05);
+        }
+
+        .add-dial-btn .add-icon { font-size: 24px; }
+        .add-dial-btn .add-label { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; }
+
+        /* Add group button */
+        .add-group-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 24px;
+            border: 1px dashed var(--surface3);
+            border-radius: var(--radius);
+            background: transparent;
+            color: var(--text-dimmer);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+            letter-spacing: 0.03em;
+        }
+
+        body.edit-mode .add-group-btn { display: flex; }
+
+        .add-group-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(240,165,0,0.05);
+        }
+
+        /* ── MODAL ───────────────────────────────── */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-backdrop.open { display: flex; }
+
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--border-hover);
+            border-radius: 18px;
+            padding: 28px;
+            width: 100%;
+            max-width: 420px;
+            max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            animation: modal-in 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes modal-in {
+            from { opacity: 0; transform: scale(0.95) translateY(8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group { margin-bottom: 16px; }
+
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dim);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border-hover);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color var(--transition);
+        }
+
+        .form-input:focus { border-color: var(--accent); }
+        .form-input::placeholder { color: var(--text-dimmer); }
+
+        .emoji-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .emoji-preview {
+            width: 42px; height: 42px;
+            background: var(--surface2);
+            border: 1px solid var(--border-hover);
+            border-radius: var(--radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px;
+            cursor: pointer;
+            transition: all var(--transition);
+            flex-shrink: 0;
+        }
+
+        .emoji-preview:hover { border-color: var(--accent); }
+
+        .btn-random-emoji {
+            padding: 9px 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all var(--transition);
+            white-space: nowrap;
+        }
+
+        .btn-random-emoji:hover { background: var(--surface3); color: var(--text); }
+
+        /* ── DIAL SIZE SLIDER ─────────────────────── */
+        .size-slider-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .size-slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .size-slider {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--surface3);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .size-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 0 3px rgba(240,165,0,0.2);
+            transition: box-shadow var(--transition);
+        }
+
+        .size-slider::-webkit-slider-thumb:hover {
+            box-shadow: 0 0 0 5px rgba(240,165,0,0.3);
+        }
+
+        .size-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border: none;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+        }
+
+        .size-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            min-width: 36px;
+            text-align: right;
+            font-family: 'DM Mono', monospace;
+        }
+
+        .size-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--text-dimmer);
+            padding: 0 2px;
+        }
+
+        .icon-source-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .icon-source-btn {
+            padding: 7px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .icon-source-btn.active {
+            background: rgba(240,165,0,0.12);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .icon-source-btn:hover:not(.active) { background: var(--surface3); color: var(--text); }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 24px;
+            justify-content: flex-end;
+        }
+
+        .btn-primary {
+            padding: 10px 22px;
+            background: var(--accent);
+            border: none;
+            border-radius: var(--radius-sm);
+            color: #1a1000;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition);
+            letter-spacing: 0.02em;
+        }
+
+        .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+
+        .btn-secondary {
+            padding: 10px 18px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .btn-secondary:hover { background: var(--surface3); color: var(--text); }
+
+        .favicon-picker {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border-hover);
+            border-radius: var(--radius-sm);
+            min-height: 58px;
+            align-items: center;
+        }
+
+        .favicon-hint {
+            font-size: 12px;
+            color: var(--text-dimmer);
+            font-style: italic;
+        }
+
+        .favicon-tile {
+            width: 48px; height: 48px;
+            background: var(--surface3);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: all var(--transition);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .favicon-tile img {
+            width: 30px; height: 30px;
+            object-fit: contain;
+        }
+
+        .favicon-tile:hover {
+            border-color: var(--border-hover);
+            background: var(--surface);
+            transform: scale(1.08);
+        }
+
+        .favicon-tile.selected {
+            border-color: var(--accent);
+            background: rgba(240,165,0,0.1);
+            box-shadow: 0 0 0 1px var(--accent);
+        }
+
+        .favicon-tile .favicon-check {
+            display: none;
+            position: absolute;
+            top: -5px; right: -5px;
+            width: 16px; height: 16px;
+            background: var(--accent);
+            border-radius: 50%;
+            font-size: 10px;
+            align-items: center; justify-content: center;
+            color: #1a1000;
+            font-weight: 700;
+        }
+
+        .favicon-tile.selected .favicon-check { display: flex; }
+
+        .favicon-loading {
+            font-size: 12px;
+            color: var(--text-dimmer);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            width: 14px; height: 14px;
+            border: 2px solid var(--surface3);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            flex-shrink: 0;
+        }
+        .emoji-picker {
+            display: none;
+            flex-direction: column;
+            background: var(--surface2);
+            border: 1px solid var(--border-hover);
+            border-radius: var(--radius-sm);
+            height: 300px;
+            margin-top: 8px;
+            overflow: hidden; /* clip, inner scroll handles it */
+        }
+
+        .emoji-picker.open { display: flex; }
+
+        .emoji-search-wrap {
+            flex-shrink: 0;
+            background: var(--surface2);
+            padding: 8px 10px 6px;
+            border-bottom: 1px solid var(--border);
+            z-index: 2;
+        }
+
+        /* Scrollable area below search */
+        .emoji-scroll-area {
+            flex: 1;
+            overflow-y: scroll; /* always show scrollbar */
+            overscroll-behavior: contain;
+        }
+
+        /* Always-visible scrollbar */
+        .emoji-scroll-area::-webkit-scrollbar { width: 7px; }
+        .emoji-scroll-area::-webkit-scrollbar-track { background: var(--surface3); border-radius: 4px; }
+        .emoji-scroll-area::-webkit-scrollbar-thumb { background: #555a72; border-radius: 4px; }
+        .emoji-scroll-area::-webkit-scrollbar-thumb:hover { background: #7b80a0; }
+
+        .emoji-search {
+            width: 100%;
+            padding: 6px 10px;
+            background: var(--surface3);
+            border: 1px solid var(--border-hover);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .emoji-search:focus { border-color: var(--accent); }
+        .emoji-search::placeholder { color: var(--text-dimmer); }
+
+        .emoji-category {
+            padding: 0 6px 6px;
+        }
+
+        .emoji-category-label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-dimmer);
+            padding: 8px 4px 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .emoji-category-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .emoji-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+
+        .emoji-opt {
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 6px;
+            transition: background var(--transition);
+            line-height: 1;
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .emoji-opt:hover { background: var(--surface3); }
+
+        .emoji-no-results {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-dimmer);
+            font-size: 13px;
+        }
+
+
+
+        /* Import modal */
+        .import-textarea {
+            width: 100%;
+            height: 140px;
+            padding: 10px 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border-hover);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            outline: none;
+            resize: vertical;
+            transition: border-color var(--transition);
+        }
+
+        .import-textarea:focus { border-color: var(--accent); }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dimmer);
+        }
+
+        .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-state p { font-size: 14px; line-height: 1.6; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--surface2);
+            border: 1px solid var(--border-hover);
+            border-radius: 100px;
+            padding: 10px 20px;
+            font-size: 13px;
+            color: var(--text);
+            box-shadow: var(--shadow);
+            z-index: 999;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast-undo {
+            margin-left: 12px;
+            padding: 3px 10px;
+            background: var(--accent);
+            border: none;
+            border-radius: 100px;
+            color: #1a1000;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            pointer-events: all;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+    </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <header>
-  <div class="logo">⚡ Speed Dial</div>
-  <div class="header-actions">
-    <button class="btn-export" onclick="exportData()">Export JSON</button>
-    <button class="btn-export" onclick="openImportModal()">Import</button>
-    <div class="edit-toggle" id="editToggle" onclick="toggleEditMode()">
-      <span class="edit-toggle-label" id="editLabel">Edit</span>
-      <div class="toggle-track">
-        <div class="toggle-thumb"></div>
-      </div>
+    <div class="logo">⚡ Speed Dial</div>
+    <div class="header-actions">
+        <button class="btn-export" onclick="exportData()">Export JSON</button>
+        <button class="btn-export" onclick="openImportModal()">Import</button>
+        <div class="edit-toggle" id="editToggle" onclick="toggleEditMode()">
+            <span class="edit-toggle-label" id="editLabel">Edit</span>
+            <div class="toggle-track">
+                <div class="toggle-thumb"></div>
+            </div>
+        </div>
     </div>
-  </div>
 </header>
 
 <!-- MAIN -->
 <main>
-  <div class="groups-container" id="groupsContainer"></div>
-  <button class="add-group-btn" id="addGroupBtn" onclick="openGroupModal()">
-    <span style="font-size:18px">＋</span> Add Group
-  </button>
-  <div class="empty-state" id="emptyState" style="display:none">
-    <div class="empty-icon">🚀</div>
-    <p>No speed dials yet.<br>Toggle <strong>Edit</strong> mode to add groups and dials.</p>
-  </div>
+    <div class="groups-container" id="groupsContainer"></div>
+    <button class="add-group-btn" id="addGroupBtn" onclick="openGroupModal()">
+        <span style="font-size:18px">＋</span> Add Group
+    </button>
+    <div class="empty-state" id="emptyState" style="display:none">
+        <div class="empty-icon">🚀</div>
+        <p>No speed dials yet.<br>Toggle <strong>Edit</strong> mode to add groups and dials.</p>
+    </div>
 </main>
 
 <!-- TOAST -->
@@ -915,369 +987,383 @@
 
 <!-- MODAL: Add/Edit Dial -->
 <div class="modal-backdrop" id="dialModal">
-  <div class="modal">
-    <div class="modal-title"><span id="dialModalTitle">Add Dial</span></div>
-    <div class="form-group">
-      <label class="form-label" style="display:flex;align-items:center;justify-content:space-between;">
-        Name
-        <span id="titleFetchStatus" style="font-size:11px;color:var(--text-dimmer);font-weight:400;letter-spacing:0;text-transform:none;"></span>
-      </label>
-      <input type="text" class="form-input" id="dialName" placeholder="Auto-fetched from URL…">
+    <div class="modal">
+        <div class="modal-title"><span id="dialModalTitle">Add Dial</span></div>
+        <div class="form-group">
+            <label class="form-label" style="display:flex;align-items:center;justify-content:space-between;">
+                Name
+                <span id="titleFetchStatus" style="font-size:11px;color:var(--text-dimmer);font-weight:400;letter-spacing:0;text-transform:none;"></span>
+            </label>
+            <input type="text" class="form-input" id="dialName" placeholder="Auto-fetched from URL…">
+        </div>
+        <div class="form-group">
+            <label class="form-label">URL</label>
+            <input type="text" class="form-input" id="dialUrl" placeholder="https://..." oninput="onUrlInput()" onblur="fetchPageTitle()">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Icon</label>
+            <div class="icon-source-row">
+                <button class="icon-source-btn active" id="iconSrcFavicon" onclick="setIconSrc('favicon')">Auto Favicon</button>
+                <button class="icon-source-btn" id="iconSrcEmoji" onclick="setIconSrc('emoji')">Emoji</button>
+                <button class="icon-source-btn" id="iconSrcCustom" onclick="setIconSrc('custom')">Custom URL</button>
+            </div>
+        </div>
+        <!-- Favicon picker panel -->
+        <div class="form-group" id="faviconPickerGroup">
+            <div class="favicon-picker" id="faviconPicker">
+                <span class="favicon-hint" id="faviconHint">Enter a URL above to load icons</span>
+            </div>
+        </div>
+        <div class="form-group" id="emojiPickerGroup" style="display:none">
+            <div class="emoji-row">
+                <div class="emoji-preview" id="dialEmojiPreview" onclick="toggleEmojiPicker('dial')">😀</div>
+                <button class="btn-random-emoji" onclick="randomEmoji('dial')">🎲 Random</button>
+                <span style="font-size:12px; color: var(--text-dimmer);">Click emoji to pick</span>
+            </div>
+            <div class="emoji-picker" id="dialEmojiPicker"></div>
+        </div>
+        <div class="form-group" id="customIconGroup" style="display:none">
+            <input type="text" class="form-input" id="dialCustomIcon" placeholder="https://example.com/icon.png" oninput="previewCustomIcon()">
+            <div id="customIconPreview" style="margin-top:10px; display:none; align-items:center; gap:10px; flex-wrap:wrap;"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('dialModal')">Cancel</button>
+            <button class="btn-primary" onclick="saveDial()">Save</button>
+        </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">URL</label>
-      <input type="text" class="form-input" id="dialUrl" placeholder="https://..." oninput="onUrlInput()" onblur="fetchPageTitle()">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Icon</label>
-      <div class="icon-source-row">
-        <button class="icon-source-btn active" id="iconSrcFavicon" onclick="setIconSrc('favicon')">Auto Favicon</button>
-        <button class="icon-source-btn" id="iconSrcEmoji" onclick="setIconSrc('emoji')">Emoji</button>
-        <button class="icon-source-btn" id="iconSrcCustom" onclick="setIconSrc('custom')">Custom URL</button>
-      </div>
-    </div>
-    <!-- Favicon picker panel -->
-    <div class="form-group" id="faviconPickerGroup">
-      <div class="favicon-picker" id="faviconPicker">
-        <span class="favicon-hint" id="faviconHint">Enter a URL above to load icons</span>
-      </div>
-    </div>
-    <div class="form-group" id="emojiPickerGroup" style="display:none">
-      <div class="emoji-row">
-        <div class="emoji-preview" id="dialEmojiPreview" onclick="toggleEmojiPicker('dial')">😀</div>
-        <button class="btn-random-emoji" onclick="randomEmoji('dial')">🎲 Random</button>
-        <span style="font-size:12px; color: var(--text-dimmer);">Click emoji to pick</span>
-      </div>
-      <div class="emoji-picker" id="dialEmojiPicker"></div>
-    </div>
-    <div class="form-group" id="customIconGroup" style="display:none">
-      <div class="custom-icon-tabs">
-        <button class="custom-tab active" id="customTabFile" onclick="switchCustomTab('file')">📁 Upload File</button>
-        <button class="custom-tab" id="customTabUrl" onclick="switchCustomTab('url')">🔗 Paste URL</button>
-      </div>
-      <!-- File upload -->
-      <div id="customFileWrap">
-        <label class="file-drop-zone" id="fileDropZone" for="iconFileInput">
-          <span id="fileDropLabel">Click or drag an image here</span>
-          <input type="file" id="iconFileInput" accept="image/*" style="display:none" onchange="handleIconFile(this)">
-        </label>
-      </div>
-      <!-- URL input (for reference only, converted to base64 via file download hint) -->
-      <div id="customUrlWrap" style="display:none">
-        <input type="text" class="form-input" id="dialCustomIcon" placeholder="https://example.com/icon.png" oninput="previewCustomIcon()">
-        <p style="font-size:11px;color:var(--text-dimmer);margin-top:6px;">💡 If the image doesn't show, save it to disk first then use Upload File.</p>
-      </div>
-      <div id="customIconPreview" style="margin-top:10px; display:none; align-items:center; gap:10px; flex-wrap:wrap;"></div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeModal('dialModal')">Cancel</button>
-      <button class="btn-primary" onclick="saveDial()">Save</button>
-    </div>
-  </div>
 </div>
 
 <!-- MODAL: Add/Edit Group -->
 <div class="modal-backdrop" id="groupModal">
-  <div class="modal">
-    <div class="modal-title"><span id="groupModalTitle">Add Group</span></div>
-    <div class="form-group">
-      <label class="form-label">Group Name</label>
-      <input type="text" class="form-input" id="groupName" placeholder="e.g. Work, Social...">
+    <div class="modal">
+        <div class="modal-title"><span id="groupModalTitle">Add Group</span></div>
+        <div class="form-group">
+            <label class="form-label">Group Name</label>
+            <input type="text" class="form-input" id="groupName" placeholder="e.g. Work, Social...">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Dial Size <span class="size-value" id="groupSizeValue">140px</span></label>
+            <div class="size-slider-wrap">
+                <div class="size-slider-row">
+                    <span style="font-size:14px">🔲</span>
+                    <input type="range" class="size-slider" id="groupSizeSlider"
+                           min="60" max="400" step="10" value="140"
+                           oninput="setGroupSize(+this.value)">
+                    <span style="font-size:22px">🔲</span>
+                </div>
+                <div class="size-labels">
+                    <span>Tiny</span><span>Small</span><span>Medium</span><span>Large</span><span>Huge</span>
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Emoji</label>
+            <div class="emoji-row">
+                <div class="emoji-preview" id="groupEmojiPreview" onclick="toggleEmojiPicker('group')">📁</div>
+                <button class="btn-random-emoji" onclick="randomEmoji('group')">🎲 Random</button>
+                <span style="font-size:12px; color: var(--text-dimmer);">Click to pick</span>
+            </div>
+            <div class="emoji-picker" id="groupEmojiPicker"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('groupModal')">Cancel</button>
+            <button class="btn-primary" onclick="saveGroup()">Save</button>
+        </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Emoji</label>
-      <div class="emoji-row">
-        <div class="emoji-preview" id="groupEmojiPreview" onclick="toggleEmojiPicker('group')">📁</div>
-        <button class="btn-random-emoji" onclick="randomEmoji('group')">🎲 Random</button>
-        <span style="font-size:12px; color: var(--text-dimmer);">Click to pick</span>
-      </div>
-      <div class="emoji-picker" id="groupEmojiPicker"></div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeModal('groupModal')">Cancel</button>
-      <button class="btn-primary" onclick="saveGroup()">Save</button>
-    </div>
-  </div>
 </div>
 
 <!-- MODAL: Confirm Delete -->
 <div class="modal-backdrop" id="confirmModal">
-  <div class="modal" style="max-width:360px">
-    <div class="modal-title" id="confirmTitle">Are you sure?</div>
-    <p id="confirmMessage" style="font-size:13px; color:var(--text-dim); line-height:1.6; margin-bottom:4px;"></p>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeModal('confirmModal')">Cancel</button>
-      <button class="btn-primary" id="confirmOkBtn" style="background:var(--danger);color:#fff;">Delete</button>
+    <div class="modal" style="max-width:360px">
+        <div class="modal-title" id="confirmTitle">Are you sure?</div>
+        <p id="confirmMessage" style="font-size:13px; color:var(--text-dim); line-height:1.6; margin-bottom:4px;"></p>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('confirmModal')">Cancel</button>
+            <button class="btn-primary" id="confirmOkBtn" style="background:var(--danger);color:#fff;">Delete</button>
+        </div>
     </div>
-  </div>
 </div>
 
 <!-- MODAL: Import -->
 <div class="modal-backdrop" id="importModal">
-  <div class="modal">
-    <div class="modal-title">Import JSON</div>
-    <div class="form-group">
-      <label class="form-label">Paste JSON data</label>
-      <textarea class="import-textarea" id="importData" placeholder='{"groups": [...]}'></textarea>
+    <div class="modal">
+        <div class="modal-title">Import JSON</div>
+        <div class="form-group">
+            <label class="form-label">Paste JSON data</label>
+            <textarea class="import-textarea" id="importData" placeholder='{"groups": [...]}'></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('importModal')">Cancel</button>
+            <button class="btn-primary" onclick="importData()">Import</button>
+        </div>
     </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeModal('importModal')">Cancel</button>
-      <button class="btn-primary" onclick="importData()">Import</button>
-    </div>
-  </div>
 </div>
 
 <script>
-// ─── STATE ──────────────────────────────────────────────────────
-let data = { groups: [] };
-let editMode = false;
-let editingDialId = null;
-let editingGroupId = null;
-let editingDialGroupId = null;
-let currentIconSrc = 'favicon';
-let currentDialEmoji = '😀';
-let currentGroupEmoji = '📁';
-let selectedFaviconUrl = ''; // currently chosen favicon in the picker
-let dragSrcGroupId = null;
-let dragSrcDialId = null;
-let dragSrcType = null; // 'dial' | 'group'
+    // ─── STATE ──────────────────────────────────────────────────────
+    let data = { groups: [] };
+    let editMode = false;
+    let editingDialId = null;
+    let editingGroupId = null;
+    let editingDialGroupId = null;
+    let currentIconSrc = 'favicon';
+    let currentDialEmoji = '😀';
+    let currentGroupEmoji = '📁';
+    let currentGroupSize  = 140; // px
+    let selectedFaviconUrl = ''; // currently chosen favicon in the picker
+    let dragSrcGroupId = null;
+    let dragSrcDialId = null;
+    let dragSrcType = null; // 'dial' | 'group'
 
-// ─── FULL CATEGORIZED EMOJI DATA ───────────────────────────────
-const EMOJI_CATEGORIES = [
-  { label: '😀 Smileys & Emotion', emojis: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','🫠','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫡','🤫','🤔','🫢','🤐','🥸','😐','😑','😶','🫥','😏','😒','🙄','😬','🤥','🫨','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','🫤','😟','🙁','☹️','😮','😯','😲','😳','🥺','🫣','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾'] },
-  { label: '👋 People & Body', emojis: ['👋','🤚','🖐','✋','🖖','🫱','🫲','🫳','🫴','👌','🤌','🤏','✌️','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','🫵','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','🫀','🫁','🧠','🦷','🦴','👀','👁','👅','👄','🫦','👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵','🙍','🙎','🙅','🙆','💁','🙋','🧏','🙇','🤦','🤷','💆','💇','🚶','🧍','🧎','🏃','💃','🕺','🕴','👫','👬','👭','👨‍👩‍👦','👨‍👩‍👧','👪','🤰','🤱','👼','🎅','🤶','🦸','🦹','🧙','🧚','🧛','🧜','🧝','🧞','🧟','🧌','💏','💑'] },
-  { label: '🐶 Animals & Nature', emojis: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐻‍❄️','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🪲','🦟','🦗','🕷','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🦪','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🦣','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐈‍⬛','🪶','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿','🦔','🐾','🐉','🐲','🌵','🎄','🌲','🌳','🌴','🪵','🌱','🌿','☘️','🍀','🎍','🪴','🎋','🍃','🍂','🍁','🪺','🪹','🍄','🐚','🪸','🪨','🌾','💐','🌷','🌹','🥀','🪷','🌺','🌸','🌼','🌻','🌞','🌝','🌛','🌜','🌚','🌕','🌖','🌗','🌘','🌑','🌒','🌓','🌔','🌙','🌟','⭐','🌠','🌌','☀️','🌤','⛅','🌥','☁️','🌦','🌧','⛈','🌩','🌨','❄️','☃️','⛄','🌬','💨','🌀','🌈','🌂','☂️','☔','⛱','⚡','❗','🌊','🌫','🌬'] },
-  { label: '🍎 Food & Drink', emojis: ['🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶','🫑','🧄','🧅','🥔','🍠','🫘','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫓','🥪','🥙','🧆','🌮','🌯','🫔','🥗','🥘','🫕','🥫','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥮','🍢','🧁','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🧃','🥤','🧋','🍵','☕','🫖','🍺','🍻','🥂','🍷','🫗','🥃','🍸','🍹','🧉','🍾','🧊','🥄','🍴','🍽','🥢','🧂'] },
-  { label: '✈️ Travel & Places', emojis: ['🚗','🚕','🚙','🚌','🚎','🏎','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍','🛵','🛺','🚲','🛴','🛹','🛼','🚏','🛣','🛤','⛽','🛞','🚨','🚥','🚦','🛑','🚧','⚓','🛟','⛵','🚤','🛥','🛳','⛴','🚢','✈️','🛩','🛫','🛬','🪂','💺','🚁','🚟','🚠','🚡','🛸','🚀','🛶','🏖','🏔','⛰','🌋','🗻','🏕','🏗','🧱','🪨','🪵','🛖','🏘','🏚','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩','🕋','⛲','⛺','🌁','🌃','🏙','🌄','🌅','🌆','🌇','🌉','🗺','🧭','🌐','🗾','🏔','🌏','🌍','🌎','🪐','💫','⭐','🌟','✨','⚡','☄️','🌞','🌝','🌙','🌛','🌜','🌚'] },
-  { label: '⚽ Activities', emojis: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🥍','🏑','🥅','⛳','🪁','🏹','🎣','🤿','🥊','🥋','🎽','🛹','🛼','🛷','⛸','🥌','🎿','⛷','🏂','🪂','🏋','🤼','🤸','⛹','🤺','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚵','🚴','🏆','🥇','🥈','🥉','🏅','🎖','🏵','🎗','🎫','🎟','🎪','🤹','🎭','🩰','🎨','🎬','🎤','🎧','🎼','🎵','🎶','🪘','🥁','🪗','🎷','🎺','🎸','🪕','🎻','🎲','♟','🎯','🎳','🎮','🎰','🧩','🪄','🃏','🀄','🎴'] },
-  { label: '💡 Objects', emojis: ['📱','💻','🖥','🖨','⌨️','🖱','🖲','💽','💾','💿','📀','📷','📸','📹','🎥','📽','🎞','📞','☎️','📟','📠','📺','📻','🧭','⏱','⏰','⏲','⏳','📡','🔋','🪫','🔌','💡','🔦','🕯','🪔','🧱','🪞','🪟','🛏','🛋','🪑','🚽','🪠','🚿','🛁','🪤','🧴','🧷','🧹','🧺','🧻','🪣','🧼','🫧','🪥','🧽','🪒','🧴','🧰','🪛','🔧','🔨','⚒','🛠','⛏','🪚','🔩','🪤','🧲','💣','🪓','🔪','🗡','⚔️','🛡','🪃','🪝','🧲','🪜','🧪','🧫','🧬','🔭','🔬','🩻','🩺','💊','💉','🩸','🩹','🩼','🩻','🏥','🪤','🧸','🪅','🪆','🖼','🪞','📦','📫','📪','📬','📭','📮','📯','📜','📋','📁','📂','🗂','📅','📆','📇','📈','📉','📊','📋','📌','📍','📎','🖇','📏','📐','✂️','🗃','🗄','🗑','🔒','🔓','🔏','🔐','🔑','🗝','🔨','🪓','⛏','⚒','🛠','🗜','⚙️','🗡','⚔️','🛡','🪃','🏹','🪚','🔧','🪛','🔩','🪤','🧲','🪜'] },
-  { label: '💬 Symbols', emojis: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉','☸️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🚭','❗','❕','❓','❔','‼️','⁉️','🔅','🔆','〽️','⚠️','🚸','🔱','⚜️','🔰','♻️','✅','🈯','💹','❎','🌐','💠','Ⓜ️','🌀','💤','🏧','🚾','♿','🅿️','🛗','🈳','🈹','🚺','🚹','🚼','⚧','🚻','🚮','🎦','📶','🈁','🔣','ℹ️','🔤','🔡','🔠','🆖','🆗','🆙','🆒','🆕','🆓','0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','🔢','▶️','⏸','⏹','⏺','⏭','⏮','⏩','⏪','⏫','⏬','◀️','🔼','🔽','➡️','⬅️','⬆️','⬇️','↗️','↘️','↙️','↖️','↕️','↔️','↩️','↪️','⤴️','⤵️','🔀','🔁','🔂','🔃','🎵','🎶','➕','➖','➗','✖️','💲','💱','™️','©️','®️','〰️','➰','➿','🔚','🔙','🔛','🔜','🔝','✔️','☑️','🔘','🔲','🔳','▪️','▫️','◾','◽','◼️','◻️','⬛','⬜','🟥','🟧','🟨','🟩','🟦','🟪','🟫','🔶','🔷','🔸','🔹','🔺','🔻','💠','🔘','🔲'] },
-  { label: '🏁 Flags', emojis: ['🏳️','🏴','🏴‍☠️','🚩','🏁','🎌','🏳️‍🌈','🏳️‍⚧️','🇺🇳','🇦🇫','🇦🇱','🇩🇿','🇦🇩','🇦🇴','🇦🇮','🇦🇬','🇦🇷','🇦🇲','🇦🇼','🇦🇺','🇦🇹','🇦🇿','🇧🇸','🇧🇭','🇧🇩','🇧🇧','🇧🇾','🇧🇪','🇧🇿','🇧🇯','🇧🇲','🇧🇹','🇧🇴','🇧🇦','🇧🇼','🇧🇷','🇻🇬','🇧🇳','🇧🇬','🇧🇫','🇧🇮','🇰🇭','🇨🇲','🇨🇦','🇨🇻','🇧🇶','🇰🇾','🇨🇫','🇹🇩','🇨🇱','🇨🇳','🇨🇴','🇰🇲','🇨🇬','🇨🇩','🇨🇷','🇨🇮','🇭🇷','🇨🇺','🇨🇼','🇨🇾','🇨🇿','🇩🇰','🇩🇯','🇩🇲','🇩🇴','🇪🇨','🇪🇬','🇸🇻','🇬🇶','🇪🇷','🇪🇪','🇸🇿','🇪🇹','🇫🇰','🇫🇴','🇫🇯','🇫🇮','🇫🇷','🇬🇫','🇵🇫','🇬🇦','🇬🇲','🇬🇪','🇩🇪','🇬🇭','🇬🇮','🇬🇷','🇬🇱','🇬🇩','🇬🇵','🇬🇺','🇬🇹','🇬🇬','🇬🇳','🇬🇼','🇬🇾','🇭🇹','🇭🇳','🇭🇰','🇭🇺','🇮🇸','🇮🇳','🇮🇩','🇮🇷','🇮🇶','🇮🇪','🇮🇲','🇮🇱','🇮🇹','🇯🇲','🇯🇵','🇯🇪','🇯🇴','🇰🇿','🇰🇪','🇰🇮','🇽🇰','🇰🇼','🇰🇬','🇱🇦','🇱🇻','🇱🇧','🇱🇸','🇱🇷','🇱🇾','🇱🇮','🇱🇹','🇱🇺','🇲🇴','🇲🇬','🇲🇼','🇲🇾','🇲🇻','🇲🇱','🇲🇹','🇲🇭','🇲🇶','🇲🇷','🇲🇺','🇾🇹','🇲🇽','🇫🇲','🇲🇩','🇲🇨','🇲🇳','🇲🇪','🇲🇸','🇲🇦','🇲🇿','🇲🇲','🇳🇦','🇳🇷','🇳🇵','🇳🇱','🇳🇨','🇳🇿','🇳🇮','🇳🇪','🇳🇬','🇳🇺','🇳🇫','🇲🇰','🇲🇵','🇳🇴','🇴🇲','🇵🇰','🇵🇼','🇵🇸','🇵🇦','🇵🇬','🇵🇾','🇵🇪','🇵🇭','🇵🇳','🇵🇱','🇵🇹','🇵🇷','🇶🇦','🇷🇪','🇷🇴','🇷🇺','🇷🇼','🇰🇳','🇱🇨','🇻🇨','🇼🇸','🇸🇲','🇸🇹','🇸🇦','🇸🇳','🇷🇸','🇸🇨','🇸🇱','🇸🇬','🇸🇽','🇸🇰','🇸🇮','🇸🇧','🇸🇴','🇿🇦','🇬🇸','🇸🇸','🇪🇸','🇱🇰','🇸🇩','🇸🇷','🇸🇪','🇨🇭','🇸🇾','🇹🇼','🇹🇯','🇹🇿','🇹🇭','🇹🇱','🇹🇬','🇹🇰','🇹🇴','🇹🇹','🇹🇳','🇹🇷','🇹🇲','🇹🇨','🇹🇻','🇺🇬','🇺🇦','🇦🇪','🇬🇧','🏴󠁧󠁢󠁥󠁮󠁧󠁿','🏴󠁧󠁢󠁳󠁣󠁴󠁿','🏴󠁧󠁢󠁷󠁬󠁳󠁿','🇺🇸','🇻🇮','🇺🇾','🇺🇿','🇻🇺','🇻🇦','🇻🇪','🇻🇳','🇼🇫','🇾🇪','🇿🇲','🇿🇼'] },
-];
+    // ─── FULL CATEGORIZED EMOJI DATA ───────────────────────────────
+    const EMOJI_CATEGORIES = [
+        { label: '😀 Smileys & Emotion', emojis: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','🫠','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫡','🤫','🤔','🫢','🤐','🥸','😐','😑','😶','🫥','😏','😒','🙄','😬','🤥','🫨','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','🫤','😟','🙁','☹️','😮','😯','😲','😳','🥺','🫣','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾'] },
+        { label: '👋 People & Body', emojis: ['👋','🤚','🖐','✋','🖖','🫱','🫲','🫳','🫴','👌','🤌','🤏','✌️','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','🫵','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','🫀','🫁','🧠','🦷','🦴','👀','👁','👅','👄','🫦','👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵','🙍','🙎','🙅','🙆','💁','🙋','🧏','🙇','🤦','🤷','💆','💇','🚶','🧍','🧎','🏃','💃','🕺','🕴','👫','👬','👭','👨‍👩‍👦','👨‍👩‍👧','👪','🤰','🤱','👼','🎅','🤶','🦸','🦹','🧙','🧚','🧛','🧜','🧝','🧞','🧟','🧌','💏','💑'] },
+        { label: '🐶 Animals & Nature', emojis: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐻‍❄️','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🪲','🦟','🦗','🕷','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🦪','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🦣','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐈‍⬛','🪶','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿','🦔','🐾','🐉','🐲','🌵','🎄','🌲','🌳','🌴','🪵','🌱','🌿','☘️','🍀','🎍','🪴','🎋','🍃','🍂','🍁','🪺','🪹','🍄','🐚','🪸','🪨','🌾','💐','🌷','🌹','🥀','🪷','🌺','🌸','🌼','🌻','🌞','🌝','🌛','🌜','🌚','🌕','🌖','🌗','🌘','🌑','🌒','🌓','🌔','🌙','🌟','⭐','🌠','🌌','☀️','🌤','⛅','🌥','☁️','🌦','🌧','⛈','🌩','🌨','❄️','☃️','⛄','🌬','💨','🌀','🌈','🌂','☂️','☔','⛱','⚡','❗','🌊','🌫','🌬'] },
+        { label: '🍎 Food & Drink', emojis: ['🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶','🫑','🧄','🧅','🥔','🍠','🫘','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫓','🥪','🥙','🧆','🌮','🌯','🫔','🥗','🥘','🫕','🥫','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥮','🍢','🧁','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🧃','🥤','🧋','🍵','☕','🫖','🍺','🍻','🥂','🍷','🫗','🥃','🍸','🍹','🧉','🍾','🧊','🥄','🍴','🍽','🥢','🧂'] },
+        { label: '✈️ Travel & Places', emojis: ['🚗','🚕','🚙','🚌','🚎','🏎','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍','🛵','🛺','🚲','🛴','🛹','🛼','🚏','🛣','🛤','⛽','🛞','🚨','🚥','🚦','🛑','🚧','⚓','🛟','⛵','🚤','🛥','🛳','⛴','🚢','✈️','🛩','🛫','🛬','🪂','💺','🚁','🚟','🚠','🚡','🛸','🚀','🛶','🏖','🏔','⛰','🌋','🗻','🏕','🏗','🧱','🪨','🪵','🛖','🏘','🏚','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩','🕋','⛲','⛺','🌁','🌃','🏙','🌄','🌅','🌆','🌇','🌉','🗺','🧭','🌐','🗾','🏔','🌏','🌍','🌎','🪐','💫','⭐','🌟','✨','⚡','☄️','🌞','🌝','🌙','🌛','🌜','🌚'] },
+        { label: '⚽ Activities', emojis: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🥍','🏑','🥅','⛳','🪁','🏹','🎣','🤿','🥊','🥋','🎽','🛹','🛼','🛷','⛸','🥌','🎿','⛷','🏂','🪂','🏋','🤼','🤸','⛹','🤺','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚵','🚴','🏆','🥇','🥈','🥉','🏅','🎖','🏵','🎗','🎫','🎟','🎪','🤹','🎭','🩰','🎨','🎬','🎤','🎧','🎼','🎵','🎶','🪘','🥁','🪗','🎷','🎺','🎸','🪕','🎻','🎲','♟','🎯','🎳','🎮','🎰','🧩','🪄','🃏','🀄','🎴'] },
+        { label: '💡 Objects', emojis: ['📱','💻','🖥','🖨','⌨️','🖱','🖲','💽','💾','💿','📀','📷','📸','📹','🎥','📽','🎞','📞','☎️','📟','📠','📺','📻','🧭','⏱','⏰','⏲','⏳','📡','🔋','🪫','🔌','💡','🔦','🕯','🪔','🧱','🪞','🪟','🛏','🛋','🪑','🚽','🪠','🚿','🛁','🪤','🧴','🧷','🧹','🧺','🧻','🪣','🧼','🫧','🪥','🧽','🪒','🧴','🧰','🪛','🔧','🔨','⚒','🛠','⛏','🪚','🔩','🪤','🧲','💣','🪓','🔪','🗡','⚔️','🛡','🪃','🪝','🧲','🪜','🧪','🧫','🧬','🔭','🔬','🩻','🩺','💊','💉','🩸','🩹','🩼','🩻','🏥','🪤','🧸','🪅','🪆','🖼','🪞','📦','📫','📪','📬','📭','📮','📯','📜','📋','📁','📂','🗂','📅','📆','📇','📈','📉','📊','📋','📌','📍','📎','🖇','📏','📐','✂️','🗃','🗄','🗑','🔒','🔓','🔏','🔐','🔑','🗝','🔨','🪓','⛏','⚒','🛠','🗜','⚙️','🗡','⚔️','🛡','🪃','🏹','🪚','🔧','🪛','🔩','🪤','🧲','🪜'] },
+        { label: '💬 Symbols', emojis: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉','☸️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🚭','❗','❕','❓','❔','‼️','⁉️','🔅','🔆','〽️','⚠️','🚸','🔱','⚜️','🔰','♻️','✅','🈯','💹','❎','🌐','💠','Ⓜ️','🌀','💤','🏧','🚾','♿','🅿️','🛗','🈳','🈹','🚺','🚹','🚼','⚧','🚻','🚮','🎦','📶','🈁','🔣','ℹ️','🔤','🔡','🔠','🆖','🆗','🆙','🆒','🆕','🆓','0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','🔢','▶️','⏸','⏹','⏺','⏭','⏮','⏩','⏪','⏫','⏬','◀️','🔼','🔽','➡️','⬅️','⬆️','⬇️','↗️','↘️','↙️','↖️','↕️','↔️','↩️','↪️','⤴️','⤵️','🔀','🔁','🔂','🔃','🎵','🎶','➕','➖','➗','✖️','💲','💱','™️','©️','®️','〰️','➰','➿','🔚','🔙','🔛','🔜','🔝','✔️','☑️','🔘','🔲','🔳','▪️','▫️','◾','◽','◼️','◻️','⬛','⬜','🟥','🟧','🟨','🟩','🟦','🟪','🟫','🔶','🔷','🔸','🔹','🔺','🔻','💠','🔘','🔲'] },
+        { label: '🏁 Flags', emojis: ['🏳️','🏴','🏴‍☠️','🚩','🏁','🎌','🏳️‍🌈','🏳️‍⚧️','🇺🇳','🇦🇫','🇦🇱','🇩🇿','🇦🇩','🇦🇴','🇦🇮','🇦🇬','🇦🇷','🇦🇲','🇦🇼','🇦🇺','🇦🇹','🇦🇿','🇧🇸','🇧🇭','🇧🇩','🇧🇧','🇧🇾','🇧🇪','🇧🇿','🇧🇯','🇧🇲','🇧🇹','🇧🇴','🇧🇦','🇧🇼','🇧🇷','🇻🇬','🇧🇳','🇧🇬','🇧🇫','🇧🇮','🇰🇭','🇨🇲','🇨🇦','🇨🇻','🇧🇶','🇰🇾','🇨🇫','🇹🇩','🇨🇱','🇨🇳','🇨🇴','🇰🇲','🇨🇬','🇨🇩','🇨🇷','🇨🇮','🇭🇷','🇨🇺','🇨🇼','🇨🇾','🇨🇿','🇩🇰','🇩🇯','🇩🇲','🇩🇴','🇪🇨','🇪🇬','🇸🇻','🇬🇶','🇪🇷','🇪🇪','🇸🇿','🇪🇹','🇫🇰','🇫🇴','🇫🇯','🇫🇮','🇫🇷','🇬🇫','🇵🇫','🇬🇦','🇬🇲','🇬🇪','🇩🇪','🇬🇭','🇬🇮','🇬🇷','🇬🇱','🇬🇩','🇬🇵','🇬🇺','🇬🇹','🇬🇬','🇬🇳','🇬🇼','🇬🇾','🇭🇹','🇭🇳','🇭🇰','🇭🇺','🇮🇸','🇮🇳','🇮🇩','🇮🇷','🇮🇶','🇮🇪','🇮🇲','🇮🇱','🇮🇹','🇯🇲','🇯🇵','🇯🇪','🇯🇴','🇰🇿','🇰🇪','🇰🇮','🇽🇰','🇰🇼','🇰🇬','🇱🇦','🇱🇻','🇱🇧','🇱🇸','🇱🇷','🇱🇾','🇱🇮','🇱🇹','🇱🇺','🇲🇴','🇲🇬','🇲🇼','🇲🇾','🇲🇻','🇲🇱','🇲🇹','🇲🇭','🇲🇶','🇲🇷','🇲🇺','🇾🇹','🇲🇽','🇫🇲','🇲🇩','🇲🇨','🇲🇳','🇲🇪','🇲🇸','🇲🇦','🇲🇿','🇲🇲','🇳🇦','🇳🇷','🇳🇵','🇳🇱','🇳🇨','🇳🇿','🇳🇮','🇳🇪','🇳🇬','🇳🇺','🇳🇫','🇲🇰','🇲🇵','🇳🇴','🇴🇲','🇵🇰','🇵🇼','🇵🇸','🇵🇦','🇵🇬','🇵🇾','🇵🇪','🇵🇭','🇵🇳','🇵🇱','🇵🇹','🇵🇷','🇶🇦','🇷🇪','🇷🇴','🇷🇺','🇷🇼','🇰🇳','🇱🇨','🇻🇨','🇼🇸','🇸🇲','🇸🇹','🇸🇦','🇸🇳','🇷🇸','🇸🇨','🇸🇱','🇸🇬','🇸🇽','🇸🇰','🇸🇮','🇸🇧','🇸🇴','🇿🇦','🇬🇸','🇸🇸','🇪🇸','🇱🇰','🇸🇩','🇸🇷','🇸🇪','🇨🇭','🇸🇾','🇹🇼','🇹🇯','🇹🇿','🇹🇭','🇹🇱','🇹🇬','🇹🇰','🇹🇴','🇹🇹','🇹🇳','🇹🇷','🇹🇲','🇹🇨','🇹🇻','🇺🇬','🇺🇦','🇦🇪','🇬🇧','🏴󠁧󠁢󠁥󠁮󠁧󠁿','🏴󠁧󠁢󠁳󠁣󠁴󠁿','🏴󠁧󠁢󠁷󠁬󠁳󠁿','🇺🇸','🇻🇮','🇺🇾','🇺🇿','🇻🇺','🇻🇦','🇻🇪','🇻🇳','🇼🇫','🇾🇪','🇿🇲','🇿🇼'] },
+    ];
 
-// Flat list for random picking (all emojis except flags)
-const EMOJI_LIST = EMOJI_CATEGORIES.slice(0, -1).flatMap(c => c.emojis);
-const GROUP_EMOJIS = ['📁','💼','🌐','⭐','🔖','🏠','🎯','🚀','🎮','💡','📚','🛍','🎵','🎬','✈️','🌍','🔥','💎','⚡','🧩','🏆','❤️','🍀','🔐','🗂','📊','📱','💻','🌙','🌈','🎨','🧪','🦋','🌻','🐉'];
+    // Flat list for random picking (all emojis except flags)
+    const EMOJI_LIST = EMOJI_CATEGORIES.slice(0, -1).flatMap(c => c.emojis);
+    const GROUP_EMOJIS = ['📁','💼','🌐','⭐','🔖','🏠','🎯','🚀','🎮','💡','📚','🛍','🎵','🎬','✈️','🌍','🔥','💎','⚡','🧩','🏆','❤️','🍀','🔐','🗂','📊','📱','💻','🌙','🌈','🎨','🧪','🦋','🌻','🐉'];
 
-// ─── DATA PERSISTENCE ──────────────────────────────────────────
-function loadData() {
-  try {
-    const raw = localStorage.getItem('speedDial_v2');
-    if (raw) data = JSON.parse(raw);
-  } catch(e) { data = { groups: [] }; }
-  if (!data.groups) data = { groups: [] };
-}
+    // ─── DATA PERSISTENCE ──────────────────────────────────────────
+    function loadData() {
+        try {
+            const raw = localStorage.getItem('speedDial_v2');
+            if (raw) data = JSON.parse(raw);
+        } catch(e) { data = { groups: [] }; }
+        if (!data.groups) data = { groups: [] };
+    }
 
-function saveData() {
-  localStorage.setItem('speedDial_v2', JSON.stringify(data));
-}
+    function saveData() {
+        localStorage.setItem('speedDial_v2', JSON.stringify(data));
+    }
 
-// ─── UTILS ─────────────────────────────────────────────────────
-function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-}
+    // ─── UTILS ─────────────────────────────────────────────────────
+    function uid() {
+        return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
 
-function pickRandomEmoji(list) {
-  return list[Math.floor(Math.random() * list.length)];
-}
+    function pickRandomEmoji(list) {
+        return list[Math.floor(Math.random() * list.length)];
+    }
 
-function getDomain(url) {
-  try {
-    return new URL(url).hostname;
-  } catch { return ''; }
-}
+    function getDomain(url) {
+        try {
+            return new URL(url).hostname;
+        } catch { return ''; }
+    }
 
-// Returns ordered favicon URL candidates for a domain
-function getFaviconCandidates(url) {
-  const domain = getDomain(url);
-  if (!domain) return [];
-  // Use the bare hostname without www for some services
-  const bare = domain.replace(/^www\./, '');
-  return [
-    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
-    `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${domain}&size=64`,
-    `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
-    `https://${domain}/favicon.ico`,
-    `https://${domain}/apple-touch-icon.png`,
-    `https://${bare}/favicon.ico`,
-  ];
-}
+    // Returns ordered favicon URL candidates for a domain
+    function getFaviconCandidates(url) {
+        const domain = getDomain(url);
+        if (!domain) return [];
+        const bare = domain.replace(/^www\./, '');
+        return [
+            `https://icons.duckduckgo.com/ip3/${domain}.ico`,
+            `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
+            `https://${domain}/favicon.ico`,
+            `https://${domain}/apple-touch-icon.png`,
+            `https://${bare}/favicon.ico`,
+        ];
+    }
 
-// Directly chain onerror on the DOM img element through each candidate
-function attachFavicon(imgEl, dialUrl, fallbackEmoji) {
-  const candidates = getFaviconCandidates(dialUrl);
-  if (!candidates.length) { showEmojiInstead(imgEl, fallbackEmoji); return; }
-  imgEl.referrerPolicy = 'no-referrer';
-  let idx = 0;
+    // Directly chain onerror on the DOM img element through each candidate
+    function attachFavicon(imgEl, dialUrl, fallbackEmoji) {
+        const candidates = getFaviconCandidates(dialUrl);
+        if (!candidates.length) { showEmojiInstead(imgEl, fallbackEmoji); return; }
+        let idx = 0;
+        function tryNext() {
+            if (!document.body.contains(imgEl)) return;
+            if (idx >= candidates.length) { showEmojiInstead(imgEl, fallbackEmoji); return; }
+            imgEl.onerror = () => { imgEl.onerror = null; imgEl.onload = null; tryNext(); };
+            imgEl.onload = null;
+            imgEl.src = candidates[idx++];
+        }
+        tryNext();
+    }
 
-  function tryNext() {
-    if (!document.body.contains(imgEl)) return; // removed from DOM
-    if (idx >= candidates.length) { showEmojiInstead(imgEl, fallbackEmoji); return; }
-    // Set onerror BEFORE setting src
-    imgEl.onerror = () => { imgEl.onerror = null; imgEl.onload = null; tryNext(); };
-    imgEl.onload = null;
-    imgEl.src = candidates[idx++];
-  }
+    function showEmojiInstead(imgEl, emoji) {
+        const wrap = imgEl.parentElement;
+        if (wrap) wrap.innerHTML = `<span class="dial-emoji">${emoji || '🌐'}</span>`;
+    }
 
-  tryNext();
-}
+    let toastTimer = null;
 
-function showEmojiInstead(imgEl, emoji) {
-  const wrap = imgEl.parentElement;
-  if (wrap) wrap.innerHTML = `<span class="dial-emoji">${emoji || '🌐'}</span>`;
-}
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerHTML = `<span>${msg}</span>`;
+        t.classList.add('show');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+    }
 
-let toastTimer = null;
+    function showToastUndo(msg, backup) {
+        const t = document.getElementById('toast');
+        t.innerHTML = `<span>${msg}</span><button class="toast-undo" onclick="undoDelete('${encodeURIComponent(backup)}')">Undo</button>`;
+        t.classList.add('show');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+    }
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.innerHTML = `<span>${msg}</span>`;
-  t.classList.add('show');
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
-}
+    function undoDelete(encodedBackup) {
+        try {
+            data = JSON.parse(decodeURIComponent(encodedBackup));
+            saveData(); render();
+            showToast('↩️ Restored');
+        } catch(e) { showToast('❌ Could not undo'); }
+    }
 
-function showToastUndo(msg, backup) {
-  const t = document.getElementById('toast');
-  t.innerHTML = `<span>${msg}</span><button class="toast-undo" onclick="undoDelete('${encodeURIComponent(backup)}')">Undo</button>`;
-  t.classList.add('show');
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
-}
+    // ─── RENDER ────────────────────────────────────────────────────
+    function render() {
+        const container = document.getElementById('groupsContainer');
+        const empty = document.getElementById('emptyState');
+        container.innerHTML = '';
 
-function undoDelete(encodedBackup) {
-  try {
-    data = JSON.parse(decodeURIComponent(encodedBackup));
-    saveData(); render();
-    showToast('↩️ Restored');
-  } catch(e) { showToast('❌ Could not undo'); }
-}
+        if (!data.groups.length) {
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
 
-// ─── RENDER ────────────────────────────────────────────────────
-function render() {
-  const container = document.getElementById('groupsContainer');
-  const empty = document.getElementById('emptyState');
-  container.innerHTML = '';
+        data.groups.forEach((group, gi) => {
+            const groupEl = document.createElement('div');
+            groupEl.className = 'group';
+            groupEl.dataset.id = group.id;
+            groupEl.draggable = false;
 
-  if (!data.groups.length) {
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
+            // Group header
+            const header = document.createElement('div');
+            header.className = 'group-header';
 
-  data.groups.forEach((group, gi) => {
-    const groupEl = document.createElement('div');
-    groupEl.className = 'group';
-    groupEl.dataset.id = group.id;
-    groupEl.draggable = false;
+            const handle = document.createElement('div');
+            handle.className = 'group-drag-handle';
+            handle.innerHTML = '⠿';
+            handle.title = 'Drag to reorder group';
+            handle.addEventListener('mousedown', () => { groupEl.draggable = true; });
+            handle.addEventListener('touchstart', () => { groupEl.draggable = true; }, {passive:true});
+            groupEl.addEventListener('dragend', () => { groupEl.draggable = false; });
 
-    // Group header
-    const header = document.createElement('div');
-    header.className = 'group-header';
-
-    const handle = document.createElement('div');
-    handle.className = 'group-drag-handle';
-    handle.innerHTML = '⠿';
-    handle.title = 'Drag to reorder group';
-    handle.addEventListener('mousedown', () => { groupEl.draggable = true; });
-    handle.addEventListener('touchstart', () => { groupEl.draggable = true; }, {passive:true});
-    groupEl.addEventListener('dragend', () => { groupEl.draggable = false; });
-
-    header.appendChild(handle);
-    header.innerHTML += `
+            header.appendChild(handle);
+            header.innerHTML += `
       <span class="group-emoji">${group.emoji}</span>
       <span class="group-name">${escHtml(group.name)}</span>
     `;
-    header.appendChild(handle);
+            header.appendChild(handle);
 
-    // Group controls
-    const controls = document.createElement('div');
-    controls.className = 'group-edit-controls';
-    controls.innerHTML = `
+            // Group controls
+            const controls = document.createElement('div');
+            controls.className = 'group-edit-controls';
+            controls.innerHTML = `
       <button class="btn-icon" title="Move up" onclick="moveGroup('${group.id}', -1)">↑</button>
       <button class="btn-icon" title="Move down" onclick="moveGroup('${group.id}', 1)">↓</button>
       <button class="btn-icon" title="Edit group" onclick="openGroupModal('${group.id}')">✏️</button>
       <button class="btn-icon danger" title="Delete group" onclick="deleteGroup('${group.id}')">🗑</button>
     `;
-    header.appendChild(controls);
-    groupEl.appendChild(header);
+            header.appendChild(controls);
+            groupEl.appendChild(header);
 
-    // Dials grid
-    const grid = document.createElement('div');
-    grid.className = 'dials-grid';
-    grid.dataset.groupId = group.id;
+            // Dials grid
+            const grid = document.createElement('div');
+            grid.className = 'dials-grid';
+            grid.dataset.groupId = group.id;
+            grid.style.setProperty('--dial-size', (group.dialSize || 140) + 'px');
 
-    group.dials.forEach((dial, di) => {
-      grid.appendChild(makeDialCard(dial, group.id, gi, di));
-    });
+            group.dials.forEach((dial, di) => {
+                grid.appendChild(makeDialCard(dial, group.id, gi, di));
+            });
 
-    // Add dial button
-    const addBtn = document.createElement('div');
-    addBtn.className = 'dial-card add-dial-btn';
-    addBtn.innerHTML = `<span class="add-icon">＋</span><span class="add-label">Add Dial</span>`;
-    addBtn.onclick = () => openDialModal(null, group.id);
-    grid.appendChild(addBtn);
+            // Add dial button
+            const addBtn = document.createElement('div');
+            addBtn.className = 'dial-card add-dial-btn';
+            addBtn.innerHTML = `<span class="add-icon">＋</span><span class="add-label">Add Dial</span>`;
+            addBtn.onclick = () => openDialModal(null, group.id);
+            grid.appendChild(addBtn);
 
-    groupEl.appendChild(grid);
+            groupEl.appendChild(grid);
 
-    // Group drag events
-    groupEl.addEventListener('dragstart', e => onGroupDragStart(e, group.id));
-    groupEl.addEventListener('dragover', e => onGroupDragOver(e, group.id));
-    groupEl.addEventListener('drop', e => onGroupDrop(e, group.id));
-    groupEl.addEventListener('dragleave', e => groupEl.classList.remove('drag-over'));
+            // Group drag events
+            groupEl.addEventListener('dragstart', e => onGroupDragStart(e, group.id));
+            groupEl.addEventListener('dragover', e => onGroupDragOver(e, group.id));
+            groupEl.addEventListener('drop', e => onGroupDrop(e, group.id));
+            groupEl.addEventListener('dragleave', e => groupEl.classList.remove('drag-over'));
 
-    container.appendChild(groupEl);
-  });
-}
-
-function makeDialCard(dial, groupId, gi, di) {
-  const card = document.createElement('div');
-  card.className = 'dial-card';
-  card.dataset.id = dial.id;
-  card.dataset.groupId = groupId;
-
-  // Icon
-  const iconWrap = document.createElement('div');
-  iconWrap.className = 'dial-icon-wrap';
-
-  if (dial.iconType === 'emoji' || !dial.iconType) {
-    const em = document.createElement('span');
-    em.className = 'dial-emoji';
-    em.textContent = dial.emoji || '🌐';
-    iconWrap.appendChild(em);
-  } else if (dial.iconType === 'favicon') {
-    const img = document.createElement('img');
-    img.alt = '';
-    img.style.cssText = 'width:32px;height:32px;object-fit:contain;opacity:0;transition:opacity 0.2s';
-    img.onload = () => { img.style.opacity = '1'; };
-    iconWrap.appendChild(img);
-    if (dial.icon) {
-      // Use the user-selected icon URL directly
-      img.onerror = () => { attachFavicon(img, dial.url, dial.emoji || '🌐'); };
-      img.src = dial.icon;
-    } else {
-      // No stored icon — probe automatically
-      attachFavicon(img, dial.url, dial.emoji || '🌐');
+            container.appendChild(groupEl);
+        });
     }
-  } else {
-    // custom URL — use directly
-    const img = document.createElement('img');
-    img.alt = '';
-    img.style.cssText = 'width:32px;height:32px;object-fit:contain;opacity:0;transition:opacity 0.2s';
-    img.onload = () => { img.style.opacity = '1'; };
-    img.onerror = () => { iconWrap.innerHTML = `<span class="dial-emoji">${dial.emoji || '🌐'}</span>`; };
-    img.src = dial.icon;
-    iconWrap.appendChild(img);
-  }
 
-  const name = document.createElement('div');
-  name.className = 'dial-name';
-  name.textContent = dial.name;
+    function makeDialCard(dial, groupId, gi, di) {
+        const card = document.createElement('div');
+        card.dataset.id = dial.id;
+        card.dataset.groupId = groupId;
 
-  // Edit overlay
-  const overlay = document.createElement('div');
-  overlay.className = 'dial-edit-overlay';
-  overlay.innerHTML = `
+        const isScreenshot = dial.iconType === 'custom' && dial.icon;
+
+        if (isScreenshot) {
+            // ── Full-bleed screenshot card ────────────────────────────────
+            card.className = 'dial-card dial-screenshot';
+
+            const img = document.createElement('img');
+            img.className = 'dial-screenshot-img';
+            img.alt = '';
+            img.src = dial.icon;
+            img.onload  = () => img.classList.add('loaded');
+            img.onerror = () => {
+                // fallback to emoji if image fails
+                card.className = 'dial-card';
+                img.remove();
+                const wrap = document.createElement('div');
+                wrap.className = 'dial-icon-wrap';
+                wrap.innerHTML = `<span class="dial-emoji">${dial.emoji || '🌐'}</span>`;
+                card.insertBefore(wrap, card.firstChild);
+            };
+            card.appendChild(img);
+
+        } else {
+            // ── Standard card (emoji / favicon) ──────────────────────────
+            card.className = 'dial-card';
+
+            const iconWrap = document.createElement('div');
+            iconWrap.className = 'dial-icon-wrap';
+
+            if (dial.iconType === 'emoji' || !dial.iconType) {
+                const em = document.createElement('span');
+                em.className = 'dial-emoji';
+                em.textContent = dial.emoji || '🌐';
+                iconWrap.appendChild(em);
+            } else {
+                // favicon
+                const img = document.createElement('img');
+                img.alt = '';
+                img.style.cssText = 'opacity:0;transition:opacity 0.2s';
+                img.onload = () => { img.style.opacity = '1'; };
+                iconWrap.appendChild(img);
+                if (dial.icon) {
+                    img.onerror = () => attachFavicon(img, dial.url, dial.emoji || '🌐');
+                    img.src = dial.icon;
+                } else {
+                    attachFavicon(img, dial.url, dial.emoji || '🌐');
+                }
+            }
+            card.appendChild(iconWrap);
+        }
+
+        // Name label (both types)
+        const name = document.createElement('div');
+        name.className = 'dial-name';
+        name.textContent = dial.name;
+        card.appendChild(name);
+
+        // Edit overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'dial-edit-overlay';
+        overlay.innerHTML = `
     <div class="dial-overlay-btns">
       <button class="btn-icon" title="Move left" onclick="moveDial('${groupId}','${dial.id}',-1)">←</button>
       <button class="btn-icon" title="Edit" onclick="openDialModal('${dial.id}','${groupId}')">✏️</button>
@@ -1286,758 +1372,678 @@ function makeDialCard(dial, groupId, gi, di) {
     </div>
   `;
 
-  // Drag handle overlay
-  const dragHandle = document.createElement('div');
-  dragHandle.className = 'dial-drag-handle-overlay';
-  dragHandle.innerHTML = '⠿';
-  dragHandle.title = 'Drag to reorder';
-  dragHandle.addEventListener('mousedown', () => { card.draggable = true; });
-  card.addEventListener('dragend', () => { card.draggable = false; card.classList.remove('dragging'); });
+        // Drag handle overlay
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'dial-drag-handle-overlay';
+        dragHandle.innerHTML = '⠿';
+        dragHandle.title = 'Drag to reorder';
+        dragHandle.addEventListener('mousedown', () => { card.draggable = true; });
+        card.addEventListener('dragend', () => { card.draggable = false; card.classList.remove('dragging'); });
 
-  card.appendChild(dragHandle);
-  card.appendChild(iconWrap);
-  card.appendChild(name);
-  card.appendChild(overlay);
+        card.appendChild(dragHandle);
+        card.appendChild(overlay);
 
-  // Click to open (only in non-edit mode)
-  card.addEventListener('click', e => {
-    if (editMode) return;
-    if (e.target.closest('.dial-edit-overlay') || e.target.closest('.dial-drag-handle-overlay')) return;
-    window.open(dial.url, '_blank');
-  });
+        // Click to open (only in non-edit mode)
+        card.addEventListener('click', e => {
+            if (editMode) return;
+            if (e.target.closest('.dial-edit-overlay') || e.target.closest('.dial-drag-handle-overlay')) return;
+            window.open(dial.url, '_blank');
+        });
 
-  // Dial drag events
-  card.addEventListener('dragstart', e => onDialDragStart(e, groupId, dial.id));
-  card.addEventListener('dragover', e => onDialDragOver(e, groupId, dial.id));
-  card.addEventListener('drop', e => onDialDrop(e, groupId, dial.id));
+        // Dial drag events
+        card.addEventListener('dragstart', e => onDialDragStart(e, groupId, dial.id));
+        card.addEventListener('dragover', e => onDialDragOver(e, groupId, dial.id));
+        card.addEventListener('drop', e => onDialDrop(e, groupId, dial.id));
 
-  return card;
-}
-
-function escHtml(str) {
-  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-// ─── DRAG & DROP: DIALS ─────────────────────────────────────────
-function onDialDragStart(e, groupId, dialId) {
-  dragSrcType = 'dial';
-  dragSrcGroupId = groupId;
-  dragSrcDialId = dialId;
-  e.dataTransfer.effectAllowed = 'move';
-  const card = e.currentTarget;
-  card.classList.add('dragging');
-}
-
-function onDialDragOver(e, groupId, dialId) {
-  if (dragSrcType !== 'dial') return;
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-}
-
-function onDialDrop(e, targetGroupId, targetDialId) {
-  if (dragSrcType !== 'dial') return;
-  e.preventDefault();
-  if (dragSrcGroupId === targetGroupId && dragSrcDialId === targetDialId) return;
-
-  const srcGroup = data.groups.find(g => g.id === dragSrcGroupId);
-  const tgtGroup = data.groups.find(g => g.id === targetGroupId);
-  if (!srcGroup || !tgtGroup) return;
-
-  const srcIdx = srcGroup.dials.findIndex(d => d.id === dragSrcDialId);
-  const tgtIdx = tgtGroup.dials.findIndex(d => d.id === targetDialId);
-  if (srcIdx === -1) return;
-
-  const [dial] = srcGroup.dials.splice(srcIdx, 1);
-  if (dragSrcGroupId === targetGroupId) {
-    srcGroup.dials.splice(tgtIdx, 0, dial);
-  } else {
-    tgtGroup.dials.splice(tgtIdx === -1 ? tgtGroup.dials.length : tgtIdx, 0, dial);
-  }
-
-  saveData(); render();
-}
-
-// ─── DRAG & DROP: GROUPS ────────────────────────────────────────
-function onGroupDragStart(e, groupId) {
-  if (!e.currentTarget.draggable) { e.preventDefault(); return; }
-  dragSrcType = 'group';
-  dragSrcGroupId = groupId;
-  e.dataTransfer.effectAllowed = 'move';
-}
-
-function onGroupDragOver(e, groupId) {
-  if (dragSrcType !== 'group' || groupId === dragSrcGroupId) return;
-  e.preventDefault();
-  e.currentTarget.classList.add('drag-over');
-}
-
-function onGroupDrop(e, targetGroupId) {
-  if (dragSrcType !== 'group') return;
-  e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
-  if (dragSrcGroupId === targetGroupId) return;
-
-  const srcIdx = data.groups.findIndex(g => g.id === dragSrcGroupId);
-  const tgtIdx = data.groups.findIndex(g => g.id === targetGroupId);
-  if (srcIdx === -1 || tgtIdx === -1) return;
-
-  const [g] = data.groups.splice(srcIdx, 1);
-  data.groups.splice(tgtIdx, 0, g);
-
-  saveData(); render();
-}
-
-// ─── EDIT MODE ─────────────────────────────────────────────────
-function toggleEditMode() {
-  editMode = !editMode;
-  document.body.classList.toggle('edit-mode', editMode);
-  const toggle = document.getElementById('editToggle');
-  toggle.classList.toggle('active', editMode);
-  document.getElementById('editLabel').textContent = editMode ? 'Editing' : 'Edit';
-}
-
-// ─── GROUP CRUD ─────────────────────────────────────────────────
-function openGroupModal(groupId = null) {
-  editingGroupId = groupId;
-  const isEdit = !!groupId;
-  document.getElementById('groupModalTitle').textContent = isEdit ? 'Edit Group' : 'Add Group';
-  if (isEdit) {
-    const g = data.groups.find(g => g.id === groupId);
-    document.getElementById('groupName').value = g.name;
-    currentGroupEmoji = g.emoji;
-  } else {
-    document.getElementById('groupName').value = '';
-    currentGroupEmoji = pickRandomEmoji(GROUP_EMOJIS);
-  }
-  document.getElementById('groupEmojiPreview').textContent = currentGroupEmoji;
-  document.getElementById('groupEmojiPicker').classList.remove('open');
-  openModal('groupModal');
-}
-
-function saveGroup() {
-  const name = document.getElementById('groupName').value.trim();
-  if (!name) { showToast('⚠️ Please enter a group name'); return; }
-
-  if (editingGroupId) {
-    const g = data.groups.find(g => g.id === editingGroupId);
-    if (g) { g.name = name; g.emoji = currentGroupEmoji; }
-  } else {
-    data.groups.push({ id: uid(), name, emoji: currentGroupEmoji, dials: [] });
-  }
-
-  saveData(); render();
-  closeModal('groupModal');
-}
-
-function showConfirm(title, message, onConfirm) {
-  document.getElementById('confirmTitle').textContent = title;
-  document.getElementById('confirmMessage').textContent = message;
-  const btn = document.getElementById('confirmOkBtn');
-  btn.onclick = () => { closeModal('confirmModal'); onConfirm(); };
-  openModal('confirmModal');
-}
-
-function deleteGroup(groupId) {
-  const g = data.groups.find(g => g.id === groupId);
-  if (!g) return;
-  showConfirm(
-    '🗑 Delete group?',
-    `"${g.name}" and all ${g.dials.length} dial(s) inside will be permanently removed.`,
-    () => {
-      const backup = JSON.stringify(data);
-      data.groups = data.groups.filter(gr => gr.id !== groupId);
-      saveData(); render();
-      showToastUndo(`🗑 Group "${g.name}" deleted`, backup);
+        return card;
     }
-  );
-}
 
-function moveGroup(groupId, dir) {
-  const idx = data.groups.findIndex(g => g.id === groupId);
-  const newIdx = idx + dir;
-  if (newIdx < 0 || newIdx >= data.groups.length) return;
-  [data.groups[idx], data.groups[newIdx]] = [data.groups[newIdx], data.groups[idx]];
-  saveData(); render();
-}
+    function escHtml(str) {
+        return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
 
-// ─── DIAL CRUD ─────────────────────────────────────────────────
-function openDialModal(dialId = null, groupId = null) {
-  editingDialId = dialId;
-  editingDialGroupId = groupId;
+    // ─── DRAG & DROP: DIALS ─────────────────────────────────────────
+    function onDialDragStart(e, groupId, dialId) {
+        dragSrcType = 'dial';
+        dragSrcGroupId = groupId;
+        dragSrcDialId = dialId;
+        e.dataTransfer.effectAllowed = 'move';
+        const card = e.currentTarget;
+        card.classList.add('dragging');
+    }
 
-  document.getElementById('dialModalTitle').textContent = dialId ? 'Edit Dial' : 'Add Dial';
-  document.getElementById('dialEmojiPicker').classList.remove('open');
-  selectedFaviconUrl = '';
-  chosenCustomIconUrl = '';
-  document.getElementById('faviconPicker').innerHTML = '<span class="favicon-hint">Enter a URL above to load icons</span>';
-  const prevEl = document.getElementById('customIconPreview');
-  if (prevEl) { prevEl.style.display = 'none'; prevEl.innerHTML = ''; }
-  const dropLabel = document.getElementById('fileDropLabel');
-  if (dropLabel) dropLabel.textContent = 'Click or drag an image here';
-  switchCustomTab('file');
+    function onDialDragOver(e, groupId, dialId) {
+        if (dragSrcType !== 'dial') return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
 
-  if (dialId) {
-    const group = data.groups.find(g => g.id === groupId);
-    const dial = group?.dials.find(d => d.id === dialId);
-    if (dial) {
-      document.getElementById('dialName').value = dial.name;
-      document.getElementById('dialUrl').value = dial.url;
-      currentDialEmoji = dial.emoji;
-      document.getElementById('dialEmojiPreview').textContent = currentDialEmoji;
-      if (dial.iconType === 'emoji') setIconSrc('emoji');
-      else if (dial.iconType === 'custom') {
-        setIconSrc('custom');
-        chosenCustomIconUrl = dial.icon || '';
-        switchCustomTab('file');
-        if (dial.icon) {
-          document.getElementById('fileDropLabel').textContent = '✅ Saved image';
-          showCustomPreview(dial.icon);
+    function onDialDrop(e, targetGroupId, targetDialId) {
+        if (dragSrcType !== 'dial') return;
+        e.preventDefault();
+        if (dragSrcGroupId === targetGroupId && dragSrcDialId === targetDialId) return;
+
+        const srcGroup = data.groups.find(g => g.id === dragSrcGroupId);
+        const tgtGroup = data.groups.find(g => g.id === targetGroupId);
+        if (!srcGroup || !tgtGroup) return;
+
+        const srcIdx = srcGroup.dials.findIndex(d => d.id === dragSrcDialId);
+        const tgtIdx = tgtGroup.dials.findIndex(d => d.id === targetDialId);
+        if (srcIdx === -1) return;
+
+        const [dial] = srcGroup.dials.splice(srcIdx, 1);
+        if (dragSrcGroupId === targetGroupId) {
+            srcGroup.dials.splice(tgtIdx, 0, dial);
+        } else {
+            tgtGroup.dials.splice(tgtIdx === -1 ? tgtGroup.dials.length : tgtIdx, 0, dial);
         }
-      }
-      else {
-        setIconSrc('favicon');
-        // Pre-select the stored icon if available
-        if (dial.icon) selectedFaviconUrl = dial.icon;
-        loadFaviconOptions(dial.url);
-      }
+
+        saveData(); render();
     }
-  } else {
-    document.getElementById('dialName').value = '';
-    document.getElementById('dialUrl').value = '';
-    currentDialEmoji = pickRandomEmoji(EMOJI_LIST);
-    document.getElementById('dialEmojiPreview').textContent = currentDialEmoji;
-    setIconSrc('favicon');
-  }
 
-  openModal('dialModal');
-}
-
-// ─── CUSTOM ICON ────────────────────────────────────────────────
-let customPreviewTimer = null;
-let chosenCustomIconUrl = '';
-
-function switchCustomTab(tab) {
-  document.getElementById('customTabFile').classList.toggle('active', tab === 'file');
-  document.getElementById('customTabUrl').classList.toggle('active', tab === 'url');
-  document.getElementById('customFileWrap').style.display = tab === 'file' ? '' : 'none';
-  document.getElementById('customUrlWrap').style.display = tab === 'url' ? '' : 'none';
-}
-
-function handleIconFile(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const dataUrl = e.target.result;
-    chosenCustomIconUrl = dataUrl;
-    document.getElementById('fileDropLabel').textContent = '✅ ' + file.name;
-    showCustomPreview(dataUrl);
-  };
-  reader.readAsDataURL(file);
-}
-
-function previewCustomIcon() {
-  clearTimeout(customPreviewTimer);
-  customPreviewTimer = setTimeout(() => {
-    const url = document.getElementById('dialCustomIcon').value.trim();
-    const preview = document.getElementById('customIconPreview');
-    if (!url) { preview.style.display = 'none'; chosenCustomIconUrl = ''; return; }
-    // For URL tab: just set directly and hope the server allows it
-    chosenCustomIconUrl = url;
-    showCustomPreview(url);
-  }, 400);
-}
-
-function showCustomPreview(src) {
-  const preview = document.getElementById('customIconPreview');
-  preview.style.display = 'flex';
-  preview.innerHTML = '';
-  [32, 64].forEach(sz => {
-    const wrap = document.createElement('div');
-    wrap.style.cssText = `width:${sz+16}px;height:${sz+16}px;background:var(--surface3);border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border)`;
-    const i = document.createElement('img');
-    i.src = src;
-    i.style.cssText = `width:${sz}px;height:${sz}px;object-fit:contain`;
-    i.onerror = () => { wrap.innerHTML = '<span style="font-size:10px;color:var(--danger)">✗</span>'; };
-    wrap.appendChild(i);
-    preview.appendChild(wrap);
-  });
-}
-
-// Drag and drop on file zone
-document.addEventListener('DOMContentLoaded', () => {
-  const zone = document.getElementById('fileDropZone');
-  if (!zone) return;
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-  zone.addEventListener('drop', e => {
-    e.preventDefault();
-    zone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = ev => {
-        chosenCustomIconUrl = ev.target.result;
-        document.getElementById('fileDropLabel').textContent = '✅ ' + file.name;
-        showCustomPreview(ev.target.result);
-      };
-      reader.readAsDataURL(file);
+    // ─── DRAG & DROP: GROUPS ────────────────────────────────────────
+    function onGroupDragStart(e, groupId) {
+        if (!e.currentTarget.draggable) { e.preventDefault(); return; }
+        dragSrcType = 'group';
+        dragSrcGroupId = groupId;
+        e.dataTransfer.effectAllowed = 'move';
     }
-  });
-});
 
-function onUrlInput() {
-  const status = document.getElementById('titleFetchStatus');
-  if (status) status.textContent = '';
-  // Reload favicon options live if favicon tab is active
-  if (currentIconSrc === 'favicon') {
-    const url = document.getElementById('dialUrl').value.trim();
-    if (url.length > 6) loadFaviconOptions(url);
-  }
-}
-
-async function fetchPageTitle() {
-  const urlRaw = document.getElementById('dialUrl').value.trim();
-  const nameField = document.getElementById('dialName');
-  const status = document.getElementById('titleFetchStatus');
-  if (!urlRaw || nameField.value.trim()) return; // don't overwrite if user typed a name
-
-  let url = urlRaw;
-  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-
-  status.textContent = '⏳ Fetching title…';
-  try {
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
-    const json = await resp.json();
-    const match = json.contents && json.contents.match(/<title[^>]*>([^<]{1,120})<\/title>/i);
-    if (match && match[1]) {
-      const title = match[1].replace(/\s+/g, ' ').trim();
-      nameField.value = title;
-      nameField.placeholder = 'e.g. GitHub';
-      status.textContent = '✅ Title fetched';
-      setTimeout(() => { status.textContent = ''; }, 2000);
-    } else {
-      status.textContent = '⚠️ No title found';
+    function onGroupDragOver(e, groupId) {
+        if (dragSrcType !== 'group' || groupId === dragSrcGroupId) return;
+        e.preventDefault();
+        e.currentTarget.classList.add('drag-over');
     }
-  } catch (e) {
-    status.textContent = '⚠️ Could not fetch';
-  }
-}
 
-function saveDial() {
-  const nameField = document.getElementById('dialName');
-  const name = nameField.value.trim();
-  let url = document.getElementById('dialUrl').value.trim();
-  if (!url) { showToast('⚠️ Please enter a URL'); return; }
-  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    function onGroupDrop(e, targetGroupId) {
+        if (dragSrcType !== 'group') return;
+        e.preventDefault();
+        e.currentTarget.classList.remove('drag-over');
+        if (dragSrcGroupId === targetGroupId) return;
 
-  // If no name yet, try to fetch title first then save
-  if (!name) {
-    const status = document.getElementById('titleFetchStatus');
-    status.textContent = '⏳ Fetching title…';
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    fetch(proxyUrl, { signal: AbortSignal.timeout(6000) })
-      .then(r => r.json())
-      .then(json => {
-        const match = json.contents && json.contents.match(/<title[^>]*>([^<]{1,120})<\/title>/i);
-        nameField.value = match ? match[1].replace(/\s+/g, ' ').trim() : getDomain(url);
-        status.textContent = '';
+        const srcIdx = data.groups.findIndex(g => g.id === dragSrcGroupId);
+        const tgtIdx = data.groups.findIndex(g => g.id === targetGroupId);
+        if (srcIdx === -1 || tgtIdx === -1) return;
+
+        const [g] = data.groups.splice(srcIdx, 1);
+        data.groups.splice(tgtIdx, 0, g);
+
+        saveData(); render();
+    }
+
+    // ─── EDIT MODE ─────────────────────────────────────────────────
+    function toggleEditMode() {
+        editMode = !editMode;
+        document.body.classList.toggle('edit-mode', editMode);
+        const toggle = document.getElementById('editToggle');
+        toggle.classList.toggle('active', editMode);
+        document.getElementById('editLabel').textContent = editMode ? 'Editing' : 'Edit';
+    }
+
+    // ─── GROUP CRUD ─────────────────────────────────────────────────
+    function setGroupSize(px) {
+        currentGroupSize = px;
+        const slider = document.getElementById('groupSizeSlider');
+        const label  = document.getElementById('groupSizeValue');
+        if (slider) slider.value = px;
+        if (label)  label.textContent = px + 'px';
+    }
+
+    function openGroupModal(groupId = null) {
+        editingGroupId = groupId;
+        const isEdit = !!groupId;
+        document.getElementById('groupModalTitle').textContent = isEdit ? 'Edit Group' : 'Add Group';
+        if (isEdit) {
+            const g = data.groups.find(g => g.id === groupId);
+            document.getElementById('groupName').value = g.name;
+            currentGroupEmoji = g.emoji;
+            setGroupSize(g.dialSize || 140);
+        } else {
+            document.getElementById('groupName').value = '';
+            currentGroupEmoji = pickRandomEmoji(GROUP_EMOJIS);
+            setGroupSize(140);
+        }
+        document.getElementById('groupEmojiPreview').textContent = currentGroupEmoji;
+        document.getElementById('groupEmojiPicker').classList.remove('open');
+        openModal('groupModal');
+    }
+
+    function saveGroup() {
+        const name = document.getElementById('groupName').value.trim();
+        if (!name) { showToast('⚠️ Please enter a group name'); return; }
+
+        if (editingGroupId) {
+            const g = data.groups.find(g => g.id === editingGroupId);
+            if (g) { g.name = name; g.emoji = currentGroupEmoji; g.dialSize = currentGroupSize; }
+        } else {
+            data.groups.push({ id: uid(), name, emoji: currentGroupEmoji, dialSize: currentGroupSize, dials: [] });
+        }
+
+        saveData(); render();
+        closeModal('groupModal');
+    }
+
+    function showConfirm(title, message, onConfirm) {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmMessage').textContent = message;
+        const btn = document.getElementById('confirmOkBtn');
+        btn.onclick = () => { closeModal('confirmModal'); onConfirm(); };
+        openModal('confirmModal');
+    }
+
+    function deleteGroup(groupId) {
+        const g = data.groups.find(g => g.id === groupId);
+        if (!g) return;
+        showConfirm(
+            '🗑 Delete group?',
+            `"${g.name}" and all ${g.dials.length} dial(s) inside will be permanently removed.`,
+            () => {
+                const backup = JSON.stringify(data);
+                data.groups = data.groups.filter(gr => gr.id !== groupId);
+                saveData(); render();
+                showToastUndo(`🗑 Group "${g.name}" deleted`, backup);
+            }
+        );
+    }
+
+    function moveGroup(groupId, dir) {
+        const idx = data.groups.findIndex(g => g.id === groupId);
+        const newIdx = idx + dir;
+        if (newIdx < 0 || newIdx >= data.groups.length) return;
+        [data.groups[idx], data.groups[newIdx]] = [data.groups[newIdx], data.groups[idx]];
+        saveData(); render();
+    }
+
+    // ─── DIAL CRUD ─────────────────────────────────────────────────
+    function openDialModal(dialId = null, groupId = null) {
+        editingDialId = dialId;
+        editingDialGroupId = groupId;
+
+        document.getElementById('dialModalTitle').textContent = dialId ? 'Edit Dial' : 'Add Dial';
+        document.getElementById('dialEmojiPicker').classList.remove('open');
+        selectedFaviconUrl = '';
+        document.getElementById('faviconPicker').innerHTML = '<span class="favicon-hint">Enter a URL above to load icons</span>';
+        const prevEl = document.getElementById('customIconPreview');
+        if (prevEl) { prevEl.style.display = 'none'; prevEl.innerHTML = ''; }
+        const customInput = document.getElementById('dialCustomIcon');
+        if (customInput) customInput.value = '';
+
+        if (dialId) {
+            const group = data.groups.find(g => g.id === groupId);
+            const dial = group?.dials.find(d => d.id === dialId);
+            if (dial) {
+                document.getElementById('dialName').value = dial.name;
+                document.getElementById('dialUrl').value = dial.url;
+                currentDialEmoji = dial.emoji;
+                document.getElementById('dialEmojiPreview').textContent = currentDialEmoji;
+                if (dial.iconType === 'emoji') setIconSrc('emoji');
+                else if (dial.iconType === 'custom') {
+                    setIconSrc('custom');
+                    document.getElementById('dialCustomIcon').value = dial.icon || '';
+                    if (dial.icon) setTimeout(() => previewCustomIcon(), 50);
+                }
+                else {
+                    setIconSrc('favicon');
+                    // Pre-select the stored icon if available
+                    if (dial.icon) selectedFaviconUrl = dial.icon;
+                    loadFaviconOptions(dial.url);
+                }
+            }
+        } else {
+            document.getElementById('dialName').value = '';
+            document.getElementById('dialUrl').value = '';
+            currentDialEmoji = pickRandomEmoji(EMOJI_LIST);
+            document.getElementById('dialEmojiPreview').textContent = currentDialEmoji;
+            setIconSrc('favicon');
+        }
+
+        openModal('dialModal');
+    }
+
+    // ─── CUSTOM ICON PREVIEW ────────────────────────────────────────
+    let customPreviewTimer = null;
+
+    function previewCustomIcon() {
+        clearTimeout(customPreviewTimer);
+        customPreviewTimer = setTimeout(() => {
+            const url = document.getElementById('dialCustomIcon').value.trim();
+            const preview = document.getElementById('customIconPreview');
+            if (!url) { preview.style.display = 'none'; return; }
+            preview.style.display = 'flex';
+            preview.innerHTML = '';
+            [32, 64].forEach(sz => {
+                const wrap = document.createElement('div');
+                wrap.style.cssText = `width:${sz+16}px;height:${sz+16}px;background:var(--surface3);border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border)`;
+                const i = document.createElement('img');
+                i.src = url;
+                i.style.cssText = `width:${sz}px;height:${sz}px;object-fit:contain`;
+                i.onerror = () => { wrap.innerHTML = '<span style="font-size:18px">❌</span>'; };
+                wrap.appendChild(i);
+                preview.appendChild(wrap);
+            });
+        }, 400);
+    }
+
+    function onUrlInput() {
+        const status = document.getElementById('titleFetchStatus');
+        if (status) status.textContent = '';
+        if (currentIconSrc === 'favicon') {
+            const url = document.getElementById('dialUrl').value.trim();
+            if (url.length > 6) loadFaviconOptions(url);
+        }
+    }
+
+    async function fetchPageTitle() {
+        const urlRaw = document.getElementById('dialUrl').value.trim();
+        const nameField = document.getElementById('dialName');
+        const status = document.getElementById('titleFetchStatus');
+        if (!urlRaw || nameField.value.trim()) return;
+
+        let url = urlRaw;
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+        status.textContent = '⏳ Fetching title…';
+        try {
+            const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
+            const text = await resp.text();
+            const match = text.match(/<title[^>]*>([^<]{1,120})<\/title>/i);
+            if (match?.[1]) {
+                nameField.value = match[1].replace(/\s+/g, ' ').trim();
+                status.textContent = '✅ Title fetched';
+                setTimeout(() => { status.textContent = ''; }, 2000);
+            } else {
+                status.textContent = '⚠️ No title found';
+            }
+        } catch {
+            status.textContent = '⚠️ Could not fetch';
+        }
+    }
+
+    function saveDial() {
+        const nameField = document.getElementById('dialName');
+        const name = nameField.value.trim();
+        let url = document.getElementById('dialUrl').value.trim();
+        if (!url) { showToast('⚠️ Please enter a URL'); return; }
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+        if (!name) {
+            const status = document.getElementById('titleFetchStatus');
+            status.textContent = '⏳ Fetching title…';
+            fetch(url, { signal: AbortSignal.timeout(6000) })
+                .then(r => r.text())
+                .then(text => {
+                    const match = text.match(/<title[^>]*>([^<]{1,120})<\/title>/i);
+                    nameField.value = match?.[1]?.replace(/\s+/g, ' ').trim() || getDomain(url);
+                    status.textContent = '';
+                    _doSaveDial();
+                })
+                .catch(() => { nameField.value = getDomain(url); status.textContent = ''; _doSaveDial(); });
+            return;
+        }
         _doSaveDial();
-      })
-      .catch(() => {
-        nameField.value = getDomain(url);
-        status.textContent = '';
-        _doSaveDial();
-      });
-    return;
-  }
-  _doSaveDial();
-}
-
-function _doSaveDial() {
-  const name = document.getElementById('dialName').value.trim() || 'Untitled';
-  let url = document.getElementById('dialUrl').value.trim();
-  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-
-  let icon, iconType;
-  if (currentIconSrc === 'favicon') {
-    icon = selectedFaviconUrl || '';
-    iconType = 'favicon';
-  } else if (currentIconSrc === 'custom') {
-    // chosenCustomIconUrl is a base64 data URL fetched during preview
-    icon = chosenCustomIconUrl || document.getElementById('dialCustomIcon').value.trim();
-    iconType = 'custom';
-  } else {
-    icon = currentDialEmoji;
-    iconType = 'emoji';
-  }
-
-  if (editingDialId) {
-    const group = data.groups.find(g => g.id === editingDialGroupId);
-    const dial = group?.dials.find(d => d.id === editingDialId);
-    if (dial) { dial.name = name; dial.url = url; dial.icon = icon; dial.iconType = iconType; dial.emoji = currentDialEmoji; }
-  } else {
-    const group = data.groups.find(g => g.id === editingDialGroupId);
-    if (group) {
-      group.dials.push({ id: uid(), name, url, icon, iconType, emoji: currentDialEmoji });
     }
-  }
 
-  saveData(); render();
-  closeModal('dialModal');
-}
+    function _doSaveDial() {
+        const name = document.getElementById('dialName').value.trim() || 'Untitled';
+        let url = document.getElementById('dialUrl').value.trim();
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
 
-function deleteDial(groupId, dialId) {
-  const group = data.groups.find(g => g.id === groupId);
-  if (!group) return;
-  const dial = group.dials.find(d => d.id === dialId);
-  if (!dial) return;
-  showConfirm(
-    '🗑 Delete dial?',
-    `"${dial.name}" will be permanently removed.`,
-    () => {
-      const backup = JSON.stringify(data);
-      group.dials = group.dials.filter(d => d.id !== dialId);
-      saveData(); render();
-      showToastUndo(`🗑 "${dial.name}" deleted`, backup);
+        let icon, iconType;
+        if (currentIconSrc === 'favicon') {
+            icon = selectedFaviconUrl || '';
+            iconType = 'favicon';
+        } else if (currentIconSrc === 'custom') {
+            icon = document.getElementById('dialCustomIcon').value.trim();
+            iconType = 'custom';
+        } else {
+            icon = currentDialEmoji;
+            iconType = 'emoji';
+        }
+
+        if (editingDialId) {
+            const group = data.groups.find(g => g.id === editingDialGroupId);
+            const dial = group?.dials.find(d => d.id === editingDialId);
+            if (dial) { dial.name = name; dial.url = url; dial.icon = icon; dial.iconType = iconType; dial.emoji = currentDialEmoji; }
+        } else {
+            const group = data.groups.find(g => g.id === editingDialGroupId);
+            if (group) {
+                group.dials.push({ id: uid(), name, url, icon, iconType, emoji: currentDialEmoji });
+            }
+        }
+
+        saveData(); render();
+        closeModal('dialModal');
     }
-  );
-}
 
-function moveDial(groupId, dialId, dir) {
-  const group = data.groups.find(g => g.id === groupId);
-  if (!group) return;
-  const idx = group.dials.findIndex(d => d.id === dialId);
-  const newIdx = idx + dir;
-  if (newIdx < 0 || newIdx >= group.dials.length) return;
-  [group.dials[idx], group.dials[newIdx]] = [group.dials[newIdx], group.dials[idx]];
-  saveData(); render();
-}
+    function deleteDial(groupId, dialId) {
+        const group = data.groups.find(g => g.id === groupId);
+        if (!group) return;
+        const dial = group.dials.find(d => d.id === dialId);
+        if (!dial) return;
+        showConfirm(
+            '🗑 Delete dial?',
+            `"${dial.name}" will be permanently removed.`,
+            () => {
+                const backup = JSON.stringify(data);
+                group.dials = group.dials.filter(d => d.id !== dialId);
+                saveData(); render();
+                showToastUndo(`🗑 "${dial.name}" deleted`, backup);
+            }
+        );
+    }
 
-// ─── ICON SOURCE ────────────────────────────────────────────────
-function setIconSrc(src) {
-  currentIconSrc = src;
-  ['favicon','emoji','custom'].forEach(s => {
-    document.getElementById('iconSrc' + s.charAt(0).toUpperCase() + s.slice(1))
-      .classList.toggle('active', s === src);
-  });
-  document.getElementById('faviconPickerGroup').style.display = src === 'favicon' ? '' : 'none';
-  document.getElementById('emojiPickerGroup').style.display = src === 'emoji' ? '' : 'none';
-  document.getElementById('customIconGroup').style.display = src === 'custom' ? '' : 'none';
-  if (src !== 'custom') {
-    const p = document.getElementById('customIconPreview');
-    if (p) p.style.display = 'none';
-  }
+    function moveDial(groupId, dialId, dir) {
+        const group = data.groups.find(g => g.id === groupId);
+        if (!group) return;
+        const idx = group.dials.findIndex(d => d.id === dialId);
+        const newIdx = idx + dir;
+        if (newIdx < 0 || newIdx >= group.dials.length) return;
+        [group.dials[idx], group.dials[newIdx]] = [group.dials[newIdx], group.dials[idx]];
+        saveData(); render();
+    }
 
-  if (src === 'favicon') {
-    const url = document.getElementById('dialUrl').value.trim();
-    if (url) loadFaviconOptions(url);
-  }
-}
+    // ─── ICON SOURCE ────────────────────────────────────────────────
+    function setIconSrc(src) {
+        currentIconSrc = src;
+        ['favicon','emoji','custom'].forEach(s => {
+            document.getElementById('iconSrc' + s.charAt(0).toUpperCase() + s.slice(1))
+                .classList.toggle('active', s === src);
+        });
+        document.getElementById('faviconPickerGroup').style.display = src === 'favicon' ? '' : 'none';
+        document.getElementById('emojiPickerGroup').style.display = src === 'emoji' ? '' : 'none';
+        document.getElementById('customIconGroup').style.display = src === 'custom' ? '' : 'none';
+        if (src !== 'custom') {
+            const p = document.getElementById('customIconPreview');
+            if (p) p.style.display = 'none';
+        }
 
-// ─── FAVICON PICKER ─────────────────────────────────────────────
-let faviconLoadAbort = null;
+        if (src === 'favicon') {
+            const url = document.getElementById('dialUrl').value.trim();
+            if (url) loadFaviconOptions(url);
+        }
+    }
 
-function loadFaviconOptions(rawUrl) {
-  let url = rawUrl.trim();
-  if (!url) return;
-  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    // ─── FAVICON PICKER ─────────────────────────────────────────────
+    function loadFaviconOptions(rawUrl) {
+        let url = rawUrl.trim();
+        if (!url) return;
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
 
-  const picker = document.getElementById('faviconPicker');
-  picker.innerHTML = '<div class="favicon-loading"><div class="spinner"></div><span>Loading icons…</span></div>';
-  selectedFaviconUrl = '';
+        const picker = document.getElementById('faviconPicker');
+        picker.innerHTML = '<div class="favicon-loading"><div class="spinner"></div><span>Loading icons…</span></div>';
+        selectedFaviconUrl = '';
 
-  // Cancel any previous load
-  if (faviconLoadAbort) faviconLoadAbort();
-  let cancelled = false;
-  faviconLoadAbort = () => { cancelled = true; };
+        const domain = getDomain(url);
+        const bare = domain.replace(/^www\./, '');
 
-  const domain = getDomain(url);
-  const bare = domain.replace(/^www\./, '');
+        const candidates = [...new Set([
+            `https://icons.duckduckgo.com/ip3/${domain}.ico`,
+            `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+            `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
+            `https://${domain}/favicon.ico`,
+            `https://${domain}/favicon.png`,
+            `https://${domain}/apple-touch-icon.png`,
+            `https://${bare}/favicon.ico`,
+        ])];
 
-  // All candidates to probe — include extra sources for better coverage
-  const candidates = [
-    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
-    `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${domain}&size=128`,
-    `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${domain}&size=64`,
-    `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
-    `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
-    `https://${domain}/favicon.ico`,
-    `https://${domain}/favicon.png`,
-    `https://${domain}/apple-touch-icon.png`,
-    `https://${domain}/apple-touch-icon-precomposed.png`,
-    `https://${bare}/favicon.ico`,
-    `https://${bare}/apple-touch-icon.png`,
-  ];
+        const found = [];
+        let pending = candidates.length;
 
-  // Deduplicate
-  const unique = [...new Set(candidates)];
-  const found = [];
+        const done = () => {
+            pending--;
+            if (pending === 0) renderFaviconTiles(found, picker);
+        };
 
-  let pending = unique.length;
-  const done = () => {
-    pending--;
-    if (pending > 0 || cancelled) return;
-    renderFaviconTiles(found, picker);
-  };
+        candidates.forEach(src => {
+            const img = new Image();
+            let settled = false;
+            const settle = (ok) => {
+                if (settled) return; settled = true;
+                clearTimeout(timer);
+                if (ok && !found.includes(src)) found.push(src);
+                done();
+            };
+            img.onload = () => settle(true);
+            img.onerror = () => settle(false);
+            const timer = setTimeout(() => settle(false), 4000);
+            img.src = src;
+        });
+    }
 
-  unique.forEach(src => {
-    const img = new Image();
-    img.referrerPolicy = 'no-referrer';
-    // Do NOT set crossOrigin — favicons don't send CORS headers, it would block all of them
-    let done_called = false;
-    const callDone = () => {
-      if (done_called) return;
-      done_called = true;
-      done();
+    function renderFaviconTiles(found, picker) {
+        picker.innerHTML = '';
+
+        if (!found.length) {
+            picker.innerHTML = '<span class="favicon-hint">No icons found — try Emoji or Custom URL</span>';
+            return;
+        }
+
+        // Deduplicate visually identical icons by filtering after load
+        found.forEach((src, i) => {
+            const tile = document.createElement('div');
+            tile.className = 'favicon-tile' + (i === 0 ? ' selected' : '');
+            if (i === 0) selectedFaviconUrl = src;
+
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = '';
+
+            const check = document.createElement('div');
+            check.className = 'favicon-check';
+            check.textContent = '✓';
+
+            tile.appendChild(img);
+            tile.appendChild(check);
+            tile.title = src;
+
+            tile.addEventListener('click', () => {
+                picker.querySelectorAll('.favicon-tile').forEach(t => t.classList.remove('selected'));
+                tile.classList.add('selected');
+                selectedFaviconUrl = src;
+            });
+
+            picker.appendChild(tile);
+        });
+    }
+
+    // ─── EMOJI PICKER ───────────────────────────────────────────────
+    function buildEmojiPicker(pickerId, type) {
+        const picker = document.getElementById(pickerId);
+        picker.innerHTML = '';
+
+        // Search bar
+        const searchWrap = document.createElement('div');
+        searchWrap.className = 'emoji-search-wrap';
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.className = 'emoji-search';
+        searchInput.placeholder = '🔍 Search emojis…';
+        searchInput.autocomplete = 'off';
+        searchWrap.appendChild(searchInput);
+        picker.appendChild(searchWrap);
+
+        // Categories container (inside scroll area)
+        const scrollArea = document.createElement('div');
+        scrollArea.className = 'emoji-scroll-area';
+        picker.appendChild(scrollArea);
+
+        const catContainer = document.createElement('div');
+        catContainer.className = 'emoji-cats';
+        scrollArea.appendChild(catContainer);
+
+        // No-results message
+        const noResults = document.createElement('div');
+        noResults.className = 'emoji-no-results';
+        noResults.textContent = 'No emojis found';
+        noResults.style.display = 'none';
+        scrollArea.appendChild(noResults);
+
+        function renderCategories(filter) {
+            catContainer.innerHTML = '';
+            let totalShown = 0;
+            EMOJI_CATEGORIES.forEach(cat => {
+                const matches = filter
+                    ? cat.emojis.filter(e => {
+                        const name = emojiName(e).toLowerCase();
+                        return name.includes(filter) || e === filter;
+                    })
+                    : cat.emojis;
+                if (!matches.length) return;
+                totalShown += matches.length;
+
+                const catEl = document.createElement('div');
+                catEl.className = 'emoji-category';
+
+                const label = document.createElement('div');
+                label.className = 'emoji-category-label';
+                label.textContent = cat.label;
+                catEl.appendChild(label);
+
+                const grid = document.createElement('div');
+                grid.className = 'emoji-grid';
+                matches.forEach(e => {
+                    const span = document.createElement('span');
+                    span.className = 'emoji-opt';
+                    span.textContent = e;
+                    span.title = emojiName(e);
+                    span.onclick = () => selectEmoji(type, e);
+                    grid.appendChild(span);
+                });
+                catEl.appendChild(grid);
+                catContainer.appendChild(catEl);
+            });
+            noResults.style.display = totalShown === 0 ? 'block' : 'none';
+        }
+
+        renderCategories('');
+
+        searchInput.addEventListener('input', () => {
+            renderCategories(searchInput.value.trim().toLowerCase());
+        });
+
+        // Clear search when picker opens
+        picker._clearSearch = () => {
+            searchInput.value = '';
+            renderCategories('');
+            const sa = picker.querySelector('.emoji-scroll-area');
+            if (sa) sa.scrollTop = 0;
+        };
+    }
+
+    // Simple emoji name lookup (keyword based)
+    const EMOJI_KEYWORDS = {
+        '😀':'grinning','😃':'smiley','😄':'smile','😁':'grin','😆':'laughing','😅':'sweat smile','🤣':'rofl','😂':'joy','🙂':'slightly smiling','😉':'wink','😊':'blush','😇':'innocent','🥰':'smiling hearts','😍':'heart eyes','🤩':'star struck','😘':'kiss','😗':'kissing','😚':'kissing closed eyes','😙':'kissing smiling eyes','😋':'yum','😛':'stuck out tongue','😜':'winking tongue','🤪':'zany','😝':'squinting tongue','🤑':'money mouth','🤗':'hugging','🤔':'thinking','🤐':'zipper mouth','😐':'neutral','😑':'expressionless','😶':'no mouth','😏':'smirk','😒':'unamused','🙄':'eye roll','😬':'grimace','😌':'relieved','😔':'pensive','😪':'sleepy','🤤':'drooling','😴':'sleeping','😷':'mask','🤒':'thermometer face','🤕':'head bandage','🤢':'nauseated','🤮':'vomiting','🤧':'sneezing','🥵':'hot','🥶':'cold','🥴':'woozy','😵':'dizzy','🤯':'exploding head','🤠':'cowboy','🥳':'partying','😎':'sunglasses','🤓':'nerd','🧐':'monocle','😕':'confused','😟':'worried','🙁':'frowning','☹️':'frowning face','😮':'open mouth','😯':'hushed','😲':'astonished','😳':'flushed','🥺':'pleading','😦':'frowning open mouth','😧':'anguished','😨':'fearful','😰':'anxious sweat','😥':'sad relieved','😢':'cry','😭':'loudly crying','😱':'screaming','😖':'confounded','😣':'persevering','😞':'disappointed','😓':'downcast sweat','😩':'weary','😫':'tired','🥱':'yawning','😤':'huffing','😡':'pouting','😠':'angry','🤬':'cursing','😈':'smiling devil','👿':'angry devil','💀':'skull','☠️':'skull crossbones','💩':'poop','🤡':'clown','👹':'ogre','👺':'goblin','👻':'ghost','👽':'alien','👾':'space invader','🤖':'robot',
+        '👋':'wave','✋':'raised hand','👌':'ok hand','✌️':'victory','👍':'thumbs up','👎':'thumbs down','✊':'raised fist','👊':'oncoming fist','👏':'clapping','🙏':'folded hands','💪':'muscle','👀':'eyes','❤️':'heart red','🧡':'heart orange','💛':'heart yellow','💚':'heart green','💙':'heart blue','💜':'heart purple','🖤':'heart black','🤍':'heart white','💔':'broken heart','💕':'two hearts','💞':'revolving hearts','💓':'beating heart','💗':'growing heart','💖':'sparkling heart','💘':'heart arrow','💝':'heart ribbon',
+        '🐶':'dog','🐱':'cat','🐭':'mouse','🐹':'hamster','🐰':'rabbit','🦊':'fox','🐻':'bear','🐼':'panda','🐨':'koala','🐯':'tiger','🦁':'lion','🐮':'cow','🐷':'pig','🐸':'frog','🐵':'monkey','🐔':'chicken','🐧':'penguin','🐦':'bird','🐤':'chick','🦆':'duck','🦅':'eagle','🦉':'owl','🦇':'bat','🐺':'wolf','🐴':'horse','🦄':'unicorn','🐝':'bee','🦋':'butterfly','🐛':'bug','🐌':'snail','🐞':'ladybug','🐜':'ant','🕷':'spider','🦂':'scorpion','🐢':'turtle','🐍':'snake','🦎':'lizard','🦖':'t-rex','🦕':'sauropod','🐙':'octopus','🦑':'squid','🐡':'blowfish','🐠':'tropical fish','🐟':'fish','🐬':'dolphin','🐳':'whale','🦈':'shark','🐊':'crocodile','🐘':'elephant','🦛':'hippo','🦏':'rhino','🐪':'camel','🦒':'giraffe','🦘':'kangaroo','🦬':'bison','🐃':'water buffalo','🐂':'ox','🐄':'cow2','🐎':'racehorse','🐖':'pig2','🦙':'llama','🐐':'goat','🦌':'deer','🐕':'dog2','🐩':'poodle','🐈':'cat2','🦀':'crab','🦞':'lobster','🦐':'shrimp','🦪':'oyster','🌵':'cactus','🎄':'christmas tree','🌲':'evergreen','🌳':'deciduous tree','🌴':'palm tree','🌱':'seedling','🌿':'herb','☘️':'shamrock','🍀':'four leaf clover','🍃':'leaves','🍂':'fallen leaf','🍁':'maple leaf','🍄':'mushroom','🌾':'sheaf of rice','💐':'bouquet','🌷':'tulip','🌹':'rose','🥀':'wilted flower','🌺':'hibiscus','🌸':'cherry blossom','🌼':'blossom','🌻':'sunflower','🌞':'sun face','🌝':'full moon face','🌙':'crescent moon','⭐':'star','🌟':'glowing star','🌠':'shooting star','🌌':'milky way','☀️':'sun','⛅':'partly cloudy','☁️':'cloud','🌊':'wave water','❄️':'snowflake','☃️':'snowman','⛄':'snowman hat','🌈':'rainbow','⚡':'lightning',
+        '🍏':'green apple','🍎':'apple','🍐':'pear','🍊':'orange','🍋':'lemon','🍌':'banana','🍉':'watermelon','🍇':'grapes','🍓':'strawberry','🫐':'blueberries','🍈':'melon','🍒':'cherries','🍑':'peach','🥭':'mango','🍍':'pineapple','🥥':'coconut','🥝':'kiwi','🍅':'tomato','🍆':'eggplant','🥑':'avocado','🥦':'broccoli','🥬':'leafy green','🥒':'cucumber','🌶':'hot pepper','🧄':'garlic','🧅':'onion','🥔':'potato','🍠':'sweet potato','🥐':'croissant','🥯':'bagel','🍞':'bread','🥖':'baguette','🥨':'pretzel','🧀':'cheese','🥚':'egg','🍳':'cooking','🧈':'butter','🥞':'pancakes','🧇':'waffle','🥓':'bacon','🥩':'meat','🍗':'chicken leg','🍖':'meat bone','🌭':'hot dog','🍔':'burger','🍟':'fries','🍕':'pizza','🥪':'sandwich','🌮':'taco','🌯':'burrito','🥗':'salad','🍝':'spaghetti','🍜':'ramen','🍲':'stew','🍛':'curry','🍣':'sushi','🍱':'bento','🥟':'dumpling','🍤':'shrimp','🍙':'rice ball','🍚':'rice','🍘':'rice cracker','🧁':'cupcake','🍰':'shortcake','🎂':'birthday cake','🍭':'lollipop','🍬':'candy','🍫':'chocolate','🍿':'popcorn','🍩':'donut','🍪':'cookie','🍯':'honey','🧃':'juice','🥤':'cup with straw','🧋':'bubble tea','🍵':'tea','☕':'coffee','🍺':'beer','🍻':'beers','🥂':'champagne','🍷':'wine','🥃':'tumbler','🍸':'cocktail','🍹':'tropical drink','🍾':'champagne bottle','🧊':'ice',
+        '🚗':'car','🚕':'taxi','🚙':'suv','🚌':'bus','🏎':'racing car','🚓':'police car','🚑':'ambulance','🚒':'fire truck','🚐':'minibus','🛻':'pickup truck','🚚':'delivery truck','🚛':'truck','🚜':'tractor','🏍':'motorcycle','🛵':'scooter','🚲':'bicycle','🛴':'kick scooter','⛵':'sailboat','🚤':'speedboat','🛥':'motor boat','🚢':'ship','✈️':'airplane','🛩':'small airplane','🚁':'helicopter','🚀':'rocket','🛸':'flying saucer','🏖':'beach','🏔':'mountain snow','⛰':'mountain','🌋':'volcano','🗻':'mount fuji','🏕':'camping','🏗':'construction','🏠':'house','🏡':'house garden','🏢':'office','🏣':'post office','🏤':'european post office','🏥':'hospital','🏦':'bank','🏨':'hotel','🏩':'love hotel','🏪':'convenience store','🏫':'school','🏭':'factory','🏯':'japanese castle','🏰':'castle','💒':'wedding','🗼':'tokyo tower','🗽':'statue of liberty','⛪':'church','🕌':'mosque','🛕':'hindu temple','🕍':'synagogue','⛩':'shinto shrine','🕋':'kaaba','⛲':'fountain','🌁':'foggy','🌃':'night stars','🏙':'cityscape','🌄':'sunrise mountains','🌅':'sunrise','🌆':'city dusk','🌇':'city sunset','🌉':'bridge night','🗺':'world map','🧭':'compass','🌐':'globe','🌍':'globe africa','🌎':'globe americas','🌏':'globe asia','🪐':'planet',
+        '⚽':'soccer','🏀':'basketball','🏈':'football','⚾':'baseball','🥎':'softball','🎾':'tennis','🏐':'volleyball','🏉':'rugby','🥏':'flying disc','🎱':'billiards','🏓':'ping pong','🏸':'badminton','🏒':'ice hockey','⛳':'golf','🎣':'fishing','🥊':'boxing glove','🥋':'martial arts','🎽':'running shirt','🛹':'skateboard','🛷':'sled','⛸':'ice skate','🎿':'ski','🥌':'curling stone','🏆':'trophy','🥇':'first medal','🥈':'second medal','🥉':'third medal','🏅':'sports medal','🎖':'military medal','🎪':'circus','🎭':'theater','🎨':'art palette','🎬':'clapper','🎤':'microphone','🎧':'headphones','🎼':'musical score','🎵':'musical note','🎶':'musical notes','🥁':'drum','🎷':'saxophone','🎺':'trumpet','🎸':'guitar','🎻':'violin','🎲':'game die','🎯':'bullseye','🎳':'bowling','🎮':'video game','🎰':'slot machine','🧩':'puzzle','🎴':'flower card',
+        '📱':'iphone','💻':'laptop','🖥':'desktop','🖨':'printer','⌨️':'keyboard','🖱':'mouse','💽':'minidisc','💾':'floppy disk','💿':'cd','📀':'dvd','📷':'camera','📸':'camera flash','📹':'video camera','🎥':'movie camera','📞':'telephone','☎️':'old telephone','📺':'television','📻':'radio','🧭':'compass','⏱':'stopwatch','⏰':'alarm clock','⏳':'hourglass','📡':'satellite','🔋':'battery','🔌':'electric plug','💡':'light bulb','🔦':'flashlight','🕯':'candle','🛏':'bed','🚽':'toilet','🚿':'shower','🛁':'bathtub','🧹':'broom','🧺':'basket','🧻':'roll of paper','🧼':'soap','🧰':'toolbox','🔧':'wrench','🔨':'hammer','⚒':'hammer pick','🛠':'tools','⛏':'pick','🪚':'carpentry saw','🔩':'nut and bolt','🧲':'magnet','💣':'bomb','🔪':'knife','⚔️':'swords','🛡':'shield','🧪':'test tube','🧫':'petri dish','🧬':'dna','🔭':'telescope','🔬':'microscope','💊':'pill','💉':'syringe','🩺':'stethoscope','📦':'package','📫':'mailbox','📋':'clipboard','📁':'file folder','📂':'open folder','🗂':'card index dividers','📅':'calendar','📆':'tear off calendar','📇':'card index','📈':'chart up','📉':'chart down','📊':'bar chart','📌':'pushpin','📍':'round pushpin','📎':'paperclip','📏':'ruler','📐':'triangular ruler','✂️':'scissors','🔒':'locked','🔓':'unlocked','🔑':'key','🗝':'old key','💰':'money bag','💵':'dollar','💴':'yen','💶':'euro','💷':'pound','💳':'credit card','🏧':'atm','💹':'chart yen','📜':'scroll','📋':'clipboard','✏️':'pencil','✒️':'black nib','🖊':'pen','🖋':'fountain pen','📝':'memo','📓':'notebook','📔':'notebook cover','📒':'ledger','📕':'closed book','📗':'green book','📘':'blue book','📙':'orange book','📚':'books','📖':'open book','🔗':'link','📰':'newspaper','🗞':'newspaper rolled',
+        '❤️':'red heart','🧡':'orange heart','💛':'yellow heart','💚':'green heart','💙':'blue heart','💜':'purple heart','🖤':'black heart','🤍':'white heart','🤎':'brown heart','💔':'broken heart','❣️':'heart exclamation','💕':'two hearts','💞':'revolving hearts','💓':'beating heart','💗':'growing heart','💖':'sparkling heart','💘':'heart arrow','💝':'heart ribbon','💟':'heart decoration','☮️':'peace','✝️':'cross','☪️':'star crescent','🕉':'om','☸️':'wheel dharma','✡️':'star david','🔯':'dotted six point star','🕎':'menorah','☯️':'yin yang','🛐':'worship','⛎':'ophiuchus','♈':'aries','♉':'taurus','♊':'gemini','♋':'cancer','♌':'leo','♍':'virgo','♎':'libra','♏':'scorpio','♐':'sagittarius','♑':'capricorn','♒':'aquarius','♓':'pisces','♻️':'recycle','✅':'check','❌':'cross','⭕':'circle','🛑':'stop','⛔':'no entry','📛':'name badge','🚫':'prohibited','💯':'hundred','❗':'exclamation','❓':'question','⚠️':'warning','🔰':'beginner','🔱':'trident','🔅':'dim button','🔆':'bright button','🔀':'shuffle','🔁':'repeat','🔂':'repeat one','▶️':'play','⏸':'pause','⏹':'stop button','⏺':'record','⏭':'next track','⏮':'previous track','⏩':'fast forward','⏪':'rewind','⬆️':'up arrow','⬇️':'down arrow','➡️':'right arrow','⬅️':'left arrow','↕️':'up down arrow','↔️':'left right arrow','↩️':'curved arrow left','↪️':'curved arrow right','🆕':'new','🆒':'cool','🆓':'free','🆗':'ok','🆙':'up','🆚':'vs','🆘':'sos','🔤':'abc','🔢':'numbers','🔠':'caps','🔡':'lowercase',
     };
-    img.onload = () => {
-      if (!cancelled && !found.includes(src)) found.push(src);
-      callDone();
-    };
-    img.onerror = callDone;
-    const t = setTimeout(() => { img.src = ''; callDone(); }, 5000);
-    img.onload = () => { clearTimeout(t); if (!cancelled && !found.includes(src)) found.push(src); callDone(); };
-    img.onerror = () => { clearTimeout(t); callDone(); };
-    img.src = src;
-  });
-}
 
-function renderFaviconTiles(found, picker) {
-  picker.innerHTML = '';
+    function emojiName(e) {
+        return EMOJI_KEYWORDS[e] || e;
+    }
 
-  if (!found.length) {
-    picker.innerHTML = '<span class="favicon-hint">No icons found — try Emoji or Custom URL</span>';
-    return;
-  }
+    function initEmojiPickers() {
+        buildEmojiPicker('dialEmojiPicker', 'dial');
+        buildEmojiPicker('groupEmojiPicker', 'group');
+    }
 
-  // Deduplicate visually identical icons by filtering after load
-  found.forEach((src, i) => {
-    const tile = document.createElement('div');
-    tile.className = 'favicon-tile' + (i === 0 ? ' selected' : '');
-    if (i === 0) selectedFaviconUrl = src;
+    function toggleEmojiPicker(type) {
+        const picker = document.getElementById(type + 'EmojiPicker');
+        const isOpen = picker.classList.contains('open');
+        // Close all pickers first
+        document.querySelectorAll('.emoji-picker').forEach(p => p.classList.remove('open'));
+        if (!isOpen) {
+            picker.classList.add('open');
+            if (picker._clearSearch) picker._clearSearch();
+            // Focus search input
+            const si = picker.querySelector('.emoji-search');
+            if (si) setTimeout(() => si.focus(), 50);
+        }
+    }
 
-    const img = document.createElement('img');
-    img.src = src;
-    img.alt = '';
+    function selectEmoji(type, emoji) {
+        if (type === 'dial') {
+            currentDialEmoji = emoji;
+            document.getElementById('dialEmojiPreview').textContent = emoji;
+        } else {
+            currentGroupEmoji = emoji;
+            document.getElementById('groupEmojiPreview').textContent = emoji;
+        }
+        document.getElementById(type + 'EmojiPicker').classList.remove('open');
+    }
 
-    const check = document.createElement('div');
-    check.className = 'favicon-check';
-    check.textContent = '✓';
+    function randomEmoji(type) {
+        const list = type === 'group' ? GROUP_EMOJIS : EMOJI_LIST;
+        const emoji = pickRandomEmoji(list);
+        if (type === 'dial') {
+            currentDialEmoji = emoji;
+            document.getElementById('dialEmojiPreview').textContent = emoji;
+        } else {
+            currentGroupEmoji = emoji;
+            document.getElementById('groupEmojiPreview').textContent = emoji;
+        }
+    }
 
-    tile.appendChild(img);
-    tile.appendChild(check);
-    tile.title = src;
+    // ─── MODAL HELPERS ──────────────────────────────────────────────
+    function openModal(id) {
+        document.getElementById(id).classList.add('open');
+    }
 
-    tile.addEventListener('click', () => {
-      picker.querySelectorAll('.favicon-tile').forEach(t => t.classList.remove('selected'));
-      tile.classList.add('selected');
-      selectedFaviconUrl = src;
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('open');
+    }
+
+    // Click backdrop to close
+    document.querySelectorAll('.modal-backdrop').forEach(bd => {
+        bd.addEventListener('click', e => { if (e.target === bd) bd.classList.remove('open'); });
     });
 
-    picker.appendChild(tile);
-  });
-}
+    // ─── IMPORT / EXPORT ────────────────────────────────────────────
+    function exportData() {
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'speed-dial.json';
+        a.click();
+        showToast('✅ Exported speed-dial.json');
+    }
 
-// ─── EMOJI PICKER ───────────────────────────────────────────────
-function buildEmojiPicker(pickerId, type) {
-  const picker = document.getElementById(pickerId);
-  picker.innerHTML = '';
+    function openImportModal() {
+        document.getElementById('importData').value = '';
+        openModal('importModal');
+    }
 
-  // Search bar
-  const searchWrap = document.createElement('div');
-  searchWrap.className = 'emoji-search-wrap';
-  const searchInput = document.createElement('input');
-  searchInput.type = 'text';
-  searchInput.className = 'emoji-search';
-  searchInput.placeholder = '🔍 Search emojis…';
-  searchInput.autocomplete = 'off';
-  searchWrap.appendChild(searchInput);
-  picker.appendChild(searchWrap);
+    function importData() {
+        try {
+            const raw = document.getElementById('importData').value.trim();
+            const imported = JSON.parse(raw);
+            if (!imported.groups || !Array.isArray(imported.groups)) throw new Error('Invalid format');
+            data = imported;
+            saveData();
+            render();
+            closeModal('importModal');
+            showToast('✅ Imported successfully');
+        } catch(e) {
+            showToast('❌ Invalid JSON format');
+        }
+    }
 
-  // Categories container (inside scroll area)
-  const scrollArea = document.createElement('div');
-  scrollArea.className = 'emoji-scroll-area';
-  picker.appendChild(scrollArea);
-
-  const catContainer = document.createElement('div');
-  catContainer.className = 'emoji-cats';
-  scrollArea.appendChild(catContainer);
-
-  // No-results message
-  const noResults = document.createElement('div');
-  noResults.className = 'emoji-no-results';
-  noResults.textContent = 'No emojis found';
-  noResults.style.display = 'none';
-  scrollArea.appendChild(noResults);
-
-  function renderCategories(filter) {
-    catContainer.innerHTML = '';
-    let totalShown = 0;
-    EMOJI_CATEGORIES.forEach(cat => {
-      const matches = filter
-        ? cat.emojis.filter(e => {
-            const name = emojiName(e).toLowerCase();
-            return name.includes(filter) || e === filter;
-          })
-        : cat.emojis;
-      if (!matches.length) return;
-      totalShown += matches.length;
-
-      const catEl = document.createElement('div');
-      catEl.className = 'emoji-category';
-
-      const label = document.createElement('div');
-      label.className = 'emoji-category-label';
-      label.textContent = cat.label;
-      catEl.appendChild(label);
-
-      const grid = document.createElement('div');
-      grid.className = 'emoji-grid';
-      matches.forEach(e => {
-        const span = document.createElement('span');
-        span.className = 'emoji-opt';
-        span.textContent = e;
-        span.title = emojiName(e);
-        span.onclick = () => selectEmoji(type, e);
-        grid.appendChild(span);
-      });
-      catEl.appendChild(grid);
-      catContainer.appendChild(catEl);
+    // ─── KEYBOARD SHORTCUTS ─────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
+        }
     });
-    noResults.style.display = totalShown === 0 ? 'block' : 'none';
-  }
 
-  renderCategories('');
-
-  searchInput.addEventListener('input', () => {
-    renderCategories(searchInput.value.trim().toLowerCase());
-  });
-
-  // Clear search when picker opens
-  picker._clearSearch = () => {
-    searchInput.value = '';
-    renderCategories('');
-    const sa = picker.querySelector('.emoji-scroll-area');
-    if (sa) sa.scrollTop = 0;
-  };
-}
-
-// Simple emoji name lookup (keyword based)
-const EMOJI_KEYWORDS = {
-  '😀':'grinning','😃':'smiley','😄':'smile','😁':'grin','😆':'laughing','😅':'sweat smile','🤣':'rofl','😂':'joy','🙂':'slightly smiling','😉':'wink','😊':'blush','😇':'innocent','🥰':'smiling hearts','😍':'heart eyes','🤩':'star struck','😘':'kiss','😗':'kissing','😚':'kissing closed eyes','😙':'kissing smiling eyes','😋':'yum','😛':'stuck out tongue','😜':'winking tongue','🤪':'zany','😝':'squinting tongue','🤑':'money mouth','🤗':'hugging','🤔':'thinking','🤐':'zipper mouth','😐':'neutral','😑':'expressionless','😶':'no mouth','😏':'smirk','😒':'unamused','🙄':'eye roll','😬':'grimace','😌':'relieved','😔':'pensive','😪':'sleepy','🤤':'drooling','😴':'sleeping','😷':'mask','🤒':'thermometer face','🤕':'head bandage','🤢':'nauseated','🤮':'vomiting','🤧':'sneezing','🥵':'hot','🥶':'cold','🥴':'woozy','😵':'dizzy','🤯':'exploding head','🤠':'cowboy','🥳':'partying','😎':'sunglasses','🤓':'nerd','🧐':'monocle','😕':'confused','😟':'worried','🙁':'frowning','☹️':'frowning face','😮':'open mouth','😯':'hushed','😲':'astonished','😳':'flushed','🥺':'pleading','😦':'frowning open mouth','😧':'anguished','😨':'fearful','😰':'anxious sweat','😥':'sad relieved','😢':'cry','😭':'loudly crying','😱':'screaming','😖':'confounded','😣':'persevering','😞':'disappointed','😓':'downcast sweat','😩':'weary','😫':'tired','🥱':'yawning','😤':'huffing','😡':'pouting','😠':'angry','🤬':'cursing','😈':'smiling devil','👿':'angry devil','💀':'skull','☠️':'skull crossbones','💩':'poop','🤡':'clown','👹':'ogre','👺':'goblin','👻':'ghost','👽':'alien','👾':'space invader','🤖':'robot',
-  '👋':'wave','✋':'raised hand','👌':'ok hand','✌️':'victory','👍':'thumbs up','👎':'thumbs down','✊':'raised fist','👊':'oncoming fist','👏':'clapping','🙏':'folded hands','💪':'muscle','👀':'eyes','❤️':'heart red','🧡':'heart orange','💛':'heart yellow','💚':'heart green','💙':'heart blue','💜':'heart purple','🖤':'heart black','🤍':'heart white','💔':'broken heart','💕':'two hearts','💞':'revolving hearts','💓':'beating heart','💗':'growing heart','💖':'sparkling heart','💘':'heart arrow','💝':'heart ribbon',
-  '🐶':'dog','🐱':'cat','🐭':'mouse','🐹':'hamster','🐰':'rabbit','🦊':'fox','🐻':'bear','🐼':'panda','🐨':'koala','🐯':'tiger','🦁':'lion','🐮':'cow','🐷':'pig','🐸':'frog','🐵':'monkey','🐔':'chicken','🐧':'penguin','🐦':'bird','🐤':'chick','🦆':'duck','🦅':'eagle','🦉':'owl','🦇':'bat','🐺':'wolf','🐴':'horse','🦄':'unicorn','🐝':'bee','🦋':'butterfly','🐛':'bug','🐌':'snail','🐞':'ladybug','🐜':'ant','🕷':'spider','🦂':'scorpion','🐢':'turtle','🐍':'snake','🦎':'lizard','🦖':'t-rex','🦕':'sauropod','🐙':'octopus','🦑':'squid','🐡':'blowfish','🐠':'tropical fish','🐟':'fish','🐬':'dolphin','🐳':'whale','🦈':'shark','🐊':'crocodile','🐘':'elephant','🦛':'hippo','🦏':'rhino','🐪':'camel','🦒':'giraffe','🦘':'kangaroo','🦬':'bison','🐃':'water buffalo','🐂':'ox','🐄':'cow2','🐎':'racehorse','🐖':'pig2','🦙':'llama','🐐':'goat','🦌':'deer','🐕':'dog2','🐩':'poodle','🐈':'cat2','🦀':'crab','🦞':'lobster','🦐':'shrimp','🦪':'oyster','🌵':'cactus','🎄':'christmas tree','🌲':'evergreen','🌳':'deciduous tree','🌴':'palm tree','🌱':'seedling','🌿':'herb','☘️':'shamrock','🍀':'four leaf clover','🍃':'leaves','🍂':'fallen leaf','🍁':'maple leaf','🍄':'mushroom','🌾':'sheaf of rice','💐':'bouquet','🌷':'tulip','🌹':'rose','🥀':'wilted flower','🌺':'hibiscus','🌸':'cherry blossom','🌼':'blossom','🌻':'sunflower','🌞':'sun face','🌝':'full moon face','🌙':'crescent moon','⭐':'star','🌟':'glowing star','🌠':'shooting star','🌌':'milky way','☀️':'sun','⛅':'partly cloudy','☁️':'cloud','🌊':'wave water','❄️':'snowflake','☃️':'snowman','⛄':'snowman hat','🌈':'rainbow','⚡':'lightning',
-  '🍏':'green apple','🍎':'apple','🍐':'pear','🍊':'orange','🍋':'lemon','🍌':'banana','🍉':'watermelon','🍇':'grapes','🍓':'strawberry','🫐':'blueberries','🍈':'melon','🍒':'cherries','🍑':'peach','🥭':'mango','🍍':'pineapple','🥥':'coconut','🥝':'kiwi','🍅':'tomato','🍆':'eggplant','🥑':'avocado','🥦':'broccoli','🥬':'leafy green','🥒':'cucumber','🌶':'hot pepper','🧄':'garlic','🧅':'onion','🥔':'potato','🍠':'sweet potato','🥐':'croissant','🥯':'bagel','🍞':'bread','🥖':'baguette','🥨':'pretzel','🧀':'cheese','🥚':'egg','🍳':'cooking','🧈':'butter','🥞':'pancakes','🧇':'waffle','🥓':'bacon','🥩':'meat','🍗':'chicken leg','🍖':'meat bone','🌭':'hot dog','🍔':'burger','🍟':'fries','🍕':'pizza','🥪':'sandwich','🌮':'taco','🌯':'burrito','🥗':'salad','🍝':'spaghetti','🍜':'ramen','🍲':'stew','🍛':'curry','🍣':'sushi','🍱':'bento','🥟':'dumpling','🍤':'shrimp','🍙':'rice ball','🍚':'rice','🍘':'rice cracker','🧁':'cupcake','🍰':'shortcake','🎂':'birthday cake','🍭':'lollipop','🍬':'candy','🍫':'chocolate','🍿':'popcorn','🍩':'donut','🍪':'cookie','🍯':'honey','🧃':'juice','🥤':'cup with straw','🧋':'bubble tea','🍵':'tea','☕':'coffee','🍺':'beer','🍻':'beers','🥂':'champagne','🍷':'wine','🥃':'tumbler','🍸':'cocktail','🍹':'tropical drink','🍾':'champagne bottle','🧊':'ice',
-  '🚗':'car','🚕':'taxi','🚙':'suv','🚌':'bus','🏎':'racing car','🚓':'police car','🚑':'ambulance','🚒':'fire truck','🚐':'minibus','🛻':'pickup truck','🚚':'delivery truck','🚛':'truck','🚜':'tractor','🏍':'motorcycle','🛵':'scooter','🚲':'bicycle','🛴':'kick scooter','⛵':'sailboat','🚤':'speedboat','🛥':'motor boat','🚢':'ship','✈️':'airplane','🛩':'small airplane','🚁':'helicopter','🚀':'rocket','🛸':'flying saucer','🏖':'beach','🏔':'mountain snow','⛰':'mountain','🌋':'volcano','🗻':'mount fuji','🏕':'camping','🏗':'construction','🏠':'house','🏡':'house garden','🏢':'office','🏣':'post office','🏤':'european post office','🏥':'hospital','🏦':'bank','🏨':'hotel','🏩':'love hotel','🏪':'convenience store','🏫':'school','🏭':'factory','🏯':'japanese castle','🏰':'castle','💒':'wedding','🗼':'tokyo tower','🗽':'statue of liberty','⛪':'church','🕌':'mosque','🛕':'hindu temple','🕍':'synagogue','⛩':'shinto shrine','🕋':'kaaba','⛲':'fountain','🌁':'foggy','🌃':'night stars','🏙':'cityscape','🌄':'sunrise mountains','🌅':'sunrise','🌆':'city dusk','🌇':'city sunset','🌉':'bridge night','🗺':'world map','🧭':'compass','🌐':'globe','🌍':'globe africa','🌎':'globe americas','🌏':'globe asia','🪐':'planet',
-  '⚽':'soccer','🏀':'basketball','🏈':'football','⚾':'baseball','🥎':'softball','🎾':'tennis','🏐':'volleyball','🏉':'rugby','🥏':'flying disc','🎱':'billiards','🏓':'ping pong','🏸':'badminton','🏒':'ice hockey','⛳':'golf','🎣':'fishing','🥊':'boxing glove','🥋':'martial arts','🎽':'running shirt','🛹':'skateboard','🛷':'sled','⛸':'ice skate','🎿':'ski','🥌':'curling stone','🏆':'trophy','🥇':'first medal','🥈':'second medal','🥉':'third medal','🏅':'sports medal','🎖':'military medal','🎪':'circus','🎭':'theater','🎨':'art palette','🎬':'clapper','🎤':'microphone','🎧':'headphones','🎼':'musical score','🎵':'musical note','🎶':'musical notes','🥁':'drum','🎷':'saxophone','🎺':'trumpet','🎸':'guitar','🎻':'violin','🎲':'game die','🎯':'bullseye','🎳':'bowling','🎮':'video game','🎰':'slot machine','🧩':'puzzle','🎴':'flower card',
-  '📱':'iphone','💻':'laptop','🖥':'desktop','🖨':'printer','⌨️':'keyboard','🖱':'mouse','💽':'minidisc','💾':'floppy disk','💿':'cd','📀':'dvd','📷':'camera','📸':'camera flash','📹':'video camera','🎥':'movie camera','📞':'telephone','☎️':'old telephone','📺':'television','📻':'radio','🧭':'compass','⏱':'stopwatch','⏰':'alarm clock','⏳':'hourglass','📡':'satellite','🔋':'battery','🔌':'electric plug','💡':'light bulb','🔦':'flashlight','🕯':'candle','🛏':'bed','🚽':'toilet','🚿':'shower','🛁':'bathtub','🧹':'broom','🧺':'basket','🧻':'roll of paper','🧼':'soap','🧰':'toolbox','🔧':'wrench','🔨':'hammer','⚒':'hammer pick','🛠':'tools','⛏':'pick','🪚':'carpentry saw','🔩':'nut and bolt','🧲':'magnet','💣':'bomb','🔪':'knife','⚔️':'swords','🛡':'shield','🧪':'test tube','🧫':'petri dish','🧬':'dna','🔭':'telescope','🔬':'microscope','💊':'pill','💉':'syringe','🩺':'stethoscope','📦':'package','📫':'mailbox','📋':'clipboard','📁':'file folder','📂':'open folder','🗂':'card index dividers','📅':'calendar','📆':'tear off calendar','📇':'card index','📈':'chart up','📉':'chart down','📊':'bar chart','📌':'pushpin','📍':'round pushpin','📎':'paperclip','📏':'ruler','📐':'triangular ruler','✂️':'scissors','🔒':'locked','🔓':'unlocked','🔑':'key','🗝':'old key','💰':'money bag','💵':'dollar','💴':'yen','💶':'euro','💷':'pound','💳':'credit card','🏧':'atm','💹':'chart yen','📜':'scroll','📋':'clipboard','✏️':'pencil','✒️':'black nib','🖊':'pen','🖋':'fountain pen','📝':'memo','📓':'notebook','📔':'notebook cover','📒':'ledger','📕':'closed book','📗':'green book','📘':'blue book','📙':'orange book','📚':'books','📖':'open book','🔗':'link','📰':'newspaper','🗞':'newspaper rolled',
-  '❤️':'red heart','🧡':'orange heart','💛':'yellow heart','💚':'green heart','💙':'blue heart','💜':'purple heart','🖤':'black heart','🤍':'white heart','🤎':'brown heart','💔':'broken heart','❣️':'heart exclamation','💕':'two hearts','💞':'revolving hearts','💓':'beating heart','💗':'growing heart','💖':'sparkling heart','💘':'heart arrow','💝':'heart ribbon','💟':'heart decoration','☮️':'peace','✝️':'cross','☪️':'star crescent','🕉':'om','☸️':'wheel dharma','✡️':'star david','🔯':'dotted six point star','🕎':'menorah','☯️':'yin yang','🛐':'worship','⛎':'ophiuchus','♈':'aries','♉':'taurus','♊':'gemini','♋':'cancer','♌':'leo','♍':'virgo','♎':'libra','♏':'scorpio','♐':'sagittarius','♑':'capricorn','♒':'aquarius','♓':'pisces','♻️':'recycle','✅':'check','❌':'cross','⭕':'circle','🛑':'stop','⛔':'no entry','📛':'name badge','🚫':'prohibited','💯':'hundred','❗':'exclamation','❓':'question','⚠️':'warning','🔰':'beginner','🔱':'trident','🔅':'dim button','🔆':'bright button','🔀':'shuffle','🔁':'repeat','🔂':'repeat one','▶️':'play','⏸':'pause','⏹':'stop button','⏺':'record','⏭':'next track','⏮':'previous track','⏩':'fast forward','⏪':'rewind','⬆️':'up arrow','⬇️':'down arrow','➡️':'right arrow','⬅️':'left arrow','↕️':'up down arrow','↔️':'left right arrow','↩️':'curved arrow left','↪️':'curved arrow right','🆕':'new','🆒':'cool','🆓':'free','🆗':'ok','🆙':'up','🆚':'vs','🆘':'sos','🔤':'abc','🔢':'numbers','🔠':'caps','🔡':'lowercase',
-};
-
-function emojiName(e) {
-  return EMOJI_KEYWORDS[e] || e;
-}
-
-function initEmojiPickers() {
-  buildEmojiPicker('dialEmojiPicker', 'dial');
-  buildEmojiPicker('groupEmojiPicker', 'group');
-}
-
-function toggleEmojiPicker(type) {
-  const picker = document.getElementById(type + 'EmojiPicker');
-  const isOpen = picker.classList.contains('open');
-  // Close all pickers first
-  document.querySelectorAll('.emoji-picker').forEach(p => p.classList.remove('open'));
-  if (!isOpen) {
-    picker.classList.add('open');
-    if (picker._clearSearch) picker._clearSearch();
-    // Focus search input
-    const si = picker.querySelector('.emoji-search');
-    if (si) setTimeout(() => si.focus(), 50);
-  }
-}
-
-function selectEmoji(type, emoji) {
-  if (type === 'dial') {
-    currentDialEmoji = emoji;
-    document.getElementById('dialEmojiPreview').textContent = emoji;
-  } else {
-    currentGroupEmoji = emoji;
-    document.getElementById('groupEmojiPreview').textContent = emoji;
-  }
-  document.getElementById(type + 'EmojiPicker').classList.remove('open');
-}
-
-function randomEmoji(type) {
-  const list = type === 'group' ? GROUP_EMOJIS : EMOJI_LIST;
-  const emoji = pickRandomEmoji(list);
-  if (type === 'dial') {
-    currentDialEmoji = emoji;
-    document.getElementById('dialEmojiPreview').textContent = emoji;
-  } else {
-    currentGroupEmoji = emoji;
-    document.getElementById('groupEmojiPreview').textContent = emoji;
-  }
-}
-
-// ─── MODAL HELPERS ──────────────────────────────────────────────
-function openModal(id) {
-  document.getElementById(id).classList.add('open');
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
-
-// Click backdrop to close
-document.querySelectorAll('.modal-backdrop').forEach(bd => {
-  bd.addEventListener('click', e => { if (e.target === bd) bd.classList.remove('open'); });
-});
-
-// ─── IMPORT / EXPORT ────────────────────────────────────────────
-function exportData() {
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'speed-dial.json';
-  a.click();
-  showToast('✅ Exported speed-dial.json');
-}
-
-function openImportModal() {
-  document.getElementById('importData').value = '';
-  openModal('importModal');
-}
-
-function importData() {
-  try {
-    const raw = document.getElementById('importData').value.trim();
-    const imported = JSON.parse(raw);
-    if (!imported.groups || !Array.isArray(imported.groups)) throw new Error('Invalid format');
-    data = imported;
-    saveData();
+    // ─── INIT ───────────────────────────────────────────────────────
+    loadData();
+    initEmojiPickers();
     render();
-    closeModal('importModal');
-    showToast('✅ Imported successfully');
-  } catch(e) {
-    showToast('❌ Invalid JSON format');
-  }
-}
-
-// ─── KEYBOARD SHORTCUTS ─────────────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
-  }
-});
-
-// ─── INIT ───────────────────────────────────────────────────────
-loadData();
-initEmojiPickers();
-render();
 </script>
 </body>
 </html>
