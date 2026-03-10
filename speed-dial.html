@@ -254,8 +254,8 @@
             text-decoration: none;
             color: inherit;
             transition: all var(--transition);
-            /* Height is always the same as width → square card */
-            aspect-ratio: 1 / 1;
+            /* Height is laptop-screen ratio → 4:3 */
+            aspect-ratio: 4 / 3;
             overflow: hidden;
         }
 
@@ -383,33 +383,50 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
-            background: rgba(15,17,23,0.75);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            opacity: 0;
-            transition: opacity var(--transition);
+            background: rgba(10,12,20,0.55);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            transition: background var(--transition);
+            pointer-events: none;
         }
 
         body.edit-mode .dial-edit-overlay { display: flex; }
-        body.edit-mode .dial-card:hover .dial-edit-overlay { opacity: 1; }
+
+        /* Buttons hidden by default, appear on card hover */
+        .dial-overlay-btns {
+            pointer-events: auto;
+            display: flex;
+            gap: 6px;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity var(--transition), transform var(--transition);
+        }
+
+        body.edit-mode .dial-card:hover .dial-overlay-btns {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        body.edit-mode .dial-card:hover .dial-edit-overlay {
+            background: rgba(10,12,20,0.78);
+        }
 
         .dial-drag-handle-overlay {
             display: none;
             position: absolute;
             top: 6px; left: 6px;
             z-index: 11;
-            color: var(--text-dimmer);
-            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
             cursor: grab;
-            padding: 3px;
+            padding: 4px;
             border-radius: 4px;
-            background: rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.08);
             line-height: 1;
+            pointer-events: auto;
         }
 
         body.edit-mode .dial-drag-handle-overlay { display: flex; }
-
-        .dial-overlay-btns { display: flex; gap: 6px; }
 
         /* Add dial button */
         .dial-card.add-dial-btn {
@@ -1250,12 +1267,17 @@
             handle.addEventListener('touchstart', () => { groupEl.draggable = true; }, {passive:true});
             groupEl.addEventListener('dragend', () => { groupEl.draggable = false; });
 
+            const emojiSpan = document.createElement('span');
+            emojiSpan.className = 'group-emoji';
+            emojiSpan.textContent = group.emoji;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'group-name';
+            nameSpan.textContent = group.name;
+
             header.appendChild(handle);
-            header.innerHTML += `
-      <span class="group-emoji">${group.emoji}</span>
-      <span class="group-name">${escHtml(group.name)}</span>
-    `;
-            header.appendChild(handle);
+            header.appendChild(emojiSpan);
+            header.appendChild(nameSpan);
 
             // Group controls
             const controls = document.createElement('div');
@@ -1377,8 +1399,9 @@
         dragHandle.className = 'dial-drag-handle-overlay';
         dragHandle.innerHTML = '⠿';
         dragHandle.title = 'Drag to reorder';
-        dragHandle.addEventListener('mousedown', () => { card.draggable = true; });
-        card.addEventListener('dragend', () => { card.draggable = false; card.classList.remove('dragging'); });
+        // Set draggable immediately if already in edit mode; keep in sync via toggleEditMode
+        card.draggable = editMode;
+        card.addEventListener('dragend', () => { card.classList.remove('dragging'); });
 
         card.appendChild(dragHandle);
         card.appendChild(overlay);
@@ -1404,6 +1427,7 @@
 
     // ─── DRAG & DROP: DIALS ─────────────────────────────────────────
     function onDialDragStart(e, groupId, dialId) {
+        e.stopPropagation(); // prevent group dragstart handler from cancelling this
         dragSrcType = 'dial';
         dragSrcGroupId = groupId;
         dragSrcDialId = dialId;
@@ -1415,12 +1439,14 @@
     function onDialDragOver(e, groupId, dialId) {
         if (dragSrcType !== 'dial') return;
         e.preventDefault();
+        e.stopPropagation();
         e.dataTransfer.dropEffect = 'move';
     }
 
     function onDialDrop(e, targetGroupId, targetDialId) {
         if (dragSrcType !== 'dial') return;
         e.preventDefault();
+        e.stopPropagation();
         if (dragSrcGroupId === targetGroupId && dragSrcDialId === targetDialId) return;
 
         const srcGroup = data.groups.find(g => g.id === dragSrcGroupId);
@@ -1478,6 +1504,10 @@
         const toggle = document.getElementById('editToggle');
         toggle.classList.toggle('active', editMode);
         document.getElementById('editLabel').textContent = editMode ? 'Editing' : 'Edit';
+        // Keep all dial cards draggable in sync with edit mode
+        document.querySelectorAll('.dial-card:not(.add-dial-btn)').forEach(c => {
+            c.draggable = editMode;
+        });
     }
 
     // ─── GROUP CRUD ─────────────────────────────────────────────────
