@@ -152,9 +152,8 @@
         main {
             position: relative;
             z-index: 1;
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 90px 28px 60px;
+            width: 100%;
+            padding: 90px 40px 60px;
         }
 
         /* ── GROUPS ──────────────────────────────── */
@@ -177,6 +176,13 @@
             gap: 10px;
             margin-bottom: 14px;
             padding: 0 2px;
+            position: relative;
+        }
+
+        .group-header-line {
+            flex: 1;
+            height: 1px;
+            background: var(--border);
         }
 
         .group-emoji {
@@ -197,7 +203,6 @@
             display: none;
             align-items: center;
             gap: 6px;
-            margin-left: auto;
         }
 
         body.edit-mode .group-edit-controls { display: flex; }
@@ -231,11 +236,17 @@
 
         /* ── DIALS GRID ──────────────────────────── */
         .dials-grid {
-            display: grid;
-            /* --dial-size set inline per group; fallback 140px */
-            grid-template-columns: repeat(auto-fill, minmax(var(--dial-size, 140px), 1fr));
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
             gap: 14px;
             transition: all var(--transition);
+        }
+
+        .dials-grid .dial-card {
+            width: var(--dial-size, 140px);
+            flex-shrink: 0;
+            flex-grow: 0;
         }
 
         /* ── DIAL CARD — unified size ────────────────────────────────── */
@@ -1278,6 +1289,10 @@
             header.appendChild(handle);
             header.appendChild(emojiSpan);
             header.appendChild(nameSpan);
+
+            const line = document.createElement('div');
+            line.className = 'group-header-line';
+            header.appendChild(line);
 
             // Group controls
             const controls = document.createElement('div');
