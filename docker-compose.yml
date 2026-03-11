@@ -17,15 +17,16 @@ services:
       - speed_dial_uploads:/uploads
 
       # ── Live-reload during development ───────────────────────────
-      # Uncomment the line below to edit speed-dial.html and see changes
-      # instantly without rebuilding the image.
+      # Mount all app files so changes are visible without rebuilding the image.
       - ./speed-dial.html:/usr/share/nginx/html/index.html:ro
+      - ./css/style.css:/usr/share/nginx/html/css/style.css:ro
+      - ./js/app.js:/usr/share/nginx/html/js/app.js:ro
 
     environment:
       - TZ=${TZ:-Europe/Warsaw}   # Set your timezone
 
     labels:
-      com.speed-dial.description: "Speed Dial Done Right - home page"
+      com.speed-dial.description: "Speed Dial Darn Right - home page"
       com.speed-dial.version: "1.0"
 
     logging:

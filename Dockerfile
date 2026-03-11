@@ -21,6 +21,6 @@ RUN mkdir -p /data /uploads \
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD wget -qO- http://localhost/index.html | grep -q "Speed Dial" || exit 1
+    CMD wget -qO- http://localhost/index.html | grep -q "Speed Dial Darn Right" || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
