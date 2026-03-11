@@ -1,7 +1,3 @@
-# ── Build stage ─────────────────────────────────────────────────
-# Nothing to compile — it's a single HTML file.
-# We use a plain nginx alpine image to keep it tiny (~25 MB).
-
 FROM nginx:1.27-alpine
 
 # Remove default nginx config
@@ -12,6 +8,8 @@ COPY nginx.conf /etc/nginx/conf.d/speed-dial.conf
 
 # Copy the app
 COPY speed-dial.html /usr/share/nginx/html/index.html
+COPY css/ /usr/share/nginx/html/css/
+COPY js/ /usr/share/nginx/html/js/
 
 # Create directories for future persistent storage.
 # These will be overridden by the volumes defined in docker-compose,
