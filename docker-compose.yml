@@ -1,11 +1,27 @@
 services:
 
+  screenshot-service:
+    build:
+      context: ./screenshot-service
+      dockerfile: Dockerfile
+    container_name: screenshot-service
+    restart: unless-stopped
+    volumes:
+      - speed_dial_uploads:/uploads
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   speed-dial:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: speed-dial
     restart: unless-stopped
+    depends_on:
+      - screenshot-service
     ports:
       - "${PORT:-8998}:80"       # http://localhost:8998  (override with PORT=9090)
 

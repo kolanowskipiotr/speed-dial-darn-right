@@ -38,6 +38,12 @@
         });
     }
 
+    // ─── SCREENSHOT DIMENSIONS ──────────────────────────────────────
+    // Max dial size is 400px wide, aspect-ratio 4/3 → 400×300px.
+    // Store at 2× for retina; HTML/CSS downsizes to actual group dial size.
+    const SCREENSHOT_W = 400;
+    const SCREENSHOT_H = 300;
+
     // ─── STATE ──────────────────────────────────────────────────────
     let data = { tabs: [] };
     let activeTabId = null;
@@ -52,6 +58,7 @@
     let currentTabEmoji = '🗂';
     let currentGroupSize  = 140; // px
     let selectedFaviconUrl = ''; // currently chosen favicon in the picker
+    let currentScreenshot = null; // path returned by screenshot service, e.g. /uploads/screenshots/<hash>.jpg
     let dragSrcGroupId = null;
     let dragSrcDialId = null;
     let dragSrcType = null; // 'dial' | 'group'
@@ -333,7 +340,7 @@
         card.dataset.id = dial.id;
         card.dataset.groupId = groupId;
 
-        const isScreenshot = dial.iconType === 'custom' && dial.icon;
+        const isScreenshot = !!dial.screenshot;
 
         if (isScreenshot) {
             // ── Full-bleed screenshot card ────────────────────────────────
@@ -342,10 +349,10 @@
             const img = document.createElement('img');
             img.className = 'dial-screenshot-img';
             img.alt = '';
-            img.src = dial.icon;
+            img.src = dial.screenshot;
             img.onload  = () => img.classList.add('loaded');
             img.onerror = () => {
-                // fallback to emoji if image fails
+                // fallback to emoji if screenshot image fails
                 card.className = 'dial-card';
                 img.remove();
                 const wrap = document.createElement('div');
@@ -656,6 +663,10 @@
         const customInput = document.getElementById('dialCustomIcon');
         if (customInput) customInput.value = '';
 
+        // Reset screenshot state
+        currentScreenshot = null;
+        document.getElementById('screenshotWait').value = 0;
+
         if (dialId) {
             const group = getActiveTab().groups.find(g => g.id === groupId);
             const dial = group?.dials.find(d => d.id === dialId);
@@ -676,6 +687,8 @@
                     if (dial.icon) selectedFaviconUrl = dial.icon;
                     loadFaviconOptions(dial.url);
                 }
+                // Load existing screenshot
+                currentScreenshot = dial.screenshot || null;
             }
         } else {
             document.getElementById('dialName').value = '';
@@ -685,7 +698,58 @@
             setIconSrc('favicon');
         }
 
+        updateScreenshotPreview();
         openModal('dialModal');
+    }
+
+    // ─── SCREENSHOT ─────────────────────────────────────────────────
+    function updateScreenshotPreview() {
+        const wrap = document.getElementById('screenshotPreviewWrap');
+        const img  = document.getElementById('screenshotPreviewImg');
+        const btn  = document.getElementById('captureBtn');
+        if (!wrap || !img || !btn) return;
+        if (currentScreenshot) {
+            img.src = currentScreenshot;
+            wrap.style.display = 'block';
+            btn.textContent = '📷 Recapture';
+        } else {
+            wrap.style.display = 'none';
+            btn.textContent = '📷 Capture Screenshot';
+        }
+    }
+
+    async function captureScreenshot() {
+        const rawUrl = document.getElementById('dialUrl').value.trim();
+        if (!rawUrl) { showToast('⚠️ Enter a URL first'); return; }
+        const url = /^https?:\/\//i.test(rawUrl) ? rawUrl : 'https://' + rawUrl;
+        const wait = Math.min(Math.max(0, parseInt(document.getElementById('screenshotWait').value, 10) || 0), 30);
+
+        const btn = document.getElementById('captureBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Capturing…';
+
+        try {
+            const res = await fetch('/api/screenshot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, wait, force: true, width: SCREENSHOT_W, height: SCREENSHOT_H }),
+                signal: AbortSignal.timeout(90000),
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+            currentScreenshot = json.path;
+            updateScreenshotPreview();
+            showToast('✅ Screenshot captured');
+        } catch (e) {
+            showToast('⚠️ Screenshot failed: ' + (e.message || 'unknown error'));
+            btn.disabled = false;
+            updateScreenshotPreview();
+        }
+    }
+
+    function clearScreenshot() {
+        currentScreenshot = null;
+        updateScreenshotPreview();
     }
 
     // ─── CUSTOM ICON PREVIEW ────────────────────────────────────────
@@ -791,11 +855,17 @@
         if (editingDialId) {
             const group = getActiveTab().groups.find(g => g.id === editingDialGroupId);
             const dial = group?.dials.find(d => d.id === editingDialId);
-            if (dial) { dial.name = name; dial.url = url; dial.icon = icon; dial.iconType = iconType; dial.emoji = currentDialEmoji; }
+            if (dial) {
+                dial.name = name; dial.url = url; dial.icon = icon; dial.iconType = iconType; dial.emoji = currentDialEmoji;
+                if (currentScreenshot) dial.screenshot = currentScreenshot;
+                else delete dial.screenshot;
+            }
         } else {
             const group = getActiveTab().groups.find(g => g.id === editingDialGroupId);
             if (group) {
-                group.dials.push({ id: uid(), name, url, icon, iconType, emoji: currentDialEmoji });
+                const newDial = { id: uid(), name, url, icon, iconType, emoji: currentDialEmoji };
+                if (currentScreenshot) newDial.screenshot = currentScreenshot;
+                group.dials.push(newDial);
             }
         }
 

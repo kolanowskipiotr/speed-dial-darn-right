@@ -57,6 +57,21 @@
             <input type="text" class="form-input" id="dialUrl" placeholder="https://..." oninput="onUrlInput()" onblur="fetchPageTitle()">
         </div>
         <div class="form-group">
+            <label class="form-label">Screenshot</label>
+            <div class="screenshot-capture-row">
+                <button class="btn-capture" id="captureBtn" type="button" onclick="captureScreenshot()">📷 Capture Screenshot</button>
+                <div class="screenshot-wait-wrap">
+                    <span class="screenshot-wait-label">Wait</span>
+                    <input type="number" class="screenshot-wait-input" id="screenshotWait" min="0" max="30" value="0">
+                    <span class="screenshot-wait-unit">s</span>
+                </div>
+            </div>
+            <div id="screenshotPreviewWrap" style="display:none; margin-top:8px; position:relative;">
+                <img id="screenshotPreviewImg" class="screenshot-preview-img" alt="">
+                <button class="btn-screenshot-remove" type="button" onclick="clearScreenshot()">✕ Remove</button>
+            </div>
+        </div>
+        <div class="form-group">
             <label class="form-label">Icon</label>
             <div class="icon-source-row">
                 <button class="icon-source-btn active" id="iconSrcFavicon" onclick="setIconSrc('favicon')">Auto Favicon</button>

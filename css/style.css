@@ -874,6 +874,79 @@
 
         .icon-source-btn:hover:not(.active) { background: var(--surface3); color: var(--text); }
 
+        /* ── SCREENSHOT CAPTURE UI (in dial modal) ──────────────────── */
+        .screenshot-capture-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-capture {
+            flex: 1;
+            padding: 8px 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background var(--transition);
+            text-align: left;
+        }
+
+        .btn-capture:hover:not(:disabled) { background: var(--surface3); }
+        .btn-capture:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        .screenshot-wait-wrap {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .screenshot-wait-label, .screenshot-wait-unit {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .screenshot-wait-input {
+            width: 44px;
+            padding: 7px 5px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .screenshot-preview-img {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            display: block;
+        }
+
+        .btn-screenshot-remove {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            padding: 3px 8px;
+            background: rgba(0,0,0,0.6);
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .btn-screenshot-remove:hover { background: rgba(180,0,0,0.8); }
+
         .modal-actions {
             display: flex;
             gap: 10px;
