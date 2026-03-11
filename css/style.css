@@ -347,7 +347,6 @@
 
         .group {
             position: relative;
-            width: 100%;
             transition: opacity var(--transition);
         }
 
