@@ -81,6 +81,20 @@
         <div class="form-group" id="customIconGroup" style="display:none">
             <input type="text" class="form-input" id="dialCustomIcon" placeholder="https://example.com/icon.png" oninput="previewCustomIcon()">
             <div id="customIconPreview" style="margin-top:10px; display:none; align-items:center; gap:10px; flex-wrap:wrap;"></div>
+            <div class="upload-divider">— or upload / paste image —</div>
+            <div class="img-drop-zone" id="imgDropZone"
+                 contenteditable="true" spellcheck="false"
+                 onpaste="handleDropZonePaste(event)"
+                 onkeydown="if(!((event.ctrlKey||event.metaKey)&&event.key==='v'))event.preventDefault()"
+                 onclick="this.focus()">
+                <span class="img-drop-hint">📋 Click here, then Ctrl+V / Cmd+V</span>
+                <label class="img-file-btn" contenteditable="false">
+                    📁 Choose file
+                    <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImageFile(this.files[0]); this.value=''">
+                </label>
+            </div>
+            <div id="imgUploadPreview" style="display:none; max-width:200px; aspect-ratio:4/3; border-radius:8px; overflow:hidden; margin-top:8px; border:1px solid var(--border);"></div>
+            <div id="imgUploadStatus" style="font-size:11px; color:var(--text-dimmer); margin-top:4px;"></div>
         </div>
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal('dialModal')">Cancel</button>

@@ -343,7 +343,7 @@
         }
 
         /* ── GROUPS ──────────────────────────────── */
-        .groups-container { display: flex; flex-direction: column; gap: 36px; }
+        .groups-container { display: flex; flex-direction: column; gap: 16px; }
 
         .group {
             position: relative;
@@ -501,7 +501,7 @@
         }
 
         .dial-icon-wrap .dial-emoji {
-            font-size: clamp(18px, 2.2vw, 36px);
+            font-size: calc(var(--dial-size, 140px) * 0.26);
             line-height: 1;
         }
 
@@ -873,6 +873,66 @@
         }
 
         .icon-source-btn:hover:not(.active) { background: var(--surface3); color: var(--text); }
+
+        /* ── IMAGE UPLOAD ZONE ─────────────────────── */
+        .upload-divider {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-dimmer);
+            margin: 12px 0 8px;
+            position: relative;
+        }
+
+        .img-drop-zone {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border: 1.5px dashed var(--border-hover);
+            border-radius: var(--radius-sm);
+            background: var(--surface2);
+            transition: border-color var(--transition), background var(--transition);
+            flex-wrap: wrap;
+        }
+
+        .img-drop-zone:hover,
+        .img-drop-zone:focus {
+            border-color: var(--accent);
+            background: color-mix(in srgb, var(--accent) 6%, var(--surface2));
+            outline: none;
+        }
+
+        .img-drop-zone:focus {
+            border-style: solid;
+            caret-color: transparent;
+        }
+
+        .img-drop-hint {
+            font-size: 12px;
+            color: var(--text-dim);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .img-file-btn {
+            padding: 6px 12px;
+            background: var(--surface3);
+            border: 1px solid var(--border-hover);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            font-size: 12px;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            transition: all var(--transition);
+            white-space: nowrap;
+        }
+
+        .img-file-btn:hover {
+            background: var(--accent);
+            color: var(--accent-text);
+            border-color: var(--accent);
+        }
 
         .modal-actions {
             display: flex;

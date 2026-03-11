@@ -55,6 +55,7 @@
     let dragSrcGroupId = null;
     let dragSrcDialId = null;
     let dragSrcType = null; // 'dial' | 'group'
+    let pendingImageBlob = null; // image waiting to be uploaded on save
 
     // ─── FULL CATEGORIZED EMOJI DATA ───────────────────────────────
     const EMOJI_CATEGORIES = [
@@ -104,6 +105,70 @@
     // ─── UTILS ─────────────────────────────────────────────────────
     function uid() {
         return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    // Resize image file/blob to exactly 400×300 (cover crop), returns JPEG blob
+    function resizeImage(file) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const objUrl = URL.createObjectURL(file);
+            img.onload = () => {
+                URL.revokeObjectURL(objUrl);
+                const W = 400, H = 300;
+                const scale = Math.max(W / img.width, H / img.height);
+                const sw = img.width * scale, sh = img.height * scale;
+                const canvas = document.createElement('canvas');
+                canvas.width = W; canvas.height = H;
+                canvas.getContext('2d').drawImage(img, (W - sw) / 2, (H - sh) / 2, sw, sh);
+                canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
+            };
+            img.onerror = reject;
+            img.src = objUrl;
+        });
+    }
+
+    async function uploadDialImage(id, blob) {
+        const res = await fetch(`/api/upload/${id}`, { method: 'POST', body: blob });
+        if (!res.ok) throw new Error(`upload failed: ${res.status}`);
+    }
+
+    function deleteDialImage(id) {
+        return fetch(`/api/upload/${id}`, { method: 'DELETE' });
+    }
+
+    function handleDropZonePaste(e) {
+        e.preventDefault();
+        // clear any stray text nodes contenteditable may have allowed in
+        const zone = document.getElementById('imgDropZone');
+        // strip any text nodes while keeping element children
+        [...zone.childNodes].forEach(n => { if (n.nodeType === Node.TEXT_NODE) n.remove(); });
+
+        const imageItem = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
+        if (!imageItem) { showToast('⚠️ No image in clipboard'); return; }
+        handleImageFile(imageItem.getAsFile());
+    }
+
+    function handleImageFile(file) {
+        if (!file) return;
+        document.getElementById('dialCustomIcon').value = '';
+        const customPreview = document.getElementById('customIconPreview');
+        if (customPreview) customPreview.style.display = 'none';
+        const status = document.getElementById('imgUploadStatus');
+        const preview = document.getElementById('imgUploadPreview');
+        status.textContent = '⏳ Resizing…';
+        preview.style.display = 'none';
+        resizeImage(file).then(blob => {
+            pendingImageBlob = blob;
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(blob);
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+            preview.innerHTML = '';
+            preview.appendChild(img);
+            preview.style.display = 'block';
+            status.textContent = '✅ Ready — will upload on Save';
+        }).catch(() => {
+            status.textContent = '❌ Could not process image';
+        });
     }
 
     function pickRandomEmoji(list) {
@@ -651,6 +716,12 @@
         document.getElementById('dialEmojiPicker').classList.remove('open');
         selectedFaviconUrl = '';
         document.getElementById('faviconPicker').innerHTML = '<span class="favicon-hint">Enter a URL above to load icons</span>';
+        // reset upload state
+        pendingImageBlob = null;
+        const uploadPreview = document.getElementById('imgUploadPreview');
+        if (uploadPreview) { uploadPreview.style.display = 'none'; uploadPreview.innerHTML = ''; }
+        const uploadStatus = document.getElementById('imgUploadStatus');
+        if (uploadStatus) uploadStatus.textContent = '';
         const prevEl = document.getElementById('customIconPreview');
         if (prevEl) { prevEl.style.display = 'none'; prevEl.innerHTML = ''; }
         const customInput = document.getElementById('dialCustomIcon');
@@ -693,6 +764,12 @@
 
     function previewCustomIcon() {
         clearTimeout(customPreviewTimer);
+        // typing a URL cancels any pending image upload
+        pendingImageBlob = null;
+        const uploadPreview = document.getElementById('imgUploadPreview');
+        if (uploadPreview) { uploadPreview.style.display = 'none'; uploadPreview.innerHTML = ''; }
+        const uploadStatus = document.getElementById('imgUploadStatus');
+        if (uploadStatus) uploadStatus.textContent = '';
         customPreviewTimer = setTimeout(() => {
             const url = document.getElementById('dialCustomIcon').value.trim();
             const preview = document.getElementById('customIconPreview');
@@ -771,13 +848,28 @@
         _doSaveDial();
     }
 
-    function _doSaveDial() {
+    async function _doSaveDial() {
         const name = document.getElementById('dialName').value.trim() || 'Untitled';
         let url = document.getElementById('dialUrl').value.trim();
         if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
 
+        const newId = editingDialId || uid();
+
         let icon, iconType;
-        if (currentIconSrc === 'favicon') {
+        if (pendingImageBlob) {
+            const statusEl = document.getElementById('imgUploadStatus');
+            if (statusEl) statusEl.textContent = '⏳ Uploading…';
+            try {
+                await uploadDialImage(newId, pendingImageBlob);
+                icon = `/uploads/${newId}.jpg`;
+                iconType = 'custom';
+                pendingImageBlob = null;
+            } catch {
+                showToast('❌ Image upload failed');
+                if (statusEl) statusEl.textContent = '❌ Upload failed';
+                return;
+            }
+        } else if (currentIconSrc === 'favicon') {
             icon = selectedFaviconUrl || '';
             iconType = 'favicon';
         } else if (currentIconSrc === 'custom') {
@@ -795,7 +887,7 @@
         } else {
             const group = getActiveTab().groups.find(g => g.id === editingDialGroupId);
             if (group) {
-                group.dials.push({ id: uid(), name, url, icon, iconType, emoji: currentDialEmoji });
+                group.dials.push({ id: newId, name, url, icon, iconType, emoji: currentDialEmoji });
             }
         }
 
@@ -813,6 +905,9 @@
             `"${dial.name}" will be permanently removed.`,
             () => {
                 const backup = JSON.stringify(data);
+                if (dial.iconType === 'custom' && dial.icon?.startsWith('/uploads/')) {
+                    deleteDialImage(dialId).catch(() => {}); // best-effort
+                }
                 group.dials = group.dials.filter(d => d.id !== dialId);
                 saveData(); render();
                 showToastUndo(`🗑 "${dial.name}" deleted`, backup);
@@ -848,6 +943,10 @@
         if (src === 'favicon') {
             const url = document.getElementById('dialUrl').value.trim();
             if (url) loadFaviconOptions(url);
+        }
+        if (src === 'custom') {
+            // focus the drop zone (contenteditable) so Ctrl/Cmd+V paste fires on it
+            setTimeout(() => document.getElementById('imgDropZone').focus(), 30);
         }
     }
 
