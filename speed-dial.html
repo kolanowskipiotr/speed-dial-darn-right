@@ -62,6 +62,7 @@
                 <button class="icon-source-btn active" id="iconSrcFavicon" onclick="setIconSrc('favicon')">Auto Favicon</button>
                 <button class="icon-source-btn" id="iconSrcEmoji" onclick="setIconSrc('emoji')">Emoji</button>
                 <button class="icon-source-btn" id="iconSrcCustom" onclick="setIconSrc('custom')">Custom URL</button>
+                <button class="icon-source-btn" id="iconSrcNone" onclick="setIconSrc('none')">None</button>
             </div>
         </div>
         <!-- Favicon picker panel -->
@@ -113,11 +114,11 @@
             <input type="text" class="form-input" id="tabName" placeholder="e.g. Work, Personal...">
         </div>
         <div class="form-group">
-            <label class="form-label">Emoji</label>
+            <label class="form-label">Icon</label>
             <div class="emoji-row">
                 <div class="emoji-preview" id="tabEmojiPreview" onclick="toggleEmojiPicker('tab')">🗂</div>
                 <button class="btn-random-emoji" onclick="randomEmoji('tab')">🎲 Random</button>
-                <span style="font-size:12px; color: var(--text-dimmer);">Click to pick</span>
+                <button class="icon-source-btn" id="tabNoIconBtn" onclick="setNoIcon('tab')" style="font-size:11px;padding:4px 10px;">No icon</button>
             </div>
             <div class="emoji-picker" id="tabEmojiPicker"></div>
         </div>
@@ -153,11 +154,11 @@
             </div>
         </div>
         <div class="form-group">
-            <label class="form-label">Emoji</label>
+            <label class="form-label">Icon</label>
             <div class="emoji-row">
                 <div class="emoji-preview" id="groupEmojiPreview" onclick="toggleEmojiPicker('group')">📁</div>
                 <button class="btn-random-emoji" onclick="randomEmoji('group')">🎲 Random</button>
-                <span style="font-size:12px; color: var(--text-dimmer);">Click to pick</span>
+                <button class="icon-source-btn" id="groupNoIconBtn" onclick="setNoIcon('group')" style="font-size:11px;padding:4px 10px;">No icon</button>
             </div>
             <div class="emoji-picker" id="groupEmojiPicker"></div>
         </div>

@@ -628,6 +628,16 @@
             z-index: 2;
         }
 
+        /* No-icon dial: name fills the card */
+        .dial-card.dial-no-icon {
+            padding: 10px;
+        }
+
+        .dial-card.dial-no-icon .dial-name {
+            -webkit-line-clamp: 9;
+            width: 100%;
+        }
+
         /* Edit overlay on dial */
         .dial-edit-overlay {
             display: none;
@@ -824,6 +834,13 @@
         }
 
         .emoji-preview:hover { border-color: var(--accent); }
+
+        .emoji-preview.emoji-preview-none {
+            color: var(--text-dimmer);
+            font-size: 16px;
+            font-style: italic;
+            border-style: dashed;
+        }
 
         .btn-random-emoji {
             padding: 9px 14px;

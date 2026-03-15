@@ -252,7 +252,7 @@
             const btn = document.createElement('button');
             btn.dataset.tabId = tab.id;
             btn.className = 'tab-btn' + (tab.id === activeTabId ? ' active' : '');
-            btn.innerHTML = `<span>${tab.emoji || '🗂'}</span><span>${tab.name}</span>`;
+            btn.innerHTML = `${tab.emoji ? `<span>${tab.emoji}</span>` : ''}<span>${tab.name}</span>`;
             btn.onclick = () => { activeTabId = tab.id; render(); };
 
             // Edit button
@@ -384,16 +384,17 @@
             handle.addEventListener('touchstart', () => { groupEl.draggable = true; }, {passive:true});
             groupEl.addEventListener('dragend', () => { groupEl.draggable = false; });
 
-            const emojiSpan = document.createElement('span');
-            emojiSpan.className = 'group-emoji';
-            emojiSpan.textContent = group.emoji;
-
             const nameSpan = document.createElement('span');
             nameSpan.className = 'group-name';
             nameSpan.textContent = group.name;
 
             header.appendChild(handle);
-            header.appendChild(emojiSpan);
+            if (group.emoji) {
+                const emojiSpan = document.createElement('span');
+                emojiSpan.className = 'group-emoji';
+                emojiSpan.textContent = group.emoji;
+                header.appendChild(emojiSpan);
+            }
             header.appendChild(nameSpan);
 
             const line = document.createElement('div');
@@ -489,32 +490,34 @@
             card.appendChild(img);
 
         } else {
-            // ── Standard card (emoji / favicon) ──────────────────────────
-            card.className = 'dial-card';
+            // ── Standard card (emoji / favicon / none) ───────────────────
+            card.className = 'dial-card' + (dial.iconType === 'none' ? ' dial-no-icon' : '');
 
-            const iconWrap = document.createElement('div');
-            iconWrap.className = 'dial-icon-wrap';
+            if (dial.iconType !== 'none') {
+                const iconWrap = document.createElement('div');
+                iconWrap.className = 'dial-icon-wrap';
 
-            if (dial.iconType === 'emoji' || !dial.iconType) {
-                const em = document.createElement('span');
-                em.className = 'dial-emoji';
-                em.textContent = dial.emoji || '🌐';
-                iconWrap.appendChild(em);
-            } else {
-                // favicon
-                const img = document.createElement('img');
-                img.alt = '';
-                img.style.cssText = 'opacity:0;transition:opacity 0.2s';
-                img.onload = () => { img.style.opacity = '1'; };
-                iconWrap.appendChild(img);
-                if (dial.icon) {
-                    img.onerror = () => attachFavicon(img, dial.url, dial.emoji || '🌐');
-                    img.src = dial.icon;
+                if (dial.iconType === 'emoji' || !dial.iconType) {
+                    const em = document.createElement('span');
+                    em.className = 'dial-emoji';
+                    em.textContent = dial.emoji || '🌐';
+                    iconWrap.appendChild(em);
                 } else {
-                    attachFavicon(img, dial.url, dial.emoji || '🌐');
+                    // favicon
+                    const img = document.createElement('img');
+                    img.alt = '';
+                    img.style.cssText = 'opacity:0;transition:opacity 0.2s';
+                    img.onload = () => { img.style.opacity = '1'; };
+                    iconWrap.appendChild(img);
+                    if (dial.icon) {
+                        img.onerror = () => attachFavicon(img, dial.url, dial.emoji || '🌐');
+                        img.src = dial.icon;
+                    } else {
+                        attachFavicon(img, dial.url, dial.emoji || '🌐');
+                    }
                 }
+                card.appendChild(iconWrap);
             }
-            card.appendChild(iconWrap);
         }
 
         // Name label (both types)
@@ -720,8 +723,18 @@
         document.getElementById('tabDeleteBtn').style.display = tabId ? '' : 'none';
         const tab = tabId ? data.tabs.find(t => t.id === tabId) : null;
         document.getElementById('tabName').value = tab ? tab.name : '';
-        currentTabEmoji = tab ? (tab.emoji || '🗂') : '🗂';
-        document.getElementById('tabEmojiPreview').textContent = currentTabEmoji;
+        currentTabEmoji = tab ? (tab.emoji !== undefined ? tab.emoji : '🗂') : '🗂';
+        const tabPreview = document.getElementById('tabEmojiPreview');
+        const tabNoIconBtn = document.getElementById('tabNoIconBtn');
+        if (currentTabEmoji === '') {
+            tabPreview.textContent = '—';
+            tabPreview.classList.add('emoji-preview-none');
+            tabNoIconBtn.classList.add('active');
+        } else {
+            tabPreview.textContent = currentTabEmoji;
+            tabPreview.classList.remove('emoji-preview-none');
+            tabNoIconBtn.classList.remove('active');
+        }
         openModal('tabModal');
     }
 
@@ -774,14 +787,24 @@
         if (isEdit) {
             const g = getActiveTab().groups.find(g => g.id === groupId);
             document.getElementById('groupName').value = g.name;
-            currentGroupEmoji = g.emoji;
+            currentGroupEmoji = g.emoji !== undefined ? g.emoji : pickRandomEmoji(GROUP_EMOJIS);
             setGroupSize(g.dialSize || 140);
         } else {
             document.getElementById('groupName').value = '';
             currentGroupEmoji = pickRandomEmoji(GROUP_EMOJIS);
             setGroupSize(140);
         }
-        document.getElementById('groupEmojiPreview').textContent = currentGroupEmoji;
+        const groupPreview = document.getElementById('groupEmojiPreview');
+        const groupNoIconBtn = document.getElementById('groupNoIconBtn');
+        if (currentGroupEmoji === '') {
+            groupPreview.textContent = '—';
+            groupPreview.classList.add('emoji-preview-none');
+            groupNoIconBtn.classList.add('active');
+        } else {
+            groupPreview.textContent = currentGroupEmoji;
+            groupPreview.classList.remove('emoji-preview-none');
+            groupNoIconBtn.classList.remove('active');
+        }
         document.getElementById('groupEmojiPicker').classList.remove('open');
         openModal('groupModal');
     }
@@ -861,7 +884,8 @@
                 document.getElementById('dialUrl').value = dial.url;
                 currentDialEmoji = dial.emoji;
                 document.getElementById('dialEmojiPreview').textContent = currentDialEmoji;
-                if (dial.iconType === 'emoji') setIconSrc('emoji');
+                if (dial.iconType === 'none') setIconSrc('none');
+                else if (dial.iconType === 'emoji') setIconSrc('emoji');
                 else if (dial.iconType === 'custom') {
                     setIconSrc('custom');
                     document.getElementById('dialCustomIcon').value = dial.icon || '';
@@ -995,6 +1019,9 @@
                 if (statusEl) statusEl.textContent = '❌ Upload failed';
                 return;
             }
+        } else if (currentIconSrc === 'none') {
+            icon = '';
+            iconType = 'none';
         } else if (currentIconSrc === 'favicon') {
             icon = selectedFaviconUrl || '';
             iconType = 'favicon';
@@ -1054,9 +1081,9 @@
     // ─── ICON SOURCE ────────────────────────────────────────────────
     function setIconSrc(src) {
         currentIconSrc = src;
-        ['favicon','emoji','custom'].forEach(s => {
-            document.getElementById('iconSrc' + s.charAt(0).toUpperCase() + s.slice(1))
-                .classList.toggle('active', s === src);
+        ['favicon','emoji','custom','none'].forEach(s => {
+            const btn = document.getElementById('iconSrc' + s.charAt(0).toUpperCase() + s.slice(1));
+            if (btn) btn.classList.toggle('active', s === src);
         });
         document.getElementById('faviconPickerGroup').style.display = src === 'favicon' ? '' : 'none';
         document.getElementById('emojiPickerGroup').style.display = src === 'emoji' ? '' : 'none';
@@ -1285,10 +1312,16 @@
             document.getElementById('dialEmojiPreview').textContent = emoji;
         } else if (type === 'tab') {
             currentTabEmoji = emoji;
-            document.getElementById('tabEmojiPreview').textContent = emoji;
+            const preview = document.getElementById('tabEmojiPreview');
+            preview.textContent = emoji;
+            preview.classList.remove('emoji-preview-none');
+            document.getElementById('tabNoIconBtn').classList.remove('active');
         } else {
             currentGroupEmoji = emoji;
-            document.getElementById('groupEmojiPreview').textContent = emoji;
+            const preview = document.getElementById('groupEmojiPreview');
+            preview.textContent = emoji;
+            preview.classList.remove('emoji-preview-none');
+            document.getElementById('groupNoIconBtn').classList.remove('active');
         }
         document.getElementById(type + 'EmojiPicker').classList.remove('open');
     }
@@ -1301,11 +1334,34 @@
             document.getElementById('dialEmojiPreview').textContent = emoji;
         } else if (type === 'tab') {
             currentTabEmoji = emoji;
-            document.getElementById('tabEmojiPreview').textContent = emoji;
+            const preview = document.getElementById('tabEmojiPreview');
+            preview.textContent = emoji;
+            preview.classList.remove('emoji-preview-none');
+            document.getElementById('tabNoIconBtn').classList.remove('active');
         } else {
             currentGroupEmoji = emoji;
-            document.getElementById('groupEmojiPreview').textContent = emoji;
+            const preview = document.getElementById('groupEmojiPreview');
+            preview.textContent = emoji;
+            preview.classList.remove('emoji-preview-none');
+            document.getElementById('groupNoIconBtn').classList.remove('active');
         }
+    }
+
+    function setNoIcon(type) {
+        if (type === 'tab') {
+            currentTabEmoji = '';
+            const preview = document.getElementById('tabEmojiPreview');
+            preview.textContent = '—';
+            preview.classList.add('emoji-preview-none');
+            document.getElementById('tabNoIconBtn').classList.add('active');
+        } else {
+            currentGroupEmoji = '';
+            const preview = document.getElementById('groupEmojiPreview');
+            preview.textContent = '—';
+            preview.classList.add('emoji-preview-none');
+            document.getElementById('groupNoIconBtn').classList.add('active');
+        }
+        document.getElementById(type + 'EmojiPicker').classList.remove('open');
     }
 
     // ─── MODAL HELPERS ──────────────────────────────────────────────
