@@ -9,9 +9,9 @@
 | 77   | DATA PERSISTENCE — `loadData()`, `saveData()`, `getActiveTab()` |
 | 105  | UTILS — `uid()`, `pickRandomEmoji()`, `getDomain()`, `getFaviconCandidates()`, `attachFavicon()`, `showToast()`, `showToastUndo()`, `showConfirm()`, `resizeImage()`, `uploadDialImage()`, `handleImageFile()` |
 | 244  | RENDER — `render()`, `renderTabs()`, `renderGroups()`, `makeDialCard()` |
-| 501  | DRAG & DROP: DIALS |
-| 544  | DRAG & DROP: GROUPS |
-| 575  | EDIT MODE — `toggleEditMode()` |
+| ~548 | DRAG & DROP: DIALS — `clearDropIndicators()`, `onDialDragStart()`, `onDialDragOver()`, `onDialDrop()`, `onDialDropOnGroup()` |
+| ~636 | DRAG & DROP: GROUPS — `onGroupDragStart()`, `onGroupDragOver()`, `onGroupDrop()` |
+| ~674 | EDIT MODE — `toggleEditMode()` |
 | 590  | TAB CRUD — `openTabModal()`, `saveTab()`, `deleteTab()` |
 | 635  | GROUP CRUD — `openGroupModal()`, `saveGroup()`, `deleteGroup()`, `moveGroup()`, `setGroupSize()` |
 | 710  | DIAL CRUD — `openDialModal()`, `saveDial()`, `_doSaveDial()`, `deleteDial()`, `moveDial()` |
@@ -43,7 +43,9 @@ let currentGroupSize = 140        // px — bound to group size slider
 let selectedFaviconUrl = ''       // favicon chosen in picker
 let dragSrcGroupId = null         // drag state
 let dragSrcDialId = null          // drag state
+let dragSrcTabId = null           // source tab id for cross-tab dial moves
 let dragSrcType = null            // 'dial' | 'group'
+let dialTabHoverTimer = null      // hover-to-switch-tab timer handle
 let pendingImageBlob = null       // image blob waiting to be uploaded on dial save
 ```
 

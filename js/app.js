@@ -54,6 +54,7 @@
     let selectedFaviconUrl = ''; // currently chosen favicon in the picker
     let dragSrcGroupId = null;
     let dragSrcDialId = null;
+    let dragSrcTabId = null;
     let dragSrcType = null; // 'dial' | 'group'
     let pendingImageBlob = null; // image waiting to be uploaded on save
 
@@ -262,7 +263,7 @@
             editBtn.onclick = (e) => { e.stopPropagation(); openTabModal(tab.id); };
             btn.appendChild(editBtn);
 
-            // Drag to reorder (edit mode only)
+            // Drag to reorder tabs (edit mode only)
             btn.draggable = editMode;
             btn.addEventListener('dragstart', e => {
                 if (!editMode) { e.preventDefault(); return; }
@@ -271,23 +272,66 @@
                 btn.classList.add('dragging');
             });
             btn.addEventListener('dragend', () => btn.classList.remove('dragging'));
-            btn.addEventListener('dragover', e => {
-                if (!tabDragSrc || tabDragSrc === tab.id) return;
-                e.preventDefault();
-                btn.classList.add('drag-over-tab');
+            btn.addEventListener('dragenter', e => {
+                if (tabDragSrc && tabDragSrc !== tab.id) { btn.classList.add('drag-over-tab'); return; }
+                // dragstart fires before dragenter, so dragSrcType is already set here
+                if (dragSrcType === 'dial' && tab.id !== activeTabId) { btn.classList.add('dial-drag-over'); }
             });
-            btn.addEventListener('dragleave', () => btn.classList.remove('drag-over-tab'));
+            btn.addEventListener('dragover', e => {
+                if (tabDragSrc && tabDragSrc !== tab.id) {
+                    e.preventDefault();
+                    btn.classList.add('drag-over-tab');
+                    return;
+                }
+                // Always accept on a different tab — drop handler guards logic
+                if (tab.id !== activeTabId) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dragSrcType === 'dial') btn.classList.add('dial-drag-over');
+                }
+            });
+            btn.addEventListener('dragleave', e => {
+                if (btn.contains(e.relatedTarget)) return;
+                btn.classList.remove('drag-over-tab', 'dial-drag-over');
+            });
             btn.addEventListener('drop', e => {
-                e.preventDefault();
-                btn.classList.remove('drag-over-tab');
-                if (!tabDragSrc || tabDragSrc === tab.id) return;
-                const srcIdx = data.tabs.findIndex(t => t.id === tabDragSrc);
-                const tgtIdx = data.tabs.findIndex(t => t.id === tab.id);
-                if (srcIdx === -1 || tgtIdx === -1) return;
-                const [moved] = data.tabs.splice(srcIdx, 1);
-                data.tabs.splice(tgtIdx, 0, moved);
-                tabDragSrc = null;
-                saveData(); renderTabs();
+                btn.classList.remove('drag-over-tab', 'dial-drag-over');
+                // Tab reorder
+                if (tabDragSrc && tabDragSrc !== tab.id) {
+                    e.preventDefault();
+                    const srcIdx = data.tabs.findIndex(t => t.id === tabDragSrc);
+                    const tgtIdx = data.tabs.findIndex(t => t.id === tab.id);
+                    if (srcIdx === -1 || tgtIdx === -1) return;
+                    const [moved] = data.tabs.splice(srcIdx, 1);
+                    data.tabs.splice(tgtIdx, 0, moved);
+                    tabDragSrc = null;
+                    saveData(); renderTabs();
+                    return;
+                }
+                // Dial dropped onto a different tab → move to first group, first position
+                if (dragSrcType === 'dial' && tab.id !== activeTabId) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const srcTab = data.tabs.find(t => t.id === dragSrcTabId);
+                    const tgtTab = data.tabs.find(t => t.id === tab.id);
+                    if (!srcTab || !tgtTab || !tgtTab.groups.length) return;
+                    const srcGroup = srcTab.groups.find(g => g.id === dragSrcGroupId);
+                    if (!srcGroup) return;
+                    const srcIdx = srcGroup.dials.findIndex(d => d.id === dragSrcDialId);
+                    if (srcIdx === -1) return;
+                    const [dial] = srcGroup.dials.splice(srcIdx, 1);
+                    tgtTab.groups[0].dials.unshift(dial); // first group, first position
+                    activeTabId = tab.id;
+                    saveData(); render(); resetHoverAfterDrag();
+                    // Glow + shake the placed dial
+                    requestAnimationFrame(() => {
+                        const card = document.querySelector(`.dial-card[data-id="${dial.id}"]`);
+                        if (card) {
+                            card.classList.add('dial-just-dropped');
+                            card.addEventListener('animationend', () => card.classList.remove('dial-just-dropped'), { once: true });
+                        }
+                    });
+                }
             });
 
             bar.appendChild(btn);
@@ -380,6 +424,26 @@
             addBtn.innerHTML = `<span class="add-icon">＋</span><span class="add-label">Add Dial</span>`;
             addBtn.onclick = () => openDialModal(null, group.id);
             grid.appendChild(addBtn);
+
+            // Accept dial drops on the grid itself (empty groups or empty area)
+            grid.addEventListener('dragover', e => {
+                if (dragSrcType !== 'dial') return;
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'move';
+                grid.classList.add('dial-drag-over');
+            });
+            grid.addEventListener('dragleave', e => {
+                if (!grid.contains(e.relatedTarget)) grid.classList.remove('dial-drag-over');
+            });
+            grid.addEventListener('drop', e => {
+                if (dragSrcType !== 'dial') return;
+                e.preventDefault();
+                e.stopPropagation();
+                grid.classList.remove('dial-drag-over');
+                clearDropIndicators();
+                onDialDropOnGroup(group.id);
+            });
 
             groupEl.appendChild(grid);
 
@@ -499,14 +563,25 @@
     }
 
     // ─── DRAG & DROP: DIALS ─────────────────────────────────────────
+    function clearDropIndicators() {
+        document.querySelectorAll('.dial-card.drop-before, .dial-card.drop-after').forEach(el => {
+            el.classList.remove('drop-before', 'drop-after');
+        });
+        document.querySelectorAll('.dials-grid.dial-drag-over').forEach(el => {
+            el.classList.remove('dial-drag-over');
+        });
+    }
+
     function onDialDragStart(e, groupId, dialId) {
         e.stopPropagation(); // prevent group dragstart handler from cancelling this
         dragSrcType = 'dial';
         dragSrcGroupId = groupId;
         dragSrcDialId = dialId;
+        dragSrcTabId = activeTabId;
         e.dataTransfer.effectAllowed = 'move';
         const card = e.currentTarget;
         card.classList.add('dragging');
+
     }
 
     function onDialDragOver(e, groupId, dialId) {
@@ -514,31 +589,71 @@
         e.preventDefault();
         e.stopPropagation();
         e.dataTransfer.dropEffect = 'move';
+        clearDropIndicators();
+        const card = e.currentTarget;
+        const rect = card.getBoundingClientRect();
+        card.classList.add(e.clientX < rect.left + rect.width / 2 ? 'drop-before' : 'drop-after');
     }
 
     function onDialDrop(e, targetGroupId, targetDialId) {
         if (dragSrcType !== 'dial') return;
         e.preventDefault();
         e.stopPropagation();
-        if (dragSrcGroupId === targetGroupId && dragSrcDialId === targetDialId) return;
+        clearDropIndicators();
 
-        const groups = getActiveTab().groups;
-        const srcGroup = groups.find(g => g.id === dragSrcGroupId);
-        const tgtGroup = groups.find(g => g.id === targetGroupId);
+        const srcTab = data.tabs.find(t => t.id === dragSrcTabId);
+        const tgtTab = getActiveTab();
+        if (!srcTab || !tgtTab) return;
+
+        const srcGroup = srcTab.groups.find(g => g.id === dragSrcGroupId);
+        const tgtGroup = tgtTab.groups.find(g => g.id === targetGroupId);
         if (!srcGroup || !tgtGroup) return;
 
         const srcIdx = srcGroup.dials.findIndex(d => d.id === dragSrcDialId);
-        const tgtIdx = tgtGroup.dials.findIndex(d => d.id === targetDialId);
         if (srcIdx === -1) return;
 
-        const [dial] = srcGroup.dials.splice(srcIdx, 1);
-        if (dragSrcGroupId === targetGroupId) {
-            srcGroup.dials.splice(tgtIdx, 0, dial);
-        } else {
-            tgtGroup.dials.splice(tgtIdx === -1 ? tgtGroup.dials.length : tgtIdx, 0, dial);
-        }
+        // Determine insert position from mouse location relative to target card
+        const rect = e.currentTarget.getBoundingClientRect();
+        const insertAfter = e.clientX >= rect.left + rect.width / 2;
 
-        saveData(); render();
+        let tgtIdx = tgtGroup.dials.findIndex(d => d.id === targetDialId);
+
+        // For same-group drops, removing src shifts later indices down by 1
+        if (srcGroup === tgtGroup && tgtIdx !== -1 && srcIdx < tgtIdx) tgtIdx--;
+
+        const finalIdx = tgtIdx === -1 ? tgtGroup.dials.length : (insertAfter ? tgtIdx + 1 : tgtIdx);
+        // No-op: same group, same resulting position
+        if (srcGroup === tgtGroup && srcIdx === finalIdx) return;
+
+        const [dial] = srcGroup.dials.splice(srcIdx, 1);
+        tgtGroup.dials.splice(tgtIdx === -1 ? tgtGroup.dials.length : (insertAfter ? tgtIdx + 1 : tgtIdx), 0, dial);
+
+        saveData(); render(); resetHoverAfterDrag();
+    }
+
+    function onDialDropOnGroup(targetGroupId) {
+        const srcTab = data.tabs.find(t => t.id === dragSrcTabId);
+        const tgtTab = getActiveTab();
+        if (!srcTab || !tgtTab) return;
+
+        const srcGroup = srcTab.groups.find(g => g.id === dragSrcGroupId);
+        const tgtGroup = tgtTab.groups.find(g => g.id === targetGroupId);
+        if (!srcGroup || !tgtGroup) return;
+
+        const srcIdx = srcGroup.dials.findIndex(d => d.id === dragSrcDialId);
+        if (srcIdx === -1) return;
+
+        // No-op: already first item in the same group
+        if (srcGroup === tgtGroup && srcIdx === 0) return;
+
+        const [dial] = srcGroup.dials.splice(srcIdx, 1);
+        tgtGroup.dials.unshift(dial);
+        saveData(); render(); resetHoverAfterDrag();
+    }
+
+    function resetHoverAfterDrag() {
+        document.body.classList.add('post-drag');
+        setTimeout(() => document.body.classList.remove('post-drag'), 300);
     }
 
     // ─── DRAG & DROP: GROUPS ────────────────────────────────────────
@@ -550,26 +665,33 @@
     }
 
     function onGroupDragOver(e, groupId) {
-        if (dragSrcType !== 'group' || groupId === dragSrcGroupId) return;
-        e.preventDefault();
-        e.currentTarget.classList.add('drag-over');
+        if (dragSrcType === 'group') {
+            if (groupId === dragSrcGroupId) return;
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        } else if (dragSrcType === 'dial') {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
     }
 
     function onGroupDrop(e, targetGroupId) {
-        if (dragSrcType !== 'group') return;
-        e.preventDefault();
         e.currentTarget.classList.remove('drag-over');
-        if (dragSrcGroupId === targetGroupId) return;
-
-        const groups = getActiveTab().groups;
-        const srcIdx = groups.findIndex(g => g.id === dragSrcGroupId);
-        const tgtIdx = groups.findIndex(g => g.id === targetGroupId);
-        if (srcIdx === -1 || tgtIdx === -1) return;
-
-        const [g] = groups.splice(srcIdx, 1);
-        groups.splice(tgtIdx, 0, g);
-
-        saveData(); render();
+        if (dragSrcType === 'group') {
+            e.preventDefault();
+            if (dragSrcGroupId === targetGroupId) return;
+            const groups = getActiveTab().groups;
+            const srcIdx = groups.findIndex(g => g.id === dragSrcGroupId);
+            const tgtIdx = groups.findIndex(g => g.id === targetGroupId);
+            if (srcIdx === -1 || tgtIdx === -1) return;
+            const [g] = groups.splice(srcIdx, 1);
+            groups.splice(tgtIdx, 0, g);
+            saveData(); render();
+        } else if (dragSrcType === 'dial') {
+            e.preventDefault();
+            clearDropIndicators();
+            onDialDropOnGroup(targetGroupId);
+        }
     }
 
     // ─── EDIT MODE ─────────────────────────────────────────────────
@@ -1239,6 +1361,10 @@
     });
 
     // ─── INIT ───────────────────────────────────────────────────────
+    document.addEventListener('dragend', () => {
+        clearDropIndicators();
+    });
+
     loadTheme();
     renderThemeSelector();
     loadData();
