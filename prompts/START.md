@@ -41,22 +41,4 @@ uploader/Dockerfile      — node:20-alpine, runs server.js
 
 ---
 
-## Knowledge map — read on demand
-
-| File | Read when… |
-|------|-----------|
-| `prompts/knowledge/DATA_MODEL.md` | Touching data persistence, localStorage schema, tab/group/dial structure |
-| `prompts/knowledge/JS_APP.md` | Any JS logic work — section map, global state, render pipeline |
-| `prompts/knowledge/CSS_STYLES.md` | Any styling work — section map, CSS variables reference |
-| `prompts/knowledge/HTML_MODALS.md` | Modifying modals or form inputs |
-| `prompts/knowledge/DOCKER.md` | Deployment, nginx config, uploader sidecar, volumes, env vars |
-| `prompts/knowledge/PATTERNS.md` | Before implementing any new feature — conventions and checklist |
-
----
-
-## Ground rules
-- No build step — file changes in the mounted volume are live immediately in the dev Docker setup.
-- All CRUD follows: mutate `data` → `saveData()` → `render()`.
-- Use existing CSS variables, never hardcode colours.
-- After learning anything new about this codebase, update the relevant file in `prompts/knowledge/`.
-- If no existing file fits, create a new one and add it to the table above.
+> Rules, ground rules, and the knowledge map are in `CLAUDE.md` (auto-loaded).
