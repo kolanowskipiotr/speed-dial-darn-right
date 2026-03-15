@@ -58,7 +58,7 @@
 - For stable releases: uncomment the `url`/`sha256`/`version` lines in the formula and fill in after `brew fetch --build-from-source`
 
 ## Dockerfile static assets
-- Copies `favicon.ico`, `icon.png`, `icon.svg` in addition to `speed-dial.html`, `css/`, `js/`
+- Copies `favicon.ico`, `icon.png`, `icon.svg` in addition to `index.html`, `css/`, `js/`
 
 ## Healthcheck (Dockerfile)
 - `wget -qO- http://localhost/index.html | grep -q "Speed Dial Darn Right"`

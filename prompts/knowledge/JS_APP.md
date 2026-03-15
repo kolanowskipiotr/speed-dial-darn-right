@@ -1,6 +1,6 @@
 # JS Modules — Reference
 
-The app logic is split into focused modules loaded in this order by `speed-dial.html`:
+The app logic is split into focused modules loaded in this order by `index.html`:
 
 ```
 js/emoji-synonyms.js  → js/state.js  → js/themes.js  → js/persistence.js

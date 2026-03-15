@@ -5,7 +5,7 @@ Pure frontend (HTML + CSS + JS) served by nginx in Docker. No framework, no buil
 
 ## File map
 ```
-speed-dial.html          — all HTML: header, modals, main container
+index.html          — all HTML: header, modals, main container
 css/style.css            — all styles, CSS vars, themes
 
 js/emoji-synonyms.js     — EMOJI_SYNONYMS map (emoji → synonym array) for enhanced search
@@ -38,8 +38,6 @@ uploader/server.js              — tiny Node.js HTTP server (port 3001): POST/D
 uploader/Dockerfile             — node:20-alpine, runs server.js
 Formula/speed-dial-darn-right.rb — Homebrew formula; brew services manages launchd (macOS) / systemd (Linux)
 ```
-
-> `js/app.js` still exists but is **not loaded** by the HTML — it is the old monolithic file kept for reference only.
 
 ---
 

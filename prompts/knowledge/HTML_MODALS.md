@@ -1,4 +1,4 @@
-# HTML Modals — Reference (speed-dial.html)
+# HTML Modals — Reference (index.html)
 
 ## Header structure
 ```

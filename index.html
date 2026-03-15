@@ -32,7 +32,8 @@
             </div>
             <div class="theme-sep anim-sep"></div>
             <div class="header-search-wrap" id="headerSearchWrap">
-                <input type="search" id="searchInput" class="header-search-input" placeholder="🔍 Search dials…" autocomplete="off">
+                <input type="search" id="searchInput" class="header-search-input" placeholder="🔍 Search dials…"
+                       autocomplete="off">
                 <div class="search-dropdown" id="searchDropdown" style="display:none"></div>
             </div>
             <div class="theme-sep"></div>
@@ -69,18 +70,22 @@
         <div class="form-group">
             <label class="form-label" style="display:flex;align-items:center;justify-content:space-between;">
                 Name
-                <span id="titleFetchStatus" style="font-size:11px;color:var(--text-dimmer);font-weight:400;letter-spacing:0;text-transform:none;"></span>
+                <span id="titleFetchStatus"
+                      style="font-size:11px;color:var(--text-dimmer);font-weight:400;letter-spacing:0;text-transform:none;"></span>
             </label>
             <input type="text" class="form-input" id="dialName" placeholder="Auto-fetched from URL…">
         </div>
         <div class="form-group">
             <label class="form-label">URL</label>
-            <input type="text" class="form-input" id="dialUrl" placeholder="https://..." oninput="onUrlInput()" onblur="fetchPageTitle()">
+            <input type="text" class="form-input" id="dialUrl" placeholder="https://..." oninput="onUrlInput()"
+                   onblur="fetchPageTitle()">
         </div>
         <div class="form-group">
             <label class="form-label">Icon</label>
             <div class="icon-source-row">
-                <button class="icon-source-btn active" id="iconSrcFavicon" onclick="setIconSrc('favicon')">Auto Favicon</button>
+                <button class="icon-source-btn active" id="iconSrcFavicon" onclick="setIconSrc('favicon')">Auto
+                    Favicon
+                </button>
                 <button class="icon-source-btn" id="iconSrcEmoji" onclick="setIconSrc('emoji')">Emoji</button>
                 <button class="icon-source-btn" id="iconSrcCustom" onclick="setIconSrc('custom')">Custom URL</button>
                 <button class="icon-source-btn" id="iconSrcNone" onclick="setIconSrc('none')">None</button>
@@ -101,8 +106,10 @@
             <div class="emoji-picker" id="dialEmojiPicker"></div>
         </div>
         <div class="form-group" id="customIconGroup" style="display:none">
-            <input type="text" class="form-input" id="dialCustomIcon" placeholder="https://example.com/icon.png" oninput="previewCustomIcon()">
-            <div id="customIconPreview" style="margin-top:10px; display:none; align-items:center; gap:10px; flex-wrap:wrap;"></div>
+            <input type="text" class="form-input" id="dialCustomIcon" placeholder="https://example.com/icon.png"
+                   oninput="previewCustomIcon()">
+            <div id="customIconPreview"
+                 style="margin-top:10px; display:none; align-items:center; gap:10px; flex-wrap:wrap;"></div>
             <div class="upload-divider">— or upload / paste image —</div>
             <div class="img-drop-zone" id="imgDropZone"
                  contenteditable="true" spellcheck="false"
@@ -112,10 +119,12 @@
                 <span class="img-drop-hint">📋 Click here, then Ctrl+V / Cmd+V</span>
                 <label class="img-file-btn" contenteditable="false">
                     📁 Choose file
-                    <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImageFile(this.files[0]); this.value=''">
+                    <input type="file" id="imgFileInput" accept="image/*" style="display:none"
+                           onchange="handleImageFile(this.files[0]); this.value=''">
                 </label>
             </div>
-            <div id="imgUploadPreview" style="display:none; max-width:200px; aspect-ratio:4/3; border-radius:8px; overflow:hidden; margin-top:8px; border:1px solid var(--border);"></div>
+            <div id="imgUploadPreview"
+                 style="display:none; max-width:200px; aspect-ratio:4/3; border-radius:8px; overflow:hidden; margin-top:8px; border:1px solid var(--border);"></div>
             <div id="imgUploadStatus" style="font-size:11px; color:var(--text-dimmer); margin-top:4px;"></div>
         </div>
         <div class="modal-actions">
@@ -139,13 +148,17 @@
             <div class="emoji-row">
                 <div class="emoji-preview" id="tabEmojiPreview" onclick="toggleEmojiPicker('tab')">🗂</div>
                 <button class="btn-random-emoji" onclick="randomEmoji('tab')">🎲 Random</button>
-                <button class="icon-source-btn" id="tabNoIconBtn" onclick="setNoIcon('tab')" style="font-size:11px;padding:4px 10px;">No icon</button>
+                <button class="icon-source-btn" id="tabNoIconBtn" onclick="setNoIcon('tab')"
+                        style="font-size:11px;padding:4px 10px;">No icon
+                </button>
             </div>
             <div class="emoji-picker" id="tabEmojiPicker"></div>
         </div>
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal('tabModal')">Cancel</button>
-            <button class="btn-primary" id="tabDeleteBtn" style="background:var(--danger);color:#fff;display:none" onclick="closeModal('tabModal');deleteTab(editingTabId)">Delete Tab</button>
+            <button class="btn-primary" id="tabDeleteBtn" style="background:var(--danger);color:#fff;display:none"
+                    onclick="closeModal('tabModal');deleteTab(editingTabId)">Delete Tab
+            </button>
             <button class="btn-primary" onclick="saveTab()">Save</button>
         </div>
     </div>
@@ -179,7 +192,9 @@
             <div class="emoji-row">
                 <div class="emoji-preview" id="groupEmojiPreview" onclick="toggleEmojiPicker('group')">📁</div>
                 <button class="btn-random-emoji" onclick="randomEmoji('group')">🎲 Random</button>
-                <button class="icon-source-btn" id="groupNoIconBtn" onclick="setNoIcon('group')" style="font-size:11px;padding:4px 10px;">No icon</button>
+                <button class="icon-source-btn" id="groupNoIconBtn" onclick="setNoIcon('group')"
+                        style="font-size:11px;padding:4px 10px;">No icon
+                </button>
             </div>
             <div class="emoji-picker" id="groupEmojiPicker"></div>
         </div>

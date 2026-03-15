@@ -9,7 +9,7 @@ mutate data → saveData() → render()
 ## Adding a new feature — checklist
 1. **Data** — add field to dial/group/tab object in `_doSaveDial` / `saveGroup` / `saveTab`; load it in the corresponding `open*Modal()`
 2. **Render** — update `makeDialCard()` or `renderGroups()` to use the new field
-3. **HTML** — add UI to the relevant modal in `speed-dial.html`
+3. **HTML** — add UI to the relevant modal in `index.html`
 4. **CSS** — add styles in `style.css`; use existing CSS vars, never hardcode colours
 5. No build step — changes to mounted files are live immediately in the Docker dev setup
 
