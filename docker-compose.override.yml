@@ -1,0 +1,10 @@
+# Development overrides — automatically merged by `docker compose up`.
+# Mounts source files into the container so edits are live without rebuilding.
+# NOT used in production (install.sh / brew formula use docker-compose.yml only).
+
+services:
+  speed-dial:
+    volumes:
+      - ./speed-dial.html:/usr/share/nginx/html/index.html:ro
+      - ./css/style.css:/usr/share/nginx/html/css/style.css:ro
+      - ./js/app.js:/usr/share/nginx/html/js/app.js:ro

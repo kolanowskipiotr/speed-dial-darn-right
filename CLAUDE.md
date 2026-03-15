@@ -9,6 +9,18 @@ Self-hosted browser speed-dial page. Pure HTML/CSS/JS served by nginx in Docker.
 - Use existing CSS variables, never hardcode colours.
 - Never hardcode emoji strings outside of data definitions — always use `ICONS.*` from `js/state.js`.
 
+## Compose file split
+
+- `docker-compose.yml` — production base (no dev mounts); used by Homebrew formula and manual prod deploys.
+- `docker-compose.override.yml` — dev-only source mounts; automatically merged by `docker compose up` during development.
+- Never add dev mounts back to `docker-compose.yml`.
+
+## Distribution
+
+- `Formula/speed-dial-darn-right.rb` — Homebrew formula; supports macOS (launchd) and Linux (systemd --user) via `brew services`.
+- Replace `GITHUB_USER` placeholder before publishing.
+- See README for the release checklist (tag → sha256 → fill formula).
+
 ## After every confirmed task
 
 **Always update `prompts/knowledge/` to reflect any changes made.**

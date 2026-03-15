@@ -9,8 +9,15 @@
 ---
 
 ## Dev vs Prod
-- **Dev**: source files volume-mounted `:ro` into `speed-dial` — edits reflect instantly, no rebuild needed
-- **Prod**: `docker compose build && docker compose up -d`
+- **Dev**: `docker compose up` — automatically merges `docker-compose.yml` + `docker-compose.override.yml`; source files are volume-mounted `:ro` so edits are live
+- **Prod (manual)**: `docker compose -f docker-compose.yml up -d` — skips the override, uses baked-in files from image
+- **Prod (Homebrew)**: `brew services start speed-dial-darn-right` — see Homebrew section below
+
+## Compose file split
+| File | Purpose |
+|------|---------|
+| `docker-compose.yml` | Production base — no dev mounts |
+| `docker-compose.override.yml` | Dev-only source mounts (auto-merged by Docker Compose in dev) |
 
 ## Volumes
 - `speed_dial_data` → `/data` (nginx-served static JSON, future use)
@@ -40,6 +47,18 @@
 - `DELETE /upload/<id>` → removes `<id>.jpg` from `/uploads/`
 - ID must match `[a-z0-9]+` (same format as `uid()` output)
 - Called from browser via `POST /api/upload/<id>` — nginx strips the `/api` prefix when proxying
+
+## Homebrew distribution (`Formula/speed-dial-darn-right.rb`)
+- Requires repo on GitHub; replace `GITHUB_USER` placeholder in formula before publishing
+- Install: `brew install --HEAD GITHUB_USER/speed-dial-darn-right/speed-dial-darn-right`
+- Or via tap (repo must be named `homebrew-speed-dial-darn-right`): `brew tap GITHUB_USER/speed-dial-darn-right && brew install speed-dial-darn-right`
+- `brew services start` → runs `docker compose up` in foreground managed by launchd (macOS) or systemd --user (Linux); auto-starts at login
+- `post_install` hook builds Docker images automatically after `brew install`
+- `speed-dial` wrapper script installed to `$(brew --prefix)/bin/` — proxies all args to `docker compose -f …/docker-compose.yml`
+- For stable releases: uncomment the `url`/`sha256`/`version` lines in the formula and fill in after `brew fetch --build-from-source`
+
+## Dockerfile static assets
+- Copies `favicon.ico`, `icon.png`, `icon.svg` in addition to `speed-dial.html`, `css/`, `js/`
 
 ## Healthcheck (Dockerfile)
 - `wget -qO- http://localhost/index.html | grep -q "Speed Dial Darn Right"`

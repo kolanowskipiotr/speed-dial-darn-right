@@ -30,11 +30,13 @@ js/logo-animation.js     — initLogoAnimation(), runLogoAnimation(), spawnSpark
 js/init.js               — DOMContentLoaded bootstrap: loads theme, data, inits pickers,
                            renders, starts clock
 
-nginx.conf               — static serving + /data/, /uploads/, /api/upload/ proxy
-docker-compose.yml       — two services: speed-dial (nginx) + uploader (Node sidecar)
-Dockerfile               — nginx:1.27-alpine, serves html/css/js, volumes /data /uploads
-uploader/server.js       — tiny Node.js HTTP server (port 3001): POST/DELETE /upload/<id>
-uploader/Dockerfile      — node:20-alpine, runs server.js
+nginx.conf                      — static serving + /data/, /uploads/, /api/upload/ proxy
+docker-compose.yml              — production base: two services (speed-dial nginx + uploader Node sidecar), no dev mounts
+docker-compose.override.yml     — dev-only: source file mounts; auto-merged by `docker compose up`, ignored in prod
+Dockerfile                      — nginx:1.27-alpine, serves html/css/js + favicon/icons, volumes /data /uploads
+uploader/server.js              — tiny Node.js HTTP server (port 3001): POST/DELETE /upload/<id>
+uploader/Dockerfile             — node:20-alpine, runs server.js
+Formula/speed-dial-darn-right.rb — Homebrew formula; brew services manages launchd (macOS) / systemd (Linux)
 ```
 
 > `js/app.js` still exists but is **not loaded** by the HTML — it is the old monolithic file kept for reference only.

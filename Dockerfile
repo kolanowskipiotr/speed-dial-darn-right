@@ -8,6 +8,7 @@ COPY nginx.conf /etc/nginx/conf.d/speed-dial.conf
 
 # Copy the app
 COPY speed-dial.html /usr/share/nginx/html/index.html
+COPY favicon.ico icon.png icon.svg /usr/share/nginx/html/
 COPY css /usr/share/nginx/html/css/
 COPY js /usr/share/nginx/html/js/
 

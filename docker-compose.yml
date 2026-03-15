@@ -19,16 +19,8 @@ services:
 
     volumes:
       # ── Persistent data storage ──────────────────────────────────
-      # /data  → future: JSON config files, dial data exported from browser
-      # /uploads → future: user-uploaded icon images served as /uploads/<file>
       - speed_dial_data:/data
       - speed_dial_uploads:/uploads
-
-      # ── Live-reload during development ───────────────────────────
-      # Mount all app files so changes are visible without rebuilding the image.
-      - ./speed-dial.html:/usr/share/nginx/html/index.html:ro
-      - ./css/style.css:/usr/share/nginx/html/css/style.css:ro
-      - ./js/app.js:/usr/share/nginx/html/js/app.js:ro
 
     environment:
       - TZ=${TZ:-Europe/Warsaw}   # Set your timezone
