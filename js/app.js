@@ -347,6 +347,26 @@
         addBtn.innerHTML = '＋ Tab';
         addBtn.onclick = () => openTabModal(null);
         bar.appendChild(addBtn);
+
+        // Inline group jump chips
+        const activeTab = data.tabs.find(t => t.id === activeTabId);
+        if (activeTab && activeTab.groups && activeTab.groups.length > 0) {
+            const sep = document.createElement('div');
+            sep.className = 'tabs-groups-sep';
+            bar.appendChild(sep);
+
+            activeTab.groups.forEach(group => {
+                const chip = document.createElement('button');
+                chip.className = 'group-jump-chip';
+                chip.innerHTML = `${group.emoji ? `<span>${group.emoji}</span>` : ''}<span>${group.name}</span>`;
+                chip.title = `Jump to ${group.name}`;
+                chip.onclick = () => {
+                    const el = document.querySelector(`.group[data-id="${group.id}"]`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                };
+                bar.appendChild(chip);
+            });
+        }
     }
 
     function render() {
