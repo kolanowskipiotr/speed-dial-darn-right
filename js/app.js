@@ -351,6 +351,7 @@
 
     function render() {
         renderTabs();
+        updateDialCount();
         const container = document.getElementById('groupsContainer');
         const empty = document.getElementById('emptyState');
         container.innerHTML = '';
@@ -1425,8 +1426,34 @@
         clearDropIndicators();
     });
 
+    function updateClock() {
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        const clockEl = document.getElementById('headerClock');
+        const dateEl  = document.getElementById('headerDate');
+        if (clockEl) clockEl.textContent = `${hh}:${mm}:${ss}`;
+        if (dateEl) dateEl.textContent = now.toLocaleDateString('en-US', {
+            weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+        });
+    }
+
+    function updateDialCount() {
+        const el = document.getElementById('headerDialCount');
+        if (!el) return;
+        const tab = data.tabs.find(t => t.id === activeTabId);
+        if (!tab) { el.textContent = ''; return; }
+        const totalDials = (tab.groups || []).reduce((n, g) => n + (g.dials || []).length, 0);
+        const totalGroups = (tab.groups || []).length;
+        el.textContent = `${totalGroups} group${totalGroups !== 1 ? 's' : ''} · ${totalDials} dial${totalDials !== 1 ? 's' : ''}`;
+    }
+
     loadTheme();
     renderThemeSelector();
     loadData();
     initEmojiPickers();
     render();
+    updateClock();
+    updateDialCount();
+    setInterval(updateClock, 1000);
