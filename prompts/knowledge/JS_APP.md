@@ -8,7 +8,7 @@
 | 60   | EMOJI DATA — `EMOJI_CATEGORIES[]`, `EMOJI_LIST`, `GROUP_EMOJIS` |
 | 77   | DATA PERSISTENCE — `loadData()`, `saveData()`, `getActiveTab()` |
 | 105  | UTILS — `uid()`, `pickRandomEmoji()`, `getDomain()`, `getFaviconCandidates()`, `attachFavicon()`, `showToast()`, `showToastUndo()`, `showConfirm()`, `resizeImage()`, `uploadDialImage()`, `handleImageFile()` |
-| 244  | RENDER — `render()`, `renderTabs()`, `renderGroups()`, `makeDialCard()` |
+| 244  | RENDER — `render()`, `renderTabs()` (incl. group jump chips), `renderGroups()`, `makeDialCard()` |
 | ~548 | DRAG & DROP: DIALS — `clearDropIndicators()`, `onDialDragStart()`, `onDialDragOver()`, `onDialDrop()`, `onDialDropOnGroup()` |
 | ~636 | DRAG & DROP: GROUPS — `onGroupDragStart()`, `onGroupDragOver()`, `onGroupDrop()` |
 | ~674 | EDIT MODE — `toggleEditMode()` |
@@ -22,7 +22,7 @@
 | ~1327 | MODAL HELPERS — `openModal()`, `closeModal()`, backdrop click-to-close |
 | ~1341 | IMPORT / EXPORT — `exportData()`, `openImportModal()`, `importData()` |
 | ~1376 | KEYBOARD SHORTCUTS — Escape closes modals |
-| ~1383 | INIT — `loadTheme()`, `renderThemeSelector()`, `loadData()`, `initEmojiPickers()`, `render()` |
+| ~1383 | INIT — `loadTheme()`, `renderThemeSelector()`, `loadData()`, `initEmojiPickers()`, `render()`, `updateClock()`, `updateDialCount()`, `setInterval(updateClock, 1000)` |
 
 ---
 
@@ -51,15 +51,19 @@ let pendingImageBlob = null       // image blob waiting to be uploaded on dial s
 ---
 
 ## Render pipeline
-- `render()` calls `renderTabs()` + `renderGroups()` — always full DOM rebuild, no diffing
+- `render()` calls `renderTabs()`, `updateDialCount()`, + `renderGroups()` — always full DOM rebuild, no diffing
 - `makeDialCard(dial, groupId, gi, di)` — builds one dial card DOM element:
   - `dial.iconType === 'custom' && dial.icon` → `.dial-card.dial-screenshot` full-bleed image
   - `dial.iconType === 'none'` → `.dial-card.dial-no-icon` — no icon element, name fills card
   - `dial.iconType === 'emoji'` → emoji icon
   - otherwise → favicon with `attachFavicon()` fallback chain
-- `renderTabs()`: only renders emoji span if `tab.emoji` is truthy
+- `renderTabs()`: only renders emoji span if `tab.emoji` is truthy; appends `.tabs-groups-sep` + `.group-jump-chip` buttons after tabs for the active tab's groups
 - `renderGroups()`: only appends emojiSpan if `group.emoji` is truthy
 - After any data change: `saveData(); render();`
+
+## Header live widgets
+- `updateClock()` — writes `HH:MM:SS` to `#headerClock` and formatted date to `#headerDate`; called once at init then every 1s via `setInterval`
+- `updateDialCount()` — writes `N groups · N dials` to `#headerDialCount` for the active tab; called inside `render()` so always in sync
 
 ---
 

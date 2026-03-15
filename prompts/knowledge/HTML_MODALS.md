@@ -1,5 +1,32 @@
 # HTML Modals — Reference (speed-dial.html)
 
+## Header structure
+```
+<header>  — CSS grid: 1fr auto 1fr
+  .header-left
+    .logo                   — "⚡ Speed Dial Darn Right"
+    #headerDialCount        — "N groups · N dials" for active tab (updated by updateDialCount())
+  .header-center
+    #headerClock            — live HH:MM:SS (updated every 1s by updateClock())
+    #headerDate             — formatted date e.g. "SUN, MAR 15, 2026"
+  .header-actions           — justify-self: end
+    #themeSelector          — theme swatches (edit mode only)
+    .theme-sep              — vertical divider (edit mode only)
+    .btn-export × 2         — Export JSON, Import (edit mode only)
+    #editToggle             — Edit/Editing toggle
+```
+
+## Tabs bar structure
+```
+<div #tabsBar>
+  [.tab-btn × N]            — one per tab, active tab has .active class
+  .add-tab-btn              — "+ Tab" (edit mode only via CSS)
+  .tabs-groups-sep          — vertical divider (only if active tab has groups)
+  [.group-jump-chip × N]    — one per group in active tab; click scrolls to group
+```
+
+---
+
 ## Modal list
 | id | Purpose |
 |----|---------|

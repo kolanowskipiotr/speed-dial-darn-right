@@ -7,9 +7,9 @@
 | 3    | `:root` non-color tokens: `--radius`, `--radius-sm`, `--transition` |
 | 10   | Default theme (dark-yellow) on `body` — all CSS color vars |
 | 30–100 | Theme overrides: dark-blue, dark-purple, dark-teal, light-blue, light-warm via `body[data-theme="..."]` |
-| 126  | Header |
+| 126  | Header — grid layout (1fr auto 1fr): `.header-left` (logo + tagline), `.header-center` (clock + date), `.header-actions` |
 | 226  | Theme selector buttons |
-| 267  | Tabs bar |
+| 267  | Tabs bar — `.tabs-groups-sep` divider + `.group-jump-chip` inline group anchors |
 | 337  | Main / groups container |
 | 345  | Group blocks |
 | 423  | Dials grid — `--dial-size` CSS var set inline per group |
