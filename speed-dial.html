@@ -11,7 +11,7 @@
 <!-- HEADER -->
 <header>
     <div class="header-left">
-        <div class="logo">⚡ Speed Dial Darn Right</div>
+        <div class="logo" id="logoText">⚡ Speed Dial Darn Right</div>
         <div class="header-tagline" id="headerDialCount"></div>
     </div>
     <div class="header-center">
@@ -23,6 +23,13 @@
         <div class="theme-sep"></div>
         <button class="btn-export" onclick="exportData()">Export JSON</button>
         <button class="btn-export" onclick="openImportModal()">Import</button>
+        <div class="anim-toggle" id="animToggle" onclick="toggleLogoAnim()">
+            <span class="anim-toggle-label" id="animLabel">⚡ Anim</span>
+            <div class="toggle-track">
+                <div class="toggle-thumb"></div>
+            </div>
+        </div>
+        <div class="theme-sep anim-sep"></div>
         <div class="edit-toggle" id="editToggle" onclick="toggleEditMode()">
             <span class="edit-toggle-label" id="editLabel">Edit</span>
             <div class="toggle-track">

@@ -57,6 +57,7 @@
     let dragSrcTabId = null;
     let dragSrcType = null; // 'dial' | 'group'
     let pendingImageBlob = null; // image waiting to be uploaded on save
+    let logoAnimEnabled = true;
 
     // ─── FULL CATEGORIZED EMOJI DATA ───────────────────────────────
     const EMOJI_CATEGORIES = [
@@ -1469,6 +1470,124 @@
         el.textContent = `${totalGroups} group${totalGroups !== 1 ? 's' : ''} · ${totalDials} dial${totalDials !== 1 ? 's' : ''}`;
     }
 
+    // ─── LOGO CRASH ANIMATION ──────────────────────────────────────
+    function initLogoAnimation() {
+        logoAnimEnabled = localStorage.getItem('logoAnim') !== 'false';
+
+        // Split logo text into individual character spans
+        const logo = document.getElementById('logoText');
+        if (!logo) return;
+        const chars = [...logo.textContent];
+        logo.innerHTML = chars.map(ch =>
+            `<span class="logo-char">${ch === ' ' ? '&nbsp;' : ch.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>`
+        ).join('');
+
+        updateAnimToggleUI();
+        if (logoAnimEnabled) setTimeout(runLogoAnimation, 250);
+    }
+
+    function runLogoAnimation() {
+        const logo = document.getElementById('logoText');
+        if (!logo) return;
+        const chars = [...logo.querySelectorAll('.logo-char')];
+
+        // Phase 1: drive in fast from right
+        logo.classList.add('logo-driving');
+
+        // Phase 2: impact shockwave ripples through each letter (after 450ms)
+        // Left letters bounce hardest, intensity falls off rightward
+        setTimeout(() => {
+            logo.classList.remove('logo-driving');
+
+            chars.forEach((ch, i) => {
+                const t = i / Math.max(chars.length - 1, 1); // 0=left … 1=right
+                const intensity = 1 - t * 0.72; // 1.0 → 0.28
+                ch.style.setProperty('--bi', intensity);
+                ch.style.animationDelay = (i * 18) + 'ms';
+                ch.classList.add('logo-char-impact');
+            });
+
+            // Phase 3: fly left + sparks (after ripple finishes)
+            const impactEnd = (chars.length - 1) * 18 + 340;
+            setTimeout(() => {
+                chars.forEach(ch => {
+                    ch.classList.remove('logo-char-impact');
+                    ch.style.animationDelay = '';
+                    ch.style.removeProperty('--bi');
+                });
+
+                // Capture each char's Y for left-wall sparks (letters vanish in place)
+                const charRects = chars.map(ch => ch.getBoundingClientRect());
+                const vanishDur = 160;
+
+                chars.forEach((ch, i) => {
+                    const charX = charRects[i].left + charRects[i].width / 2;
+                    const charY = charRects[i].top  + charRects[i].height / 2;
+                    const delay = i * 22;
+
+                    ch.style.animationDelay = delay + 'ms';
+                    ch.classList.add('logo-char-vanish');
+
+                    // Sparks burst from the letter's own position
+                    setTimeout(() => spawnSparks(charX, charY), delay + vanishDur);
+                });
+
+                // Phase 4: assemble from random scattered positions (original effect)
+                const assembleStart = (chars.length - 1) * 22 + vanishDur + 180;
+                setTimeout(() => {
+                    chars.forEach((ch, i) => {
+                        ch.classList.remove('logo-char-vanish');
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist  = 80 + Math.random() * 140;
+                        ch.style.setProperty('--dx', (Math.cos(angle) * dist) + 'px');
+                        ch.style.setProperty('--dy', (Math.sin(angle) * dist) + 'px');
+                        ch.style.setProperty('--dr', ((Math.random() - 0.5) * 720) + 'deg');
+                        ch.style.animationDelay = (i * 22) + 'ms';
+                        ch.classList.add('logo-char-assemble');
+                    });
+
+                    setTimeout(() => {
+                        chars.forEach(ch => {
+                            ch.classList.remove('logo-char-assemble');
+                            ch.style.animationDelay = '';
+                            ch.style.removeProperty('--dx');
+                            ch.style.removeProperty('--dy');
+                            ch.style.removeProperty('--dr');
+                        });
+                    }, 700);
+                }, assembleStart);
+            }, impactEnd);
+        }, 450);
+    }
+
+    function spawnSparks(x, y) {
+        const count = 7;
+        for (let i = 0; i < count; i++) {
+            const spark = document.createElement('div');
+            spark.className = 'logo-spark';
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 50 + Math.random() * 90;
+            spark.style.left = x + 'px';
+            spark.style.top  = y + 'px';
+            spark.style.setProperty('--sx', (Math.cos(angle) * speed) + 'px');
+            spark.style.setProperty('--sy', (Math.sin(angle) * speed) + 'px');
+            document.body.appendChild(spark);
+            setTimeout(() => spark.remove(), 550);
+        }
+    }
+
+    function toggleLogoAnim() {
+        logoAnimEnabled = !logoAnimEnabled;
+        localStorage.setItem('logoAnim', logoAnimEnabled ? 'true' : 'false');
+        updateAnimToggleUI();
+        if (logoAnimEnabled) setTimeout(runLogoAnimation, 100);
+    }
+
+    function updateAnimToggleUI() {
+        const toggle = document.getElementById('animToggle');
+        if (toggle) toggle.classList.toggle('active', logoAnimEnabled);
+    }
+
     loadTheme();
     renderThemeSelector();
     loadData();
@@ -1477,3 +1596,4 @@
     updateClock();
     updateDialCount();
     setInterval(updateClock, 1000);
+    initLogoAnimation();
