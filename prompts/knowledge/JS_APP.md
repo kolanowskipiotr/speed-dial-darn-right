@@ -45,7 +45,6 @@ let dragSrcGroupId = null         // drag state
 let dragSrcDialId = null          // drag state
 let dragSrcTabId = null           // source tab id for cross-tab dial moves
 let dragSrcType = null            // 'dial' | 'group'
-let dialTabHoverTimer = null      // hover-to-switch-tab timer handle
 let pendingImageBlob = null       // image blob waiting to be uploaded on dial save
 ```
 
@@ -66,6 +65,32 @@ let pendingImageBlob = null       // image blob waiting to be uploaded on dial s
 - Favicon loading: `attachFavicon()` tries ordered candidates via `img.onerror` chain, falls back to emoji
 - Page title auto-fetch: `fetchPageTitle()` on URL field blur, uses `fetch()` + regex on raw HTML
 - Emoji picker built once in `initEmojiPickers()`, reused; search is client-side filter over `EMOJI_CATEGORIES`
+
+## Drag & drop — key patterns
+
+### Dial reordering within a group
+- `onDialDragOver`: adds `drop-before` or `drop-after` class to the hovered card based on `e.clientX` vs card midpoint
+- `clearDropIndicators()`: removes `drop-before`/`drop-after` from all `.dial-card` elements (also clears `.dials-grid.dial-drag-over`)
+- Global `dragend` on `document`: calls `clearDropIndicators()` only
+
+### Cross-tab dial move
+- Drag dial → drop onto a **different tab button** → dial moves to `tgtTab.groups[0].dials` as first element (`unshift`)
+- Tab switches to target tab after drop
+- `dragSrcTabId` is set in `onDialDragStart` to track source tab
+- After drop: `requestAnimationFrame` adds `.dial-just-dropped` to the placed card for glow+shake animation
+
+### Hover overlay stuck after drag (Safari)
+- `dragend` on detached elements doesn't bubble in Safari → can't rely on `dragend` to clean up hover state
+- Fix: call `resetHoverAfterDrag()` directly from every drop handler
+- `resetHoverAfterDrag()` adds `body.post-drag` for 300ms which suppresses `.dial-overlay-btns` and `.dial-edit-overlay`
+
+### Tab dragover must always call `e.preventDefault()` for different tabs
+- The `dragSrcType === 'dial'` guard must NOT be placed in `dragover` (breaks drop acceptance)
+- `dragover` always calls `e.preventDefault()` for any drag over a different tab; drop handler guards logic
+
+### Unshift vs push
+- Drops without a specific position (onto group, onto tab button) always insert as **first** element (`unshift`)
+- `onDialDropOnGroup` is a no-op if dial is already first in that group
 
 ## Image upload flow (custom icon → file/paste)
 1. User pastes or drops image onto `#imgDropZone` (contenteditable), or picks file via `#imgFileInput`

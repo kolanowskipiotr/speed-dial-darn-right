@@ -37,3 +37,71 @@
 - Never hardcode colours — always use the CSS variables above
 - Dial size is controlled via `--dial-size` CSS var set inline on the group element
 - Theme is applied via `data-theme` attribute on `body`
+
+---
+
+## Drag & drop visual indicators
+
+### Dial position indicator (`drop-before` / `drop-after`)
+Shows a dashed bracket on the left or right edge of the hovered dial card.
+```css
+body.edit-mode .dial-card.drop-before::after,
+body.edit-mode .dial-card.drop-after::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    border: 2px dashed var(--accent);
+    border-radius: var(--radius);
+    pointer-events: none;
+    z-index: 20;
+}
+body.edit-mode .dial-card.drop-before::after {
+    clip-path: inset(0 calc(100% - var(--radius)) 0 0);
+}
+body.edit-mode .dial-card.drop-after::after {
+    clip-path: inset(0 0 0 calc(100% - var(--radius)));
+}
+```
+**Why this works:** Full dashed border drawn, then clipped to only show the left/right vertical bar + corner arcs. `clip-path` width = `var(--radius)` shows exactly the rounded cap with no horizontal extension.
+
+**Rejected approaches (do not revert to these):**
+- `border: 2px dotted transparent; border-left-color: var(--accent)` — user dislikes dots (gaps), only shows half the corner arc
+- Solid strip with `background` + `repeating-linear-gradient` — user wants dashes not solid
+- `border: dashed; border-right: none` (C bracket) — shows top & bottom edges across full width ("too much")
+
+### Tab drag-over indicator (`drag-over-tab`)
+Tab reordering uses a simple border+background highlight, not the bracket indicator:
+```css
+.tab-btn.drag-over-tab {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+```
+
+### Dial dragged over a different tab button (`dial-drag-over`)
+```css
+.tab-btn.dial-drag-over {
+    outline: 2px dashed var(--accent);
+    outline-offset: 2px;
+}
+```
+
+### Empty group grid / group highlight
+```css
+.dials-grid.dial-drag-over { outline: 2px dashed var(--accent); }
+.group.drag-over > .dials-grid { outline: 2px dashed var(--accent); }
+```
+
+### Cross-tab drop landing animation
+```css
+.dial-card.dial-just-dropped { animation: dial-drop-land 0.7s ease-out forwards; }
+```
+`dial-drop-land` keyframes: glow box-shadow expanding then fading + scale+rotate shake.
+
+### Post-drag hover suppression
+```css
+body.post-drag .dial-overlay-btns { opacity: 0 !important; }
+body.post-drag .dial-edit-overlay { background: transparent !important; }
+```
+Applied for 300ms after any drop via `resetHoverAfterDrag()` to prevent stuck hover overlays (Safari issue).
