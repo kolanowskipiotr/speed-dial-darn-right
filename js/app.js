@@ -273,14 +273,15 @@
             });
             btn.addEventListener('dragend', () => btn.classList.remove('dragging'));
             btn.addEventListener('dragenter', e => {
-                if (tabDragSrc && tabDragSrc !== tab.id) { btn.classList.add('drag-over-tab'); return; }
                 // dragstart fires before dragenter, so dragSrcType is already set here
                 if (dragSrcType === 'dial' && tab.id !== activeTabId) { btn.classList.add('dial-drag-over'); }
             });
             btn.addEventListener('dragover', e => {
                 if (tabDragSrc && tabDragSrc !== tab.id) {
                     e.preventDefault();
-                    btn.classList.add('drag-over-tab');
+                    const rect = btn.getBoundingClientRect();
+                    btn.classList.toggle('drop-before', e.clientX < rect.left + rect.width / 2);
+                    btn.classList.toggle('drop-after',  e.clientX >= rect.left + rect.width / 2);
                     return;
                 }
                 // Always accept on a different tab — drop handler guards logic
@@ -292,18 +293,21 @@
             });
             btn.addEventListener('dragleave', e => {
                 if (btn.contains(e.relatedTarget)) return;
-                btn.classList.remove('drag-over-tab', 'dial-drag-over');
+                btn.classList.remove('drop-before', 'drop-after', 'dial-drag-over');
             });
             btn.addEventListener('drop', e => {
-                btn.classList.remove('drag-over-tab', 'dial-drag-over');
+                btn.classList.remove('drop-before', 'drop-after', 'dial-drag-over');
                 // Tab reorder
                 if (tabDragSrc && tabDragSrc !== tab.id) {
                     e.preventDefault();
                     const srcIdx = data.tabs.findIndex(t => t.id === tabDragSrc);
-                    const tgtIdx = data.tabs.findIndex(t => t.id === tab.id);
+                    let tgtIdx = data.tabs.findIndex(t => t.id === tab.id);
                     if (srcIdx === -1 || tgtIdx === -1) return;
+                    const rect = btn.getBoundingClientRect();
+                    const insertAfter = e.clientX >= rect.left + rect.width / 2;
                     const [moved] = data.tabs.splice(srcIdx, 1);
-                    data.tabs.splice(tgtIdx, 0, moved);
+                    tgtIdx = data.tabs.findIndex(t => t.id === tab.id);
+                    data.tabs.splice(insertAfter ? tgtIdx + 1 : tgtIdx, 0, moved);
                     tabDragSrc = null;
                     saveData(); renderTabs();
                     return;
@@ -564,7 +568,7 @@
 
     // ─── DRAG & DROP: DIALS ─────────────────────────────────────────
     function clearDropIndicators() {
-        document.querySelectorAll('.dial-card.drop-before, .dial-card.drop-after').forEach(el => {
+        document.querySelectorAll('.drop-before, .drop-after').forEach(el => {
             el.classList.remove('drop-before', 'drop-after');
         });
         document.querySelectorAll('.dials-grid.dial-drag-over').forEach(el => {
