@@ -47,9 +47,31 @@
     let editingGroupId = null;
     let editingDialGroupId = null;
     let currentIconSrc = 'favicon';
-    let currentDialEmoji = '😀';
-    let currentGroupEmoji = '📁';
-    let currentTabEmoji = '🗂';
+
+    // ─── ICON CONSTANTS ─────────────────────────────────────────────
+    // Single source of truth for every emoji used outside the picker data.
+    const ICONS = {
+        // Default emojis for each entity type
+        defaultDial:     '😀',
+        defaultGroup:    '📁',
+        defaultTab:      '🗂',
+        faviconFallback: '🌐',  // shown when favicon / custom image fails
+
+        // UI affordances
+        edit:    '✏️',
+        search:  '🔍',
+
+        // Status / toast indicators
+        ok:      '✅',
+        warn:    '⚠️',
+        error:   '❌',
+        undo:    '↩️',
+        loading: '⏳',
+    };
+
+    let currentDialEmoji = ICONS.defaultDial;
+    let currentGroupEmoji = ICONS.defaultGroup;
+    let currentTabEmoji = ICONS.defaultTab;
     let currentGroupSize  = 140; // px
     let selectedFaviconUrl = ''; // currently chosen favicon in the picker
     let dragSrcGroupId = null;
@@ -146,7 +168,7 @@
         [...zone.childNodes].forEach(n => { if (n.nodeType === Node.TEXT_NODE) n.remove(); });
 
         const imageItem = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
-        if (!imageItem) { showToast('⚠️ No image in clipboard'); return; }
+        if (!imageItem) { showToast(`${ICONS.warn} No image in clipboard`); return; }
         handleImageFile(imageItem.getAsFile());
     }
 
@@ -157,7 +179,7 @@
         if (customPreview) customPreview.style.display = 'none';
         const status = document.getElementById('imgUploadStatus');
         const preview = document.getElementById('imgUploadPreview');
-        status.textContent = '⏳ Resizing…';
+        status.textContent = `${ICONS.loading} Resizing…`;
         preview.style.display = 'none';
         resizeImage(file).then(blob => {
             pendingImageBlob = blob;
@@ -167,9 +189,9 @@
             preview.innerHTML = '';
             preview.appendChild(img);
             preview.style.display = 'block';
-            status.textContent = '✅ Ready — will upload on Save';
+            status.textContent = `${ICONS.ok} Ready — will upload on Save`;
         }).catch(() => {
-            status.textContent = '❌ Could not process image';
+            status.textContent = `${ICONS.error} Could not process image`;
         });
     }
 
@@ -214,7 +236,7 @@
 
     function showEmojiInstead(imgEl, emoji) {
         const wrap = imgEl.parentElement;
-        if (wrap) wrap.innerHTML = `<span class="dial-emoji">${emoji || '🌐'}</span>`;
+        if (wrap) wrap.innerHTML = `<span class="dial-emoji">${emoji || ICONS.faviconFallback}</span>`;
     }
 
     let toastTimer = null;
@@ -1245,10 +1267,7 @@
             let totalShown = 0;
             EMOJI_CATEGORIES.forEach(cat => {
                 const matches = filter
-                    ? cat.emojis.filter(e => {
-                        const name = emojiName(e).toLowerCase();
-                        return name.includes(filter) || e === filter;
-                    })
+                    ? cat.emojis.filter(e => emojiMatchesFilter(e, filter))
                     : cat.emojis;
                 if (!matches.length) return;
                 totalShown += matches.length;
@@ -1306,6 +1325,16 @@
 
     function emojiName(e) {
         return EMOJI_KEYWORDS[e] || e;
+    }
+
+    // Full-text match: checks EMOJI_SYNONYMS array first, then EMOJI_KEYWORDS string.
+    // Returns true if any term contains the filter substring.
+    function emojiMatchesFilter(e, filter) {
+        if (e === filter) return true;
+        const synonyms = typeof EMOJI_SYNONYMS !== 'undefined' && EMOJI_SYNONYMS[e];
+        if (synonyms && synonyms.some(s => s.toLowerCase().includes(filter))) return true;
+        const kw = EMOJI_KEYWORDS[e];
+        return kw ? kw.toLowerCase().includes(filter) : false;
     }
 
     function initEmojiPickers() {

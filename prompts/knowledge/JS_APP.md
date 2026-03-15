@@ -1,117 +1,185 @@
-# js/app.js — Reference
+# JS Modules — Reference
 
-## Section map (line numbers)
-| Line | Section |
-|------|---------|
-| 1    | THEMES — array + `applyTheme()`, `loadTheme()`, `renderThemeSelector()` |
-| 41   | STATE — all mutable globals (see below) |
-| 60   | EMOJI DATA — `EMOJI_CATEGORIES[]`, `EMOJI_LIST`, `GROUP_EMOJIS` |
-| 77   | DATA PERSISTENCE — `loadData()`, `saveData()`, `getActiveTab()` |
-| 105  | UTILS — `uid()`, `pickRandomEmoji()`, `getDomain()`, `getFaviconCandidates()`, `attachFavicon()`, `showToast()`, `showToastUndo()`, `showConfirm()`, `resizeImage()`, `uploadDialImage()`, `handleImageFile()` |
-| 244  | RENDER — `render()`, `renderTabs()` (incl. group jump chips), `renderGroups()`, `makeDialCard()` |
-| ~548 | DRAG & DROP: DIALS — `clearDropIndicators()`, `onDialDragStart()`, `onDialDragOver()`, `onDialDrop()`, `onDialDropOnGroup()` |
-| ~636 | DRAG & DROP: GROUPS — `onGroupDragStart()`, `onGroupDragOver()`, `onGroupDrop()` |
-| ~674 | EDIT MODE — `toggleEditMode()` |
-| ~718 | TAB CRUD — `openTabModal()`, `saveTab()`, `deleteTab()` |
-| ~774 | GROUP CRUD — `openGroupModal()`, `saveGroup()`, `deleteGroup()`, `moveGroup()`, `setGroupSize()` |
-| ~836 | DIAL CRUD — `openDialModal()`, `saveDial()`, `_doSaveDial()`, `deleteDial()`, `moveDial()` |
-| ~762 | CUSTOM ICON PREVIEW — `previewCustomIcon()`, `onUrlInput()`, `fetchPageTitle()` |
-| ~1054 | ICON SOURCE — `setIconSrc()` toggles favicon/emoji/custom/none panels |
-| ~1079 | FAVICON PICKER — `loadFaviconOptions()`, `renderFaviconTiles()` |
-| ~1162 | EMOJI PICKER — `buildEmojiPicker()`, `toggleEmojiPicker()`, `selectEmoji()`, `randomEmoji()`, `setNoIcon()` |
-| ~1327 | MODAL HELPERS — `openModal()`, `closeModal()`, backdrop click-to-close |
-| ~1341 | IMPORT / EXPORT — `exportData()`, `openImportModal()`, `importData()` |
-| ~1376 | KEYBOARD SHORTCUTS — Escape closes modals |
-| ~1383 | INIT — `loadTheme()`, `renderThemeSelector()`, `loadData()`, `initEmojiPickers()`, `render()`, `updateClock()`, `updateDialCount()`, `setInterval(updateClock, 1000)` |
+The app logic is split into focused modules loaded in this order by `speed-dial.html`:
+
+```
+js/emoji-synonyms.js  → js/state.js  → js/themes.js  → js/persistence.js
+→ js/utils.js  → js/render.js  → js/drag-drop.js  → js/crud.js
+→ js/pickers.js  → js/logo-animation.js  → js/init.js
+```
+
+No module system — all files share the global scope. Load order matters.
 
 ---
 
-## Global state variables (app.js:41)
+## js/emoji-synonyms.js
+
+`const EMOJI_SYNONYMS` — maps emoji → `string[]` of search synonyms.
+Checked first by `emojiMatchesFilter()` before falling back to `EMOJI_KEYWORDS`.
+Covers: missing emojis (🫡, 🫥), color associations, scene clusters (grass, water, fire), theme clusters (tool, music, sport, space).
+
+---
+
+## js/state.js
+
+Single file for all emoji/icon data **and** mutable globals. Structure (in order):
+
+### 1. EMOJI & ICON DATA
+```js
+const ICONS = {
+    defaultDial, defaultGroup, defaultTab,   // default emojis for entities
+    faviconFallback,                          // '🌐' — favicon load failure
+    edit, delete, search,                     // UI affordances
+    ok, warn, error, undo, loading,           // status/toast indicators
+};
+
+const EMOJI_CATEGORIES = [ ... ];   // categorized full emoji set
+const EMOJI_LIST = ...;             // flat list (no flags), for random picking
+const GROUP_EMOJIS = [ ... ];       // curated emoji list for groups
+const EMOJI_KEYWORDS = { ... };     // emoji → primary keyword string (search fallback)
+```
+
+### 2. STATE variables
 ```js
 let data = { tabs: [] }          // full data tree
-let activeTabId = null            // currently visible tab id
-let editMode = false              // edit mode toggle
-let editingTabId = null           // id of tab being edited in modal
-let editingGroupId = null         // id of group being edited in modal
-let editingDialId = null          // id of dial being edited in modal
-let editingDialGroupId = null     // group id of dial being edited
-let currentIconSrc = 'favicon'    // 'favicon' | 'emoji' | 'custom' | 'none'
-let currentDialEmoji = '😀'
-let currentGroupEmoji = '📁'      // '' means no-icon
-let currentTabEmoji = '🗂'        // '' means no-icon
-let currentGroupSize = 140        // px — bound to group size slider
-let selectedFaviconUrl = ''       // favicon chosen in picker
-let dragSrcGroupId = null         // drag state
-let dragSrcDialId = null          // drag state
-let dragSrcTabId = null           // source tab id for cross-tab dial moves
-let dragSrcType = null            // 'dial' | 'group'
-let pendingImageBlob = null       // image blob waiting to be uploaded on dial save
+let activeTabId = null
+let editMode = false
+let editingTabId/GroupId/DialId/DialGroupId = null
+let currentIconSrc = 'favicon'   // 'favicon' | 'emoji' | 'custom' | 'none'
+let currentDialEmoji = ICONS.defaultDial
+let currentGroupEmoji = ICONS.defaultGroup
+let currentTabEmoji = ICONS.defaultTab
+let currentGroupSize = 140       // px — bound to group size slider
+let selectedFaviconUrl = ''
+let dragSrcGroupId/DialId/TabId = null
+let dragSrcType = null           // 'dial' | 'group'
+let pendingImageBlob = null      // image blob waiting to be uploaded on dial save
+let logoAnimEnabled = true
 ```
+
+> **Rule**: STATE comes after emoji/icon data so `currentDialEmoji = ICONS.defaultDial` is valid.
+
+---
+
+## js/themes.js
+
+- `const THEMES = [...]` — array of theme objects `{ name, dataTheme, colors... }`
+- `applyTheme(name)` — sets `body[data-theme]`
+- `loadTheme()` — reads `localStorage.speedDialTheme`, calls `applyTheme()`
+- `renderThemeSelector()` — builds the theme picker UI
+
+---
+
+## js/persistence.js
+
+- `loadData()` — reads `localStorage.speedDial_v2`, migrates old `{groups}` format (no tabs wrapper)
+- `saveData()` — `localStorage.setItem('speedDial_v2', JSON.stringify(data))`
+- `getActiveTab()` — returns `data.tabs.find(t => t.id === activeTabId)`
+
+---
+
+## js/utils.js
+
+- `uid()` — `Date.now().toString(36) + random` → `[a-z0-9]+`
+- `resizeImage(file)` → Promise&lt;Blob&gt; — resizes to 400×300 cover crop, JPEG 0.85
+- `uploadDialImage(id, blob)` — POST `/api/upload/<id>`
+- `deleteDialImage(id)` — DELETE `/api/upload/<id>`
+- `handleDropZonePaste(e)` / `handleImageFile(file)` — image paste/drop into custom icon zone
+- `pickRandomEmoji(list)` — random item from array
+- `getDomain(url)` / `getFaviconCandidates(url)` — favicon URL candidates
+- `attachFavicon(imgEl, dialUrl, fallbackEmoji)` — tries candidates via `onerror` chain
+- `showToast(msg)` / `showToastUndo(msg, backup)` / `undoDelete(encodedBackup)`
+- `showConfirm(title, message, onConfirm)` — confirm dialog
+
+---
+
+## js/render.js
+
+- `render()` — calls `renderTabs()`, `updateDialCount()`, rebuilds `#groupsContainer`
+- `renderTabs()` — renders tab buttons + inline group jump chips; supports dial drag-onto-tab
+- `makeDialCard(dial, groupId, gi, di)` — builds one dial card:
+  - `iconType === 'custom' && dial.icon` → `.dial-screenshot` full-bleed
+  - `iconType === 'none'` → `.dial-no-icon`
+  - `iconType === 'emoji'` → emoji span
+  - otherwise → favicon via `attachFavicon()`
+- `updateClock()` — writes to `#headerClock` / `#headerDate`
+- `updateDialCount()` — writes `N groups · N dials` to `#headerDialCount`
+- `escHtml(str)` — HTML-escapes `& < > " '`
+
+---
+
+## js/drag-drop.js
+
+All drag & drop logic:
+- `onDialDragStart/Over/Drop()`, `onDialDropOnGroup()`
+- `onGroupDragStart/Over/Drop()`
+- `clearDropIndicators()`, `resetHoverAfterDrag()`
+- Global `dragend` on `document` clears indicators
+
+### Key patterns
+- Dial reorder: `drop-before`/`drop-after` class based on `e.clientX` vs card midpoint
+- Cross-tab drop: dial moves to `tgtTab.groups[0].dials.unshift(dial)`, tab switches to target
+- `resetHoverAfterDrag()` — adds `body.post-drag` for 300ms to suppress stuck hover overlays (Safari fix)
+
+---
+
+## js/crud.js
+
+- `toggleEditMode()` — flips `editMode`, syncs `body.edit-mode` class + draggable state
+- **Tab CRUD**: `openTabModal()`, `saveTab()`, `deleteTab()`
+- **Group CRUD**: `openGroupModal()`, `saveGroup()`, `deleteGroup()`, `moveGroup()`, `setGroupSize()`
+- **Dial CRUD**: `openDialModal()`, `saveDial()`, `_doSaveDial()`, `deleteDial()`, `moveDial()`
+- **Icon source**: `setIconSrc(src)` — toggles favicon/emoji/custom/none panels
+- `previewCustomIcon()` — debounced preview for custom icon URL input
+- `fetchPageTitle()` / `onUrlInput()` — auto-fetch page title on URL blur
+
+---
+
+## js/pickers.js
+
+- `initEmojiPickers()` — builds dial/group/tab pickers once; `buildEmojiPicker(id, type)`
+- `toggleEmojiPicker(type)` — open/close with search clear + focus
+- `selectEmoji(type, emoji)` — sets currentXxxEmoji, clears no-icon state
+- `randomEmoji(type)` — picks from EMOJI_LIST
+- `emojiName(e)` — `EMOJI_KEYWORDS[e] || e`
+- `emojiMatchesFilter(e, filter)` — checks `EMOJI_SYNONYMS[e]` first, then `EMOJI_KEYWORDS[e]`
+- `loadFaviconOptions(url)` / `renderFaviconTiles()` — favicon picker in dial modal
+- `exportData()` / `openImportModal()` / `importData()` — JSON import/export
+
+---
+
+## js/logo-animation.js
+
+Multi-phase entrance animation on every page load (if enabled).
+
+**Phases**: Drive in → Bow wave → Continue → Impact shockwave → Vanish + sparks → Assemble
+
+- `initLogoAnimation()` — reads `localStorage.logoAnim`, splits logo into `<span class="logo-char">`, schedules run
+- `runLogoAnimation()` — orchestrates phases via nested `setTimeout`s
+- `spawnSparks(x, y)` — 7 `.logo-spark` divs burst from letter centers, auto-remove after 550ms
+- `toggleLogoAnim()` — flips `logoAnimEnabled`, persists to `localStorage`
+
+---
+
+## js/init.js
+
+`DOMContentLoaded` bootstrap — runs `loadTheme()`, `loadData()`, `initEmojiPickers()`, `render()`, `updateClock()`, `setInterval(updateClock, 1000)`, `initLogoAnimation()`. Also sets up keyboard shortcuts (Escape closes modals) and modal backdrop click handlers.
 
 ---
 
 ## Render pipeline
-- `render()` calls `renderTabs()`, `updateDialCount()`, + `renderGroups()` — always full DOM rebuild, no diffing
-- `makeDialCard(dial, groupId, gi, di)` — builds one dial card DOM element:
-  - `dial.iconType === 'custom' && dial.icon` → `.dial-card.dial-screenshot` full-bleed image
-  - `dial.iconType === 'none'` → `.dial-card.dial-no-icon` — no icon element, name fills card
-  - `dial.iconType === 'emoji'` → emoji icon
-  - otherwise → favicon with `attachFavicon()` fallback chain
-- `renderTabs()`: only renders emoji span if `tab.emoji` is truthy; appends `.tabs-groups-sep` + `.group-jump-chip` buttons after tabs for the active tab's groups
-- `renderGroups()`: only appends emojiSpan if `group.emoji` is truthy
-- After any data change: `saveData(); render();`
 
-## Header live widgets
-- `updateClock()` — writes `HH:MM:SS` to `#headerClock` and formatted date to `#headerDate`; called once at init then every 1s via `setInterval`
-- `updateDialCount()` — writes `N groups · N dials` to `#headerDialCount` for the active tab; called inside `render()` so always in sync
+Always full DOM rebuild — no diffing:
+```
+render() → renderTabs() + updateDialCount() + rebuild #groupsContainer
+```
+After any data change: `saveData(); render();`
 
 ---
 
-## No-icon feature
-- **Dials**: `iconType: 'none'`, `icon: ''` — set via `setIconSrc('none')`. Card gets `.dial-no-icon` class, no iconWrap rendered.
-- **Tabs/Groups**: `emoji: ''` — set via `setNoIcon(type)`. `''` is the explicit no-icon sentinel; `undefined` (old data) falls back to default emoji on load.
-- `setNoIcon(type)` — sets currentTabEmoji/currentGroupEmoji to `''`, shows `—` placeholder with `.emoji-preview-none` class on preview, marks `*NoIconBtn` as `.active`.
-- `selectEmoji()` and `randomEmoji()` both clear no-icon state (remove `.emoji-preview-none`, remove `.active` from no-icon button).
-- `openTabModal()` / `openGroupModal()` use `tab.emoji !== undefined ? tab.emoji : default` to preserve `''` while defaulting truly missing old-data fields.
+## Image upload flow
 
----
-
-## Key patterns
-- Undo toasts: `showToastUndo(msg, backup)` — backup is `JSON.stringify(data)` taken before mutation
-- Favicon loading: `attachFavicon()` tries ordered candidates via `img.onerror` chain, falls back to emoji
-- Page title auto-fetch: `fetchPageTitle()` on URL field blur, uses `fetch()` + regex on raw HTML
-- Emoji picker built once in `initEmojiPickers()`, reused across all modals; search is client-side filter over `EMOJI_CATEGORIES`
-
-## Drag & drop — key patterns
-
-### Dial reordering within a group
-- `onDialDragOver`: adds `drop-before` or `drop-after` class to the hovered card based on `e.clientX` vs card midpoint
-- `clearDropIndicators()`: removes `drop-before`/`drop-after` from all `.dial-card` elements (also clears `.dials-grid.dial-drag-over`)
-- Global `dragend` on `document`: calls `clearDropIndicators()` only
-
-### Cross-tab dial move
-- Drag dial → drop onto a **different tab button** → dial moves to `tgtTab.groups[0].dials` as first element (`unshift`)
-- Tab switches to target tab after drop
-- `dragSrcTabId` is set in `onDialDragStart` to track source tab
-- After drop: `requestAnimationFrame` adds `.dial-just-dropped` to the placed card for glow+shake animation
-
-### Hover overlay stuck after drag (Safari)
-- `dragend` on detached elements doesn't bubble in Safari → can't rely on `dragend` to clean up hover state
-- Fix: call `resetHoverAfterDrag()` directly from every drop handler
-- `resetHoverAfterDrag()` adds `body.post-drag` for 300ms which suppresses `.dial-overlay-btns` and `.dial-edit-overlay`
-
-### Tab dragover must always call `e.preventDefault()` for different tabs
-- The `dragSrcType === 'dial'` guard must NOT be placed in `dragover` (breaks drop acceptance)
-- `dragover` always calls `e.preventDefault()` for any drag over a different tab; drop handler guards logic
-
-### Unshift vs push
-- Drops without a specific position (onto group, onto tab button) always insert as **first** element (`unshift`)
-- `onDialDropOnGroup` is a no-op if dial is already first in that group
-
-## Image upload flow (custom icon → file/paste)
-1. User pastes or drops image onto `#imgDropZone` (contenteditable), or picks file via `#imgFileInput`
-2. `handleImageFile(file)` → `resizeImage(file)` resizes to canvas → stores blob in `pendingImageBlob`
-3. On `_doSaveDial()`: if `pendingImageBlob` is set → `uploadDialImage(newId, blob)` POSTs to `/api/upload/<id>`
-4. nginx proxies to uploader sidecar → saves as `/uploads/<id>.jpg`
-5. Dial saved with `icon: /uploads/<id>.jpg`, `iconType: 'custom'`
-6. Typing a URL in the custom icon text field cancels `pendingImageBlob`
+1. Paste/drop onto `#imgDropZone` or pick via `#imgFileInput`
+2. `handleImageFile(file)` → `resizeImage()` → stores blob in `pendingImageBlob`
+3. `_doSaveDial()` — if `pendingImageBlob` set → POST `/api/upload/<id>` → `icon: /uploads/<id>.jpg`
+4. Typing a custom icon URL cancels `pendingImageBlob`

@@ -25,9 +25,28 @@ mutate data → saveData() → render()
 ## Page title auto-fetch
 - `fetchPageTitle()` fires on URL field blur — `fetch()` + regex on raw HTML
 
+## Icons & emoji — single source of truth
+
+All UI icons/emojis are defined in `js/state.js` (loaded first). Never hardcode emoji strings outside of data definitions:
+
+```js
+// ✅ correct
+showToast(`${ICONS.warn} Please enter a name`);
+button.textContent = ICONS.edit;
+
+// ❌ wrong
+showToast('⚠️ Please enter a name');
+button.textContent = '✏️';
+```
+
+`ICONS` keys: `defaultDial`, `defaultGroup`, `defaultTab`, `faviconFallback`, `edit`, `delete`, `search`, `ok`, `warn`, `error`, `undo`, `loading`.
+
+Emoji data (all in `js/state.js`): `ICONS`, `EMOJI_CATEGORIES`, `EMOJI_LIST`, `GROUP_EMOJIS`, `EMOJI_KEYWORDS`.
+Synonym search data: `EMOJI_SYNONYMS` in `js/emoji-synonyms.js`.
+
 ## Emoji picker
 - Built once in `initEmojiPickers()`, reused across all modals
-- Search is client-side filter over `EMOJI_CATEGORIES`
+- Search checks `EMOJI_SYNONYMS[e]` first (synonym array), then `EMOJI_KEYWORDS[e]` (primary keyword string)
 
 ## Themes
 - Applied via `data-theme` attribute on `body`

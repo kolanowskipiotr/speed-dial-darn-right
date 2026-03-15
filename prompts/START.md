@@ -7,13 +7,37 @@ Pure frontend (HTML + CSS + JS) served by nginx in Docker. No framework, no buil
 ```
 speed-dial.html          — all HTML: header, modals, main container
 css/style.css            — all styles, CSS vars, themes
-js/app.js                — all logic
+
+js/emoji-synonyms.js     — EMOJI_SYNONYMS map (emoji → synonym array) for enhanced search
+js/state.js              — ICONS const, EMOJI_CATEGORIES, EMOJI_LIST, GROUP_EMOJIS,
+                           EMOJI_KEYWORDS, then STATE variables (all mutable globals)
+js/themes.js             — THEMES array, applyTheme(), loadTheme(), renderThemeSelector()
+js/persistence.js        — loadData(), saveData(), getActiveTab()
+js/utils.js              — uid(), resizeImage(), uploadDialImage(), deleteDialImage(),
+                           handleDropZonePaste(), handleImageFile(), pickRandomEmoji(),
+                           getDomain(), getFaviconCandidates(), attachFavicon(),
+                           showToast(), showToastUndo(), undoDelete(), showConfirm()
+js/render.js             — render(), renderTabs(), makeDialCard(), updateClock(),
+                           updateDialCount(), escHtml()
+js/drag-drop.js          — all drag & drop handlers
+js/crud.js               — toggleEditMode(), all Tab/Group/Dial CRUD, setIconSrc(),
+                           previewCustomIcon(), fetchPageTitle(), saveDial()
+js/pickers.js            — initEmojiPickers(), buildEmojiPicker(), toggleEmojiPicker(),
+                           selectEmoji(), randomEmoji(), loadFaviconOptions(),
+                           emojiName(), emojiMatchesFilter(), exportData(), importData()
+js/logo-animation.js     — initLogoAnimation(), runLogoAnimation(), spawnSparks(),
+                           toggleLogoAnim(), updateAnimToggleUI()
+js/init.js               — DOMContentLoaded bootstrap: loads theme, data, inits pickers,
+                           renders, starts clock
+
 nginx.conf               — static serving + /data/, /uploads/, /api/upload/ proxy
 docker-compose.yml       — two services: speed-dial (nginx) + uploader (Node sidecar)
 Dockerfile               — nginx:1.27-alpine, serves html/css/js, volumes /data /uploads
 uploader/server.js       — tiny Node.js HTTP server (port 3001): POST/DELETE /upload/<id>
 uploader/Dockerfile      — node:20-alpine, runs server.js
 ```
+
+> `js/app.js` still exists but is **not loaded** by the HTML — it is the old monolithic file kept for reference only.
 
 ---
 
