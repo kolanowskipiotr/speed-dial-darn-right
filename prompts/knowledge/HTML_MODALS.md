@@ -41,5 +41,36 @@ imgUploadPreview               — shows resized image preview before save
 imgUploadStatus                — status text (⏳ Resizing… / ⏳ Uploading… / errors)
 
 -- Icon source toggle buttons --
-iconSrcFavicon, iconSrcEmoji, iconSrcCustom
+iconSrcFavicon, iconSrcEmoji, iconSrcCustom, iconSrcNone
 ```
+
+---
+
+## Tab modal — key input IDs
+```
+tabName
+tabEmojiPreview                — shows current emoji; click opens picker; shows '—' when no-icon
+tabEmojiPicker
+tabNoIconBtn                   — toggles no-icon mode (adds .active when active)
+tabDeleteBtn                   — shown only in edit mode
+```
+Label changed from "Emoji" → "Icon".
+
+---
+
+## Group modal — key input IDs
+```
+groupName
+groupSizeSlider, groupSizeValue
+groupEmojiPreview              — shows current emoji; shows '—' when no-icon
+groupEmojiPicker
+groupNoIconBtn                 — toggles no-icon mode (adds .active when active)
+```
+Label changed from "Emoji" → "Icon".
+
+---
+
+## No-icon behaviour (tabs, groups, dials)
+- **Tabs / Groups**: clicking "No icon" calls `setNoIcon(type)` → sets `currentTabEmoji` / `currentGroupEmoji` to `''`, preview shows `—` with `.emoji-preview-none` class, button gets `.active`. Saved as `emoji: ''`. Picking any emoji or hitting Random clears no-icon state.
+- **Dials**: fourth icon source button `iconSrcNone` / `setIconSrc('none')` — hides all icon panels, saves `iconType: 'none', icon: ''`.
+- Rendering skips the icon element entirely when no-icon; dial gets `.dial-no-icon` class.

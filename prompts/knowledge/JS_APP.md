@@ -12,17 +12,17 @@
 | ~548 | DRAG & DROP: DIALS — `clearDropIndicators()`, `onDialDragStart()`, `onDialDragOver()`, `onDialDrop()`, `onDialDropOnGroup()` |
 | ~636 | DRAG & DROP: GROUPS — `onGroupDragStart()`, `onGroupDragOver()`, `onGroupDrop()` |
 | ~674 | EDIT MODE — `toggleEditMode()` |
-| 590  | TAB CRUD — `openTabModal()`, `saveTab()`, `deleteTab()` |
-| 635  | GROUP CRUD — `openGroupModal()`, `saveGroup()`, `deleteGroup()`, `moveGroup()`, `setGroupSize()` |
-| 710  | DIAL CRUD — `openDialModal()`, `saveDial()`, `_doSaveDial()`, `deleteDial()`, `moveDial()` |
-| 762  | CUSTOM ICON PREVIEW — `previewCustomIcon()`, `onUrlInput()`, `fetchPageTitle()` |
-| 928  | ICON SOURCE — `setIconSrc()` toggles favicon/emoji/custom panels |
-| 953  | FAVICON PICKER — `loadFaviconOptions()`, `renderFaviconTiles()` |
-| 1036 | EMOJI PICKER — `buildEmojiPicker()`, `toggleEmojiPicker()`, `selectEmoji()`, `randomEmoji()` |
-| 1185 | MODAL HELPERS — `openModal()`, `closeModal()`, backdrop click-to-close |
-| 1199 | IMPORT / EXPORT — `exportData()`, `openImportModal()`, `importData()` |
-| 1234 | KEYBOARD SHORTCUTS — Escape closes modals |
-| 1241 | INIT — `loadTheme()`, `renderThemeSelector()`, `loadData()`, `initEmojiPickers()`, `render()` |
+| ~718 | TAB CRUD — `openTabModal()`, `saveTab()`, `deleteTab()` |
+| ~774 | GROUP CRUD — `openGroupModal()`, `saveGroup()`, `deleteGroup()`, `moveGroup()`, `setGroupSize()` |
+| ~836 | DIAL CRUD — `openDialModal()`, `saveDial()`, `_doSaveDial()`, `deleteDial()`, `moveDial()` |
+| ~762 | CUSTOM ICON PREVIEW — `previewCustomIcon()`, `onUrlInput()`, `fetchPageTitle()` |
+| ~1054 | ICON SOURCE — `setIconSrc()` toggles favicon/emoji/custom/none panels |
+| ~1079 | FAVICON PICKER — `loadFaviconOptions()`, `renderFaviconTiles()` |
+| ~1162 | EMOJI PICKER — `buildEmojiPicker()`, `toggleEmojiPicker()`, `selectEmoji()`, `randomEmoji()`, `setNoIcon()` |
+| ~1327 | MODAL HELPERS — `openModal()`, `closeModal()`, backdrop click-to-close |
+| ~1341 | IMPORT / EXPORT — `exportData()`, `openImportModal()`, `importData()` |
+| ~1376 | KEYBOARD SHORTCUTS — Escape closes modals |
+| ~1383 | INIT — `loadTheme()`, `renderThemeSelector()`, `loadData()`, `initEmojiPickers()`, `render()` |
 
 ---
 
@@ -35,10 +35,10 @@ let editingTabId = null           // id of tab being edited in modal
 let editingGroupId = null         // id of group being edited in modal
 let editingDialId = null          // id of dial being edited in modal
 let editingDialGroupId = null     // group id of dial being edited
-let currentIconSrc = 'favicon'    // 'favicon' | 'emoji' | 'custom'
+let currentIconSrc = 'favicon'    // 'favicon' | 'emoji' | 'custom' | 'none'
 let currentDialEmoji = '😀'
-let currentGroupEmoji = '📁'
-let currentTabEmoji = '🗂'
+let currentGroupEmoji = '📁'      // '' means no-icon
+let currentTabEmoji = '🗂'        // '' means no-icon
 let currentGroupSize = 140        // px — bound to group size slider
 let selectedFaviconUrl = ''       // favicon chosen in picker
 let dragSrcGroupId = null         // drag state
@@ -54,9 +54,21 @@ let pendingImageBlob = null       // image blob waiting to be uploaded on dial s
 - `render()` calls `renderTabs()` + `renderGroups()` — always full DOM rebuild, no diffing
 - `makeDialCard(dial, groupId, gi, di)` — builds one dial card DOM element:
   - `dial.iconType === 'custom' && dial.icon` → `.dial-card.dial-screenshot` full-bleed image
+  - `dial.iconType === 'none'` → `.dial-card.dial-no-icon` — no icon element, name fills card
   - `dial.iconType === 'emoji'` → emoji icon
   - otherwise → favicon with `attachFavicon()` fallback chain
+- `renderTabs()`: only renders emoji span if `tab.emoji` is truthy
+- `renderGroups()`: only appends emojiSpan if `group.emoji` is truthy
 - After any data change: `saveData(); render();`
+
+---
+
+## No-icon feature
+- **Dials**: `iconType: 'none'`, `icon: ''` — set via `setIconSrc('none')`. Card gets `.dial-no-icon` class, no iconWrap rendered.
+- **Tabs/Groups**: `emoji: ''` — set via `setNoIcon(type)`. `''` is the explicit no-icon sentinel; `undefined` (old data) falls back to default emoji on load.
+- `setNoIcon(type)` — sets currentTabEmoji/currentGroupEmoji to `''`, shows `—` placeholder with `.emoji-preview-none` class on preview, marks `*NoIconBtn` as `.active`.
+- `selectEmoji()` and `randomEmoji()` both clear no-icon state (remove `.emoji-preview-none`, remove `.active` from no-icon button).
+- `openTabModal()` / `openGroupModal()` use `tab.emoji !== undefined ? tab.emoji : default` to preserve `''` while defaulting truly missing old-data fields.
 
 ---
 
@@ -64,7 +76,7 @@ let pendingImageBlob = null       // image blob waiting to be uploaded on dial s
 - Undo toasts: `showToastUndo(msg, backup)` — backup is `JSON.stringify(data)` taken before mutation
 - Favicon loading: `attachFavicon()` tries ordered candidates via `img.onerror` chain, falls back to emoji
 - Page title auto-fetch: `fetchPageTitle()` on URL field blur, uses `fetch()` + regex on raw HTML
-- Emoji picker built once in `initEmojiPickers()`, reused; search is client-side filter over `EMOJI_CATEGORIES`
+- Emoji picker built once in `initEmojiPickers()`, reused across all modals; search is client-side filter over `EMOJI_CATEGORIES`
 
 ## Drag & drop — key patterns
 

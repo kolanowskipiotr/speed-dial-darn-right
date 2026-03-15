@@ -15,9 +15,12 @@
 | 423  | Dials grid — `--dial-size` CSS var set inline per group |
 | 438  | `.dial-card` — `width: var(--dial-size, 140px)`, `aspect-ratio: 4/3` |
 | 508  | `.dial-card.dial-screenshot` — full-bleed image card with name gradient overlay |
+| ~631 | `.dial-card.dial-no-icon` — name-only card (no icon), reduced padding, 9-line clamp |
 | 677  | Modal / form styles |
 | 784  | Dial size slider |
+| ~833 | `.emoji-preview-none` — dashed border, italic `—` placeholder for no-icon state |
 | 877  | Image upload zone (`#imgDropZone`, `#imgUploadPreview`) |
+| ~909 | Icon source toggle buttons (`.icon-source-btn`, `.icon-source-row`) |
 
 ---
 
@@ -37,6 +40,30 @@
 - Never hardcode colours — always use the CSS variables above
 - Dial size is controlled via `--dial-size` CSS var set inline on the group element
 - Theme is applied via `data-theme` attribute on `body`
+
+---
+
+## No-icon dial card
+```css
+.dial-card.dial-no-icon {
+    padding: 10px;          /* tighter than default 18px 12px 12px */
+}
+.dial-card.dial-no-icon .dial-name {
+    -webkit-line-clamp: 9;  /* more lines since no icon takes space */
+    width: 100%;
+}
+```
+
+## Emoji preview — no-icon state
+```css
+.emoji-preview.emoji-preview-none {
+    color: var(--text-dimmer);
+    font-size: 16px;
+    font-style: italic;
+    border-style: dashed;
+}
+```
+Applied by `setNoIcon(type)` / `openTabModal()` / `openGroupModal()` when emoji is `''`.
 
 ---
 

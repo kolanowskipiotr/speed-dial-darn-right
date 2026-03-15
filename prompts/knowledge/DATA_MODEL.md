@@ -8,12 +8,12 @@ localStorage key: `speedDial_v2`
     {
       id: string,         // uid()
       name: string,
-      emoji: string,
+      emoji: string,        // '' = no icon (explicit); undefined = old data, defaults to '🗂'
       groups: [
         {
           id: string,
           name: string,
-          emoji: string,
+          emoji: string,      // '' = no icon (explicit); undefined = old data, gets random emoji
           dialSize: number,   // px, 60–400, default 140, controls --dial-size CSS var
           dials: [
             {
@@ -21,8 +21,8 @@ localStorage key: `speedDial_v2`
               name: string,
               url: string,
               emoji: string,
-              iconType: 'favicon' | 'emoji' | 'custom',
-              icon: string,   // favicon URL, custom icon URL, or empty
+              iconType: 'favicon' | 'emoji' | 'custom' | 'none',
+              icon: string,   // favicon URL, custom icon URL, or '' when iconType='none'
             }
           ]
         }
