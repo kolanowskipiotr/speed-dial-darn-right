@@ -16,7 +16,7 @@ No module system — all files share the global scope. Load order matters.
 
 `const EMOJI_SYNONYMS` — maps emoji → `string[]` of search synonyms.
 Checked first by `emojiMatchesFilter()` before falling back to `EMOJI_KEYWORDS`.
-Covers: missing emojis (🫡, 🫥), color associations, scene clusters (grass, water, fire), theme clusters (tool, music, sport, space).
+Covers: missing emojis (🫡, 🫥), color associations, scene clusters (grass, water, fire), theme clusters (tool, music, sport, space), number keycaps (0️⃣–9️⃣, 🔟) with word/digit synonyms, richer face/emotion slang (lol, rofl, cringe, swag…), clothing & accessories, professions/roles, zodiac signs (♈–♓), communication/messaging, common symbols (❌✅💯…), abstract concepts, more animals, more food/drink, and places/architecture.
 
 ---
 
