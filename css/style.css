@@ -1379,7 +1379,19 @@
 
         @keyframes logo-drive-in {
             from { transform: translateX(110vw); }
+            to   { transform: translateX(var(--stop-x, 75vw)); }
+        }
+
+        @keyframes logo-drive-finish {
+            from { transform: translateX(var(--stop-x, 75vw)); }
             to   { transform: translateX(0); }
+        }
+
+        @keyframes logo-char-bow {
+            0%   { transform: translateY(0)    scale(1);    }
+            35%  { transform: translateY(-9px) scale(1.35); }
+            65%  { transform: translateY(3px)  scale(0.92); }
+            100% { transform: translateY(0)    scale(1);    }
         }
 
         @keyframes logo-char-impact {
@@ -1408,7 +1420,15 @@
         }
 
         .logo-driving {
-            animation: logo-drive-in 0.45s cubic-bezier(0.05, 0.7, 0.3, 1) forwards;
+            animation: logo-drive-in 0.4s cubic-bezier(0.05, 0.7, 0.3, 1) forwards;
+        }
+
+        .logo-driving-finish {
+            animation: logo-drive-finish 0.22s ease-in forwards;
+        }
+
+        .logo-char-bow {
+            animation: logo-char-bow 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
 
         .logo-char-impact {
