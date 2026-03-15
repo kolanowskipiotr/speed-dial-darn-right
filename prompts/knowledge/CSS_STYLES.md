@@ -21,6 +21,7 @@
 | ~833 | `.emoji-preview-none` — dashed border, italic `—` placeholder for no-icon state |
 | 877  | Image upload zone (`#imgDropZone`, `#imgUploadPreview`) |
 | ~909 | Icon source toggle buttons (`.icon-source-btn`, `.icon-source-row`) |
+| end  | Logo crash animation keyframes + classes; `.anim-toggle` (edit mode only) |
 
 ---
 
@@ -125,6 +126,28 @@ Tab reordering uses a simple border+background highlight, not the bracket indica
 .dial-card.dial-just-dropped { animation: dial-drop-land 0.7s ease-out forwards; }
 ```
 `dial-drop-land` keyframes: glow box-shadow expanding then fading + scale+rotate shake.
+
+---
+
+## Logo crash animation classes
+
+| Class | Description |
+|-------|-------------|
+| `.logo-char` | `display: inline-block` — applied to every character span split by JS |
+| `.logo-driving` | `logo-drive-in` keyframe — translateX(110vw → var(--stop-x)); 0.4s |
+| `.logo-driving-finish` | `logo-drive-finish` keyframe — translateX(var(--stop-x) → 0); 0.22s ease-in |
+| `.logo-char-bow` | `logo-char-bow` keyframe — translateY + scale pop with spring overshoot; 0.36s |
+| `.logo-char-impact` | `logo-char-impact` keyframe — per-letter bounce using `--bi` intensity (0–1); 0.34s |
+| `.logo-char-vanish` | `logo-char-vanish` keyframe — scale(0.4) + opacity 0; 0.16s ease-in |
+| `.logo-char-assemble` | `logo-char-assemble` keyframe — translate(--dx,--dy) rotate(--dr) → origin; 0.6s spring |
+| `.logo-spark` | Fixed-position particle; accent colour with glow; `logo-spark-burst` 0.5s; auto-removed by JS |
+
+`--stop-x` CSS custom property is set inline on `.logo` by JS before the animation starts (right edge of last tab minus logo left).
+
+### Anim toggle
+`.anim-toggle` — same structure as `.edit-toggle` (reuses `.toggle-track` / `.toggle-thumb`); `display: none` by default, `display: flex` when `body.edit-mode`. Active state styles scoped to `.anim-toggle.active`.
+
+---
 
 ### Post-drag hover suppression
 ```css

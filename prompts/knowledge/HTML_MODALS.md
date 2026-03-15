@@ -4,7 +4,7 @@
 ```
 <header>  — CSS grid: 1fr auto 1fr
   .header-left
-    .logo                   — "⚡ Speed Dial Darn Right"
+    #logoText               — "⚡ Speed Dial Darn Right"; split into .logo-char spans by initLogoAnimation()
     #headerDialCount        — "N groups · N dials" for active tab (updated by updateDialCount())
   .header-center
     #headerClock            — live HH:MM:SS (updated every 1s by updateClock())
@@ -13,6 +13,8 @@
     #themeSelector          — theme swatches (edit mode only)
     .theme-sep              — vertical divider (edit mode only)
     .btn-export × 2         — Export JSON, Import (edit mode only)
+    #animToggle             — ⚡ Anim on/off toggle (edit mode only); calls toggleLogoAnim()
+    .theme-sep.anim-sep     — vertical divider (edit mode only)
     #editToggle             — Edit/Editing toggle
 ```
 
