@@ -2,7 +2,7 @@ services:
 
   uploader:
     build:
-      context: ./uploader
+      context: uploader
     container_name: speed-dial-uploader
     restart: unless-stopped
     volumes:

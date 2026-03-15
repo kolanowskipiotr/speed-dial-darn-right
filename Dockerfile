@@ -8,8 +8,8 @@ COPY nginx.conf /etc/nginx/conf.d/speed-dial.conf
 
 # Copy the app
 COPY speed-dial.html /usr/share/nginx/html/index.html
-COPY css/ /usr/share/nginx/html/css/
-COPY js/ /usr/share/nginx/html/js/
+COPY css /usr/share/nginx/html/css/
+COPY js /usr/share/nginx/html/js/
 
 # Create directories for future persistent storage.
 # These will be overridden by the volumes defined in docker-compose,
