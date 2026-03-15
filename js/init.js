@@ -12,3 +12,4 @@ updateClock();
 updateDialCount();
 setInterval(updateClock, 1000);
 initLogoAnimation();
+initSearch();
