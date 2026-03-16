@@ -180,6 +180,15 @@ function openDialModal(dialId = null, groupId = null) {
                 document.getElementById('dialCustomIcon').value = dial.icon || '';
                 if (dial.icon) setTimeout(() => previewCustomIcon(), 50);
             }
+            else if (dial.iconType === 'color') {
+                const c = dial.colors || {};
+                document.getElementById('colorTL').value     = c.tl     || '#4361ee';
+                document.getElementById('colorTR').value     = c.tr     || '#7209b7';
+                document.getElementById('colorBL').value     = c.bl     || '#f72585';
+                document.getElementById('colorBR').value     = c.br     || '#4cc9f0';
+                document.getElementById('colorCenter').value = c.center || '#1a1a2e';
+                setIconSrc('color');
+            }
             else {
                 setIconSrc('favicon');
                 // Pre-select the stored icon if available
@@ -294,7 +303,7 @@ async function _doSaveDial() {
 
     const newId = editingDialId || uid();
 
-    let icon, iconType;
+    let icon, iconType, colors;
     if (pendingImageBlob) {
         const statusEl = document.getElementById('imgUploadStatus');
         if (statusEl) statusEl.textContent = `${ICONS.loading} Uploading…`;
@@ -317,6 +326,10 @@ async function _doSaveDial() {
     } else if (currentIconSrc === 'custom') {
         icon = document.getElementById('dialCustomIcon').value.trim();
         iconType = 'custom';
+    } else if (currentIconSrc === 'color') {
+        icon = '';
+        iconType = 'color';
+        colors = getDialColors();
     } else {
         icon = currentDialEmoji;
         iconType = 'emoji';
@@ -325,11 +338,17 @@ async function _doSaveDial() {
     if (editingDialId) {
         const group = getActiveTab().groups.find(g => g.id === editingDialGroupId);
         const dial = group?.dials.find(d => d.id === editingDialId);
-        if (dial) { dial.name = name; dial.url = url; dial.icon = icon; dial.iconType = iconType; dial.emoji = currentDialEmoji; }
+        if (dial) {
+            dial.name = name; dial.url = url; dial.icon = icon;
+            dial.iconType = iconType; dial.emoji = currentDialEmoji;
+            if (colors) dial.colors = colors; else delete dial.colors;
+        }
     } else {
         const group = getActiveTab().groups.find(g => g.id === editingDialGroupId);
         if (group) {
-            group.dials.push({ id: newId, name, url, icon, iconType, emoji: currentDialEmoji });
+            const dialObj = { id: newId, name, url, icon, iconType, emoji: currentDialEmoji };
+            if (colors) dialObj.colors = colors;
+            group.dials.push(dialObj);
         }
     }
 
@@ -370,13 +389,14 @@ function moveDial(groupId, dialId, dir) {
 // ─── ICON SOURCE ────────────────────────────────────────────────
 function setIconSrc(src) {
     currentIconSrc = src;
-    ['favicon','emoji','custom','none'].forEach(s => {
+    ['favicon','emoji','custom','color','none'].forEach(s => {
         const btn = document.getElementById('iconSrc' + s.charAt(0).toUpperCase() + s.slice(1));
         if (btn) btn.classList.toggle('active', s === src);
     });
     document.getElementById('faviconPickerGroup').style.display = src === 'favicon' ? '' : 'none';
     document.getElementById('emojiPickerGroup').style.display = src === 'emoji' ? '' : 'none';
     document.getElementById('customIconGroup').style.display = src === 'custom' ? '' : 'none';
+    document.getElementById('colorPickerGroup').style.display = src === 'color' ? '' : 'none';
     if (src !== 'custom') {
         const p = document.getElementById('customIconPreview');
         if (p) p.style.display = 'none';
@@ -390,4 +410,34 @@ function setIconSrc(src) {
         // focus the drop zone (contenteditable) so Ctrl/Cmd+V paste fires on it
         setTimeout(() => document.getElementById('imgDropZone').focus(), 30);
     }
+    if (src === 'color') {
+        updateColorPreview();
+    }
+}
+
+// ─── COLOR PICKER ────────────────────────────────────────────────
+function getDialColors() {
+    return {
+        tl:     document.getElementById('colorTL').value,
+        tr:     document.getElementById('colorTR').value,
+        bl:     document.getElementById('colorBL').value,
+        br:     document.getElementById('colorBR').value,
+        center: document.getElementById('colorCenter').value,
+    };
+}
+
+function buildColorGradient(colors) {
+    return [
+        `radial-gradient(circle at top left,     ${colors.tl} 0%, transparent 70%)`,
+        `radial-gradient(circle at top right,    ${colors.tr} 0%, transparent 70%)`,
+        `radial-gradient(circle at bottom left,  ${colors.bl} 0%, transparent 70%)`,
+        `radial-gradient(circle at bottom right, ${colors.br} 0%, transparent 70%)`,
+        colors.center,
+    ].join(', ');
+}
+
+function updateColorPreview() {
+    const preview = document.getElementById('colorPreview');
+    if (!preview) return;
+    preview.style.background = buildColorGradient(getDialColors());
 }

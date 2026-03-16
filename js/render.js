@@ -315,8 +315,21 @@ function makeDialCard(dial, groupId, gi, di, opts = {}) {
     card.dataset.groupId = groupId;
 
     const isScreenshot = dial.iconType === 'custom' && dial.icon;
+    const isColor = dial.iconType === 'color';
 
-    if (isScreenshot) {
+    if (isColor) {
+        // ── Color gradient card ───────────────────────────────────────
+        card.className = 'dial-card dial-color';
+        const c = dial.colors || {};
+        card.style.background = [
+            `radial-gradient(circle at top left,     ${c.tl     || '#4361ee'} 0%, transparent 70%)`,
+            `radial-gradient(circle at top right,    ${c.tr     || '#7209b7'} 0%, transparent 70%)`,
+            `radial-gradient(circle at bottom left,  ${c.bl     || '#f72585'} 0%, transparent 70%)`,
+            `radial-gradient(circle at bottom right, ${c.br     || '#4cc9f0'} 0%, transparent 70%)`,
+            c.center || '#1a1a2e',
+        ].join(', ');
+
+    } else if (isScreenshot) {
         // ── Full-bleed screenshot card ────────────────────────────────
         card.className = 'dial-card dial-screenshot';
 
@@ -336,7 +349,7 @@ function makeDialCard(dial, groupId, gi, di, opts = {}) {
         };
         card.appendChild(img);
 
-    } else {
+    } else if (!isColor) {
         // ── Standard card (emoji / favicon / none) ───────────────────
         card.className = 'dial-card' + (dial.iconType === 'none' ? ' dial-no-icon' : '');
 

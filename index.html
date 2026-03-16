@@ -88,6 +88,7 @@
                 </button>
                 <button class="icon-source-btn" id="iconSrcEmoji" onclick="setIconSrc('emoji')">Emoji</button>
                 <button class="icon-source-btn" id="iconSrcCustom" onclick="setIconSrc('custom')">Custom URL</button>
+                <button class="icon-source-btn" id="iconSrcColor" onclick="setIconSrc('color')">Color</button>
                 <button class="icon-source-btn" id="iconSrcNone" onclick="setIconSrc('none')">None</button>
             </div>
         </div>
@@ -126,6 +127,31 @@
             <div id="imgUploadPreview"
                  style="display:none; max-width:200px; aspect-ratio:4/3; border-radius:8px; overflow:hidden; margin-top:8px; border:1px solid var(--border);"></div>
             <div id="imgUploadStatus" style="font-size:11px; color:var(--text-dimmer); margin-top:4px;"></div>
+        </div>
+        <div class="form-group" id="colorPickerGroup" style="display:none">
+            <div class="color-grid">
+                <div class="color-cell">
+                    <label class="color-cell-label">Top left</label>
+                    <input type="color" class="color-swatch-input" id="colorTL" value="#4361ee" oninput="updateColorPreview()">
+                </div>
+                <div class="color-cell color-cell-center">
+                    <label class="color-cell-label">Center</label>
+                    <input type="color" class="color-swatch-input" id="colorCenter" value="#1a1a2e" oninput="updateColorPreview()">
+                </div>
+                <div class="color-cell color-cell-right">
+                    <label class="color-cell-label">Top right</label>
+                    <input type="color" class="color-swatch-input" id="colorTR" value="#7209b7" oninput="updateColorPreview()">
+                </div>
+                <div class="color-cell">
+                    <label class="color-cell-label">Bot left</label>
+                    <input type="color" class="color-swatch-input" id="colorBL" value="#f72585" oninput="updateColorPreview()">
+                </div>
+                <div class="color-cell color-cell-right">
+                    <label class="color-cell-label">Bot right</label>
+                    <input type="color" class="color-swatch-input" id="colorBR" value="#4cc9f0" oninput="updateColorPreview()">
+                </div>
+            </div>
+            <div id="colorPreview" class="color-preview"></div>
         </div>
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal('dialModal')">Cancel</button>
