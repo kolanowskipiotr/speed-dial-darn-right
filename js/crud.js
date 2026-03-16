@@ -16,9 +16,9 @@ function toggleEditMode() {
 // ─── TAB CRUD ───────────────────────────────────────────────────
 function openTabModal(tabId = null) {
     editingTabId = tabId;
-    document.getElementById('tabModalTitle').textContent = tabId ? 'Edit Tab' : 'Add Tab';
-    document.getElementById('tabDeleteBtn').style.display = tabId ? '' : 'none';
     const tab = tabId ? data.tabs.find(t => t.id === tabId) : null;
+    document.getElementById('tabModalTitle').textContent = tab?.isHome ? 'Edit Start Tab' : (tabId ? 'Edit Tab' : 'Add Tab');
+    document.getElementById('tabDeleteBtn').style.display = (tabId && !tab?.isHome) ? '' : 'none';
     document.getElementById('tabName').value = tab ? tab.name : '';
     currentTabEmoji = tab ? (tab.emoji !== undefined ? tab.emoji : ICONS.defaultTab) : ICONS.defaultTab;
     const tabPreview = document.getElementById('tabEmojiPreview');
@@ -55,6 +55,7 @@ function deleteTab(tabId) {
     if (data.tabs.length <= 1) { showToast(`${ICONS.warn} Cannot delete the last tab`); return; }
     const t = data.tabs.find(t => t.id === tabId);
     if (!t) return;
+    if (t.isHome) { showToast(`${ICONS.warn} The Start tab cannot be deleted`); return; }
     showConfirm(
         `${ICONS.delete} Delete tab?`,
         `"${t.name}" and all its groups and dials will be removed.`,

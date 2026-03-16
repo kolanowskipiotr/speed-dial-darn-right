@@ -125,6 +125,68 @@ function renderTabs() {
     }
 }
 
+function trackDialVisit(dialId) {
+    for (const tab of data.tabs) {
+        for (const group of tab.groups || []) {
+            const dial = group.dials.find(d => d.id === dialId);
+            if (dial) {
+                dial.visitCount = (dial.visitCount || 0) + 1;
+                saveData();
+                return;
+            }
+        }
+    }
+}
+
+function renderHomeTab() {
+    const container = document.getElementById('groupsContainer');
+    const empty = document.getElementById('emptyState');
+    container.innerHTML = '';
+    empty.style.display = 'none';
+    document.getElementById('addGroupBtn').style.display = 'none';
+
+    // Collect all visited dials across non-home tabs
+    const visitedDials = [];
+    for (const tab of data.tabs) {
+        if (tab.isHome) continue;
+        for (const group of tab.groups || []) {
+            for (const dial of group.dials || []) {
+                if ((dial.visitCount || 0) > 0) {
+                    visitedDials.push({ dial, groupId: group.id, groupName: group.name, tabName: tab.name });
+                }
+            }
+        }
+    }
+    visitedDials.sort((a, b) => (b.dial.visitCount || 0) - (a.dial.visitCount || 0));
+
+    if (!visitedDials.length) {
+        const emptyEl = document.createElement('div');
+        emptyEl.className = 'empty-state';
+        emptyEl.innerHTML = `<div class="empty-icon">⭐</div><p>No frequently used dials yet.<br>Click dials on other tabs and they'll appear here.</p>`;
+        container.appendChild(emptyEl);
+        return;
+    }
+
+    const section = document.createElement('div');
+    section.className = 'home-section';
+
+    const heading = document.createElement('div');
+    heading.className = 'home-section-heading';
+    heading.textContent = 'Frequently Used';
+    section.appendChild(heading);
+
+    const grid = document.createElement('div');
+    grid.className = 'dials-grid';
+    grid.style.setProperty('--dial-size', '140px');
+
+    visitedDials.forEach(({ dial, groupId, groupName, tabName }) => {
+        grid.appendChild(makeDialCard(dial, groupId, 0, 0, { showMeta: true, tabName, groupName }));
+    });
+
+    section.appendChild(grid);
+    container.appendChild(section);
+}
+
 function render() {
     renderTabs();
     updateDialCount();
@@ -133,6 +195,12 @@ function render() {
     container.innerHTML = '';
 
     const tab = getActiveTab();
+
+    if (tab?.isHome) {
+        renderHomeTab();
+        return;
+    }
+
     const groups = tab ? tab.groups : [];
 
     document.getElementById('addGroupBtn').style.display = '';  // let CSS control via body.edit-mode
@@ -239,7 +307,7 @@ function render() {
     });
 }
 
-function makeDialCard(dial, groupId, gi, di) {
+function makeDialCard(dial, groupId, gi, di, opts = {}) {
     const card = document.createElement('div');
     card.dataset.id = dial.id;
     card.dataset.groupId = groupId;
@@ -303,10 +371,19 @@ function makeDialCard(dial, groupId, gi, di) {
     name.textContent = dial.name;
     card.appendChild(name);
 
-    // Edit overlay
-    const overlay = document.createElement('div');
-    overlay.className = 'dial-edit-overlay';
-    overlay.innerHTML = `
+    // Meta label: tab / group context (shown on home tab)
+    if (opts.showMeta) {
+        const meta = document.createElement('div');
+        meta.className = 'dial-meta';
+        meta.textContent = `${opts.tabName} · ${opts.groupName}`;
+        card.appendChild(meta);
+    }
+
+    if (!opts.showMeta) {
+        // Edit overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'dial-edit-overlay';
+        overlay.innerHTML = `
     <div class="dial-overlay-btns">
       <button class="btn-icon" title="Move left" onclick="moveDial('${groupId}','${dial.id}',-1)">←</button>
       <button class="btn-icon" title="Edit" onclick="openDialModal('${dial.id}','${groupId}')">${ICONS.edit}</button>
@@ -315,29 +392,30 @@ function makeDialCard(dial, groupId, gi, di) {
     </div>
   `;
 
-    // Drag handle overlay
-    const dragHandle = document.createElement('div');
-    dragHandle.className = 'dial-drag-handle-overlay';
-    dragHandle.innerHTML = '⠿';
-    dragHandle.title = 'Drag to reorder';
-    // Set draggable immediately if already in edit mode; keep in sync via toggleEditMode
-    card.draggable = editMode;
-    card.addEventListener('dragend', () => { card.classList.remove('dragging'); });
+        // Drag handle overlay
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'dial-drag-handle-overlay';
+        dragHandle.innerHTML = '⠿';
+        dragHandle.title = 'Drag to reorder';
+        card.draggable = editMode;
+        card.addEventListener('dragend', () => { card.classList.remove('dragging'); });
 
-    card.appendChild(dragHandle);
-    card.appendChild(overlay);
+        card.appendChild(dragHandle);
+        card.appendChild(overlay);
 
-    // Click to open (only in non-edit mode)
+        // Dial drag events
+        card.addEventListener('dragstart', e => onDialDragStart(e, groupId, dial.id));
+        card.addEventListener('dragover', e => onDialDragOver(e, groupId, dial.id));
+        card.addEventListener('drop', e => onDialDrop(e, groupId, dial.id));
+    }
+
+    // Click to open
     card.addEventListener('click', e => {
         if (editMode) return;
         if (e.target.closest('.dial-edit-overlay') || e.target.closest('.dial-drag-handle-overlay')) return;
+        trackDialVisit(dial.id);
         window.open(dial.url, '_blank');
     });
-
-    // Dial drag events
-    card.addEventListener('dragstart', e => onDialDragStart(e, groupId, dial.id));
-    card.addEventListener('dragover', e => onDialDragOver(e, groupId, dial.id));
-    card.addEventListener('drop', e => onDialDrop(e, groupId, dial.id));
 
     return card;
 }
@@ -364,6 +442,15 @@ function updateDialCount() {
     if (!el) return;
     const tab = data.tabs.find(t => t.id === activeTabId);
     if (!tab) { el.textContent = ''; return; }
+    if (tab.isHome) {
+        let count = 0;
+        for (const t of data.tabs) {
+            if (t.isHome) continue;
+            for (const g of t.groups || []) count += (g.dials || []).filter(d => (d.visitCount || 0) > 0).length;
+        }
+        el.textContent = count ? `${count} frequently used dial${count !== 1 ? 's' : ''}` : '';
+        return;
+    }
     const totalDials = (tab.groups || []).reduce((n, g) => n + (g.dials || []).length, 0);
     const totalGroups = (tab.groups || []).length;
     el.textContent = `${totalGroups} group${totalGroups !== 1 ? 's' : ''} · ${totalDials} dial${totalDials !== 1 ? 's' : ''}`;

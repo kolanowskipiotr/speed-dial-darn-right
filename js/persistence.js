@@ -12,7 +12,12 @@ function loadData() {
     }
     if (!data.tabs) data = { tabs: [] };
     if (!data.tabs.length) {
-        data.tabs.push({ id: uid(), name: 'Home', groups: [] });
+        data.tabs.push({ id: uid(), name: 'Start', emoji: '🏠', isHome: true, groups: [] });
+        saveData();
+    }
+    // Ensure one tab is marked as the home tab — prepend a new one if missing
+    if (!data.tabs.some(t => t.isHome)) {
+        data.tabs.unshift({ id: uid(), name: 'Start', emoji: '🏠', isHome: true, groups: [] });
         saveData();
     }
     activeTabId = data.tabs[0].id;

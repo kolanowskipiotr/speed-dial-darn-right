@@ -1380,6 +1380,35 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
 
+        /* ── HOME TAB ────────────────────────────────────────────────── */
+        .home-section {
+            padding: 8px 0 0;
+        }
+
+        .home-section-heading {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dimmer);
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            padding: 0 4px 16px;
+        }
+
+        /* Context label shown on home-tab dial cards */
+        .dial-meta {
+            font-size: 10px;
+            color: var(--text-dimmer);
+            text-align: center;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 2;
+        }
+
         /* ── LOGO CRASH ANIMATION ────────────────────────────────────── */
         .logo { overflow: visible; }
 

@@ -95,15 +95,19 @@ let logoAnimEnabled = true
 
 ## js/render.js
 
-- `render()` — calls `renderTabs()`, `updateDialCount()`, rebuilds `#groupsContainer`
+- `render()` — calls `renderTabs()`, `updateDialCount()`, rebuilds `#groupsContainer`; if active tab has `isHome`, delegates to `renderHomeTab()` and returns early
+- `renderHomeTab()` — collects all dials with `visitCount > 0` across non-home tabs, sorts by visit count desc, renders a `.home-section` with a `.dials-grid` of `makeDialCard(..., { showMeta, tabName, groupName })` cards; shows an empty-state message if none yet
 - `renderTabs()` — renders tab buttons + inline group jump chips; supports dial drag-onto-tab
-- `makeDialCard(dial, groupId, gi, di)` — builds one dial card:
+- `makeDialCard(dial, groupId, gi, di, opts = {})` — builds one dial card:
   - `iconType === 'custom' && dial.icon` → `.dial-screenshot` full-bleed
   - `iconType === 'none'` → `.dial-no-icon`
   - `iconType === 'emoji'` → emoji span
   - otherwise → favicon via `attachFavicon()`
+  - `opts.showMeta` — appends a `.dial-meta` label (`tabName · groupName`); also skips edit overlay, drag handle, and drag events (home tab view)
+  - click handler always calls `trackDialVisit(dial.id)` before `window.open`
+- `trackDialVisit(dialId)` — finds dial by id across all tabs, increments `visitCount`, calls `saveData()`
 - `updateClock()` — writes to `#headerClock` / `#headerDate`
-- `updateDialCount()` — writes `N groups · N dials` to `#headerDialCount`
+- `updateDialCount()` — writes `N groups · N dials` to `#headerDialCount`; on home tab writes `N frequently used dials`
 - `escHtml(str)` — HTML-escapes `& < > " '`
 
 ---
@@ -126,7 +130,7 @@ All drag & drop logic:
 ## js/crud.js
 
 - `toggleEditMode()` — flips `editMode`, syncs `body.edit-mode` class + draggable state
-- **Tab CRUD**: `openTabModal()`, `saveTab()`, `deleteTab()`
+- **Tab CRUD**: `openTabModal()`, `saveTab()`, `deleteTab()` — home tab (`isHome: true`) cannot be deleted; modal shows "Edit Start Tab" title and hides Delete button for it
 - **Group CRUD**: `openGroupModal()`, `saveGroup()`, `deleteGroup()`, `moveGroup()`, `setGroupSize()`
 - **Dial CRUD**: `openDialModal()`, `saveDial()`, `_doSaveDial()`, `deleteDial()`, `moveDial()`
 - **Icon source**: `setIconSrc(src)` — toggles favicon/emoji/custom/none panels

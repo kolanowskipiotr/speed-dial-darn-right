@@ -294,6 +294,11 @@ function importData() {
         }
         if (!imported.tabs || !Array.isArray(imported.tabs)) throw new Error('Invalid format');
         data = imported;
+        // Ensure the non-deletable Start tab is always present after import
+        if (!data.tabs.some(t => t.isHome)) {
+            data.tabs.unshift({ id: uid(), name: 'Start', emoji: '🏠', isHome: true, groups: [] });
+        }
+        activeTabId = data.tabs[0].id;
         saveData();
         render();
         closeModal('importModal');

@@ -21,6 +21,7 @@
 | ~833 | `.emoji-preview-none` — dashed border, italic `—` placeholder for no-icon state |
 | 877  | Image upload zone (`#imgDropZone`, `#imgUploadPreview`) |
 | ~909 | Icon source toggle buttons (`.icon-source-btn`, `.icon-source-row`) |
+| ~1383 | Home tab: `.home-section`, `.home-section-heading`, `.dial-meta` |
 | end  | Logo crash animation keyframes + classes; `.anim-toggle` (edit mode only) |
 
 ---
