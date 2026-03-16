@@ -8,7 +8,7 @@ function renderTabs() {
         const btn = document.createElement('button');
         btn.dataset.tabId = tab.id;
         btn.className = 'tab-btn' + (tab.id === activeTabId ? ' active' : '');
-        btn.innerHTML = `${tab.emoji ? `<span>${tab.emoji}</span>` : ''}<span>${tab.name}</span>`;
+        btn.innerHTML = `${tab.emoji ? `<span>${tab.emoji}</span>` : ''}${tab.name ? `<span>${tab.name}</span>` : ''}`;
         btn.onclick = () => { activeTabId = tab.id; render(); };
 
         // Edit button

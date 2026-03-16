@@ -37,7 +37,6 @@ function openTabModal(tabId = null) {
 
 function saveTab() {
     const name = document.getElementById('tabName').value.trim();
-    if (!name) { showToast(`${ICONS.warn} Please enter a tab name`); return; }
 
     if (editingTabId) {
         const t = data.tabs.find(t => t.id === editingTabId);
