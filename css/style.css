@@ -671,7 +671,7 @@
             position: absolute;
             bottom: 0; left: 0; right: 0;
             z-index: 3;
-            padding: 22px 8px 7px;
+            padding: 22px 8px 18px;
             background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 100%);
             border-radius: 0 0 var(--radius) var(--radius);
             color: #fff;
@@ -679,6 +679,26 @@
             font-weight: 600;
             text-align: center;
             -webkit-line-clamp: 1;
+        }
+
+        /* Meta (tab · group) label inside screenshot gradient overlay */
+        .dial-card.dial-screenshot .dial-meta {
+            position: absolute;
+            bottom: 4px; left: 0; right: 0;
+            z-index: 4;
+            color: rgba(255,255,255,0.65);
+            font-size: 9px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 8px;
+            margin-top: 0;
+        }
+
+        .dial-card.dial-screenshot .dial-usage {
+            color: rgba(255,255,255,0.45);
+            opacity: 1;
         }
 
         body:not(.edit-mode) .dial-card.dial-screenshot:hover {
@@ -1392,6 +1412,16 @@
             text-transform: uppercase;
             letter-spacing: 0.09em;
             padding: 0 4px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .home-section-heading::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-hover);
         }
 
         /* Context label shown on home-tab dial cards */
@@ -1407,6 +1437,20 @@
             flex-shrink: 0;
             position: relative;
             z-index: 2;
+        }
+
+        /* Usage stats badge on home-tab dial cards */
+        .dial-usage {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            z-index: 5;
+            color: var(--text-dimmer);
+            font-size: 9px;
+            font-weight: 500;
+            line-height: 1;
+            white-space: nowrap;
+            opacity: 0.6;
         }
 
         /* ── LOGO CRASH ANIMATION ────────────────────────────────────── */

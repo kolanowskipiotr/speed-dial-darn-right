@@ -159,6 +159,8 @@ function renderHomeTab() {
     }
     visitedDials.sort((a, b) => (b.dial.visitCount || 0) - (a.dial.visitCount || 0));
 
+    const totalVisits = visitedDials.reduce((sum, { dial }) => sum + (dial.visitCount || 0), 0);
+
     if (!visitedDials.length) {
         const emptyEl = document.createElement('div');
         emptyEl.className = 'empty-state';
@@ -180,7 +182,7 @@ function renderHomeTab() {
     grid.style.setProperty('--dial-size', '140px');
 
     visitedDials.forEach(({ dial, groupId, groupName, tabName }) => {
-        grid.appendChild(makeDialCard(dial, groupId, 0, 0, { showMeta: true, tabName, groupName }));
+        grid.appendChild(makeDialCard(dial, groupId, 0, 0, { showMeta: true, tabName, groupName, totalVisits }));
     });
 
     section.appendChild(grid);
@@ -377,6 +379,15 @@ function makeDialCard(dial, groupId, gi, di, opts = {}) {
         meta.className = 'dial-meta';
         meta.textContent = `${opts.tabName} · ${opts.groupName}`;
         card.appendChild(meta);
+
+        if (opts.totalVisits > 0) {
+            const count = dial.visitCount || 0;
+            const pct = Math.round((count / opts.totalVisits) * 100);
+            const usage = document.createElement('div');
+            usage.className = 'dial-usage';
+            usage.textContent = `${count}× · ${pct}%`;
+            card.appendChild(usage);
+        }
     }
 
     if (!opts.showMeta) {
