@@ -2,21 +2,26 @@
 
 ## Header structure
 ```
-<header>  — CSS grid: 1fr auto 1fr
-  .header-left
-    #logoText               — "⚡ Speed Dial Darn Right"; split into .logo-char spans by initLogoAnimation()
-    #headerDialCount        — "N groups · N dials" for active tab (updated by updateDialCount())
-  .header-center
-    #headerClock            — live HH:MM:SS (updated every 1s by updateClock())
-    #headerDate             — formatted date e.g. "SUN, MAR 15, 2026"
-  .header-actions           — justify-self: end
-    #themeSelector          — theme swatches (edit mode only)
-    .theme-sep              — vertical divider (edit mode only)
-    .btn-export × 2         — Export JSON, Import (edit mode only)
-    #tabSizeControl         — compact slider: sets dialSize on all groups of current tab (edit mode only; hidden on Home tab)
-    #animToggle             — ⚡ Anim on/off toggle (edit mode only); calls toggleLogoAnim()
-    .theme-sep.anim-sep     — vertical divider (edit mode only)
-    #editToggle             — Edit/Editing toggle
+<header>
+  .header-top  — CSS grid: 1fr auto 1fr; always visible
+    .header-left
+      #logoText             — "⚡ Speed Dial Darn Right"; split into .logo-char spans by initLogoAnimation()
+      #headerDialCount      — "N groups · N dials" for active tab (updated by updateDialCount())
+    .header-center
+      #headerClock          — live HH:MM:SS (updated every 1s by updateClock())
+      #headerDate           — formatted date e.g. "SUN, MAR 15, 2026"
+    .header-actions         — justify-self: end; always visible
+      #headerSearchWrap     — search input + dropdown
+      #editToggle           — Edit/Editing toggle
+
+  .header-edit-bar  — second row; display:none normally, display:flex in edit mode
+    #themeSelector          — theme swatches
+    .theme-sep × 3          — vertical dividers
+    .btn-export × 2         — Export JSON, Import
+    #tabSizeControl         — Dial Size slider (hidden on Home tab / no groups); flex:1 to fill space
+    #animToggle             — ⚡ Anim on/off toggle; calls toggleLogoAnim()
+
+  .tabs-bar  — tab buttons + group jump chips
 ```
 
 ## Tabs bar structure
