@@ -13,6 +13,7 @@
     #themeSelector          — theme swatches (edit mode only)
     .theme-sep              — vertical divider (edit mode only)
     .btn-export × 2         — Export JSON, Import (edit mode only)
+    #tabSizeControl         — compact slider: sets dialSize on all groups of current tab (edit mode only; hidden on Home tab)
     #animToggle             — ⚡ Anim on/off toggle (edit mode only); calls toggleLogoAnim()
     .theme-sep.anim-sep     — vertical divider (edit mode only)
     #editToggle             — Edit/Editing toggle

@@ -95,7 +95,8 @@ let logoAnimEnabled = true
 
 ## js/render.js
 
-- `render()` — calls `renderTabs()`, `updateDialCount()`, rebuilds `#groupsContainer`; if active tab has `isHome`, delegates to `renderHomeTab()` and returns early
+- `render()` — calls `renderTabs()`, `updateDialCount()`, `updateTabSizeSlider()`, rebuilds `#groupsContainer`; if active tab has `isHome`, delegates to `renderHomeTab()` and returns early
+- `updateTabSizeSlider()` — syncs the header `#tabSizeSlider` / `#tabSizeValue` to the first group's `dialSize`; hides the control when the active tab is Home or has no groups
 - `renderHomeTab()` — collects all dials with `visitCount > 0` across non-home tabs, sorts by visit count desc, renders a `.home-section` with a `.dials-grid` of `makeDialCard(..., { showMeta, tabName, groupName })` cards; shows an empty-state message if none yet
 - `renderTabs()` — renders tab buttons + inline group jump chips; supports dial drag-onto-tab
 - `makeDialCard(dial, groupId, gi, di, opts = {})` — builds one dial card:
@@ -132,6 +133,7 @@ All drag & drop logic:
 - `toggleEditMode()` — flips `editMode`, syncs `body.edit-mode` class + draggable state
 - **Tab CRUD**: `openTabModal()`, `saveTab()`, `deleteTab()` — home tab (`isHome: true`) cannot be deleted; modal shows "Edit Start Tab" title and hides Delete button for it
 - **Group CRUD**: `openGroupModal()`, `saveGroup()`, `deleteGroup()`, `moveGroup()`, `setGroupSize()`
+- `setTabDialSize(px)` — sets `dialSize` on all groups of the active tab, updates CSS vars live on `.dials-grid` elements, saves; no re-render needed
 - **Dial CRUD**: `openDialModal()`, `saveDial()`, `_doSaveDial()`, `deleteDial()`, `moveDial()`
 - **Icon source**: `setIconSrc(src)` — toggles favicon/emoji/custom/none panels
 - `previewCustomIcon()` — debounced preview for custom icon URL input

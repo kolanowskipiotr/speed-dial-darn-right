@@ -189,9 +189,25 @@ function renderHomeTab() {
     container.appendChild(section);
 }
 
+function updateTabSizeSlider() {
+    const control = document.getElementById('tabSizeControl');
+    if (!control) return;
+    const tab = getActiveTab();
+    const hasGroups = tab && !tab.isHome && tab.groups && tab.groups.length > 0;
+    // Let CSS handle show/hide in non-edit mode; force-hide when no groups to resize
+    control.style.display = hasGroups ? '' : 'none';
+    if (!hasGroups) return;
+    const px = tab.groups[0].dialSize || 140;
+    const slider = document.getElementById('tabSizeSlider');
+    const label  = document.getElementById('tabSizeValue');
+    if (slider) slider.value = px;
+    if (label)  label.textContent = px + 'px';
+}
+
 function render() {
     renderTabs();
     updateDialCount();
+    updateTabSizeSlider();
     const container = document.getElementById('groupsContainer');
     const empty = document.getElementById('emptyState');
     container.innerHTML = '';

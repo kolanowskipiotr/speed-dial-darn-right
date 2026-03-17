@@ -77,6 +77,19 @@ function setGroupSize(px) {
     if (label)  label.textContent = px + 'px';
 }
 
+function setTabDialSize(px) {
+    const label  = document.getElementById('tabSizeValue');
+    const slider = document.getElementById('tabSizeSlider');
+    if (label)  label.textContent = px + 'px';
+    if (slider) slider.value = px;
+    const tab = getActiveTab();
+    if (tab) {
+        tab.groups.forEach(g => g.dialSize = px);
+        saveData();
+        render();
+    }
+}
+
 function openGroupModal(groupId = null) {
     editingGroupId = groupId;
     const isEdit = !!groupId;

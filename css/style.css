@@ -248,6 +248,13 @@
         .btn-export { display: none; }
         body.edit-mode .btn-export { display: inline-flex; }
 
+        .tab-size-control {
+            display: none;
+            flex-direction: column;
+        }
+        body.edit-mode .tab-size-control { display: flex; }
+        .tab-size-slider { width: 180px; flex: none; }
+
         .btn-export {
             padding: 7px 14px;
             background: var(--surface2);

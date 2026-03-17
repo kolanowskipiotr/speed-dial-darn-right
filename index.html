@@ -24,6 +24,22 @@
             <div class="theme-sep"></div>
             <button class="btn-export" onclick="exportData()">Export JSON</button>
             <button class="btn-export" onclick="openImportModal()">Import</button>
+            <div class="theme-sep"></div>
+            <div class="tab-size-control" id="tabSizeControl">
+                <div class="form-label" style="margin:0 0 6px">Dial Size <span class="size-value" id="tabSizeValue">140px</span></div>
+                <div class="size-slider-wrap">
+                    <div class="size-slider-row">
+                        <span style="font-size:14px">🔲</span>
+                        <input type="range" class="size-slider tab-size-slider" id="tabSizeSlider"
+                               min="60" max="400" step="10" value="140"
+                               oninput="setTabDialSize(+this.value)">
+                        <span style="font-size:22px">🔲</span>
+                    </div>
+                    <div class="size-labels">
+                        <span>Tiny</span><span>Small</span><span>Medium</span><span>Large</span><span>Huge</span>
+                    </div>
+                </div>
+            </div>
             <div class="anim-toggle" id="animToggle" onclick="toggleLogoAnim()">
                 <span class="anim-toggle-label" id="animLabel">⚡ Anim</span>
                 <div class="toggle-track">
