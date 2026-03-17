@@ -1,32 +1,22 @@
-# css/style.css — Reference
+# css/ — Reference
 
-## Section map (line numbers)
-| Line | Section |
-|------|---------|
-| 1    | Google Fonts import (DM Sans, DM Mono) |
-| 3    | `:root` non-color tokens: `--radius`, `--radius-sm`, `--transition` |
-| 10   | Default theme (dark-yellow) on `body` — all CSS color vars |
-| 30–100 | Theme overrides: dark-blue, dark-purple, dark-teal, light-blue, light-warm via `body[data-theme="..."]` |
-| 126  | Header — grid layout (1fr auto 1fr): `.header-left` (logo + tagline), `.header-center` (clock + date), `.header-actions` |
-| 226  | Theme selector buttons |
-| 267  | Tabs bar — `.tabs-groups-sep` divider + `.group-jump-chip` inline group anchors |
-| 337  | Main / groups container |
-| 345  | Group blocks |
-| 423  | Dials grid — `--dial-size` CSS var set inline per group |
-| 438  | `.dial-card` — `width: var(--dial-size, 140px)`, `aspect-ratio: 4/3` |
-| 508  | `.dial-card.dial-screenshot` — full-bleed image card with name gradient overlay |
-| ~631 | `.dial-card.dial-no-icon` — name-only card (no icon), reduced padding, 9-line clamp |
-| 677  | Modal / form styles |
-| 784  | Dial size slider |
-| ~833 | `.emoji-preview-none` — dashed border, italic `—` placeholder for no-icon state |
-| 877  | Image upload zone (`#imgDropZone`, `#imgUploadPreview`) |
-| ~909 | Icon source toggle buttons (`.icon-source-btn`, `.icon-source-row`) |
-| ~1383 | Home tab: `.home-section`, `.home-section-heading`, `.dial-meta` |
-| end  | Logo crash animation keyframes + classes; `.anim-toggle` (edit mode only) |
+## File map (bounded context)
+| File | Bounded context |
+|------|----------------|
+| `css/tokens.css` | Google Fonts `@import`, `:root` non-color tokens, ALL theme color variables (`body` default + `body[data-theme="…"]` overrides) |
+| `css/base.css` | CSS reset (`* {}`), body base styles, `body::before` accent texture |
+| `css/header.css` | `header`, `.header-top/left/center/actions`, logo, clock, edit toggle, edit-bar, `.btn-export`, `.tab-size-control`, theme selector (`.theme-btn`), tabs bar (`.tab-btn`, `.group-jump-chip`), search input + dropdown |
+| `css/layout.css` | `main`, `.groups-container`, `.group`, group header elements, `.btn-icon`, group drag handle, `.add-group-btn`, empty state, toast, scrollbar |
+| `css/dials.css` | `.dials-grid`, `.dial-card` and all variants (screenshot, color, no-icon), edit overlays, drag indicators, `@keyframes dial-drop-land`, add-dial-btn, home tab (`.home-section`, `.dial-meta`, `.dial-usage`) |
+| `css/modals.css` | `.modal-backdrop`, `.modal`, form controls (`.form-group`, `.form-input`, `.emoji-preview`), size slider, icon source buttons, image upload zone, modal actions (`.btn-primary`, `.btn-secondary`), import modal styles |
+| `css/pickers.css` | Color picker grid, favicon picker + tiles, emoji picker + search + grid, spinner |
+| `css/animations.css` | Logo crash `@keyframes` + animation classes, `.logo-spark`, `.anim-toggle` |
+
+> `css/style.css` is now empty (kept as a stub with a comment). All styles are in the files above.
 
 ---
 
-## Key CSS variables (all on `body`)
+## Key CSS variables (declared in `tokens.css` on `body`)
 ```
 --bg, --surface, --surface2, --surface3   backgrounds
 --border, --border-hover                  borders

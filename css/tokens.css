@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+/* ── NON-COLOR DESIGN TOKENS ──────────────── */
+:root {
+    --radius: 14px;
+    --radius-sm: 8px;
+    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── DEFAULT THEME: DARK YELLOW ──────────── */
+body {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222534;
+    --surface3: #2a2e42;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.15);
+    --accent: #f0a500;
+    --accent2: #e07b00;
+    --accent-text: #1a1000;
+    --text: #e8eaf0;
+    --text-dim: #8b90a8;
+    --text-dimmer: #555a72;
+    --danger: #e05555;
+    --success: #4caf88;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --shadow-hover: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+/* ── THEME: DARK BLUE ─────────────────────── */
+body[data-theme="dark-blue"] {
+    --bg: #0d1117;
+    --surface: #161b27;
+    --surface2: #1c2233;
+    --surface3: #232b40;
+    --accent: #4da6ff;
+    --accent2: #2d85e0;
+    --accent-text: #ffffff;
+}
+
+/* ── THEME: DARK PURPLE ───────────────────── */
+body[data-theme="dark-purple"] {
+    --bg: #0f0d17;
+    --surface: #1a1727;
+    --surface2: #221f34;
+    --surface3: #2a2742;
+    --accent: #a855f7;
+    --accent2: #9333ea;
+    --accent-text: #ffffff;
+}
+
+/* ── THEME: DARK TEAL ─────────────────────── */
+body[data-theme="dark-teal"] {
+    --bg: #0d1714;
+    --surface: #162420;
+    --surface2: #1e302a;
+    --surface3: #253c34;
+    --accent: #2dd4bf;
+    --accent2: #14b8a6;
+    --accent-text: #0a2620;
+}
+
+/* ── THEME: LIGHT BLUE ────────────────────── */
+body[data-theme="light-blue"] {
+    --bg: #f4f6fb;
+    --surface: #ffffff;
+    --surface2: #edf0f7;
+    --surface3: #e0e4ef;
+    --border: rgba(0,0,0,0.08);
+    --border-hover: rgba(0,0,0,0.16);
+    --accent: #2563eb;
+    --accent2: #1d4ed8;
+    --accent-text: #ffffff;
+    --text: #1e2333;
+    --text-dim: #5a6279;
+    --text-dimmer: #9097b0;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    --shadow-hover: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+/* ── THEME: LIGHT WARM ────────────────────── */
+body[data-theme="light-warm"] {
+    --bg: #faf8f4;
+    --surface: #ffffff;
+    --surface2: #f5f0e8;
+    --surface3: #ede5d8;
+    --border: rgba(0,0,0,0.08);
+    --border-hover: rgba(0,0,0,0.16);
+    --accent: #d97706;
+    --accent2: #b45309;
+    --accent-text: #ffffff;
+    --text: #2a2015;
+    --text-dim: #7a6845;
+    --text-dimmer: #b0996f;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    --shadow-hover: 0 8px 32px rgba(0,0,0,0.12);
+}

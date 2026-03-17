@@ -11,6 +11,7 @@ COPY index.html /usr/share/nginx/html/index.html
 COPY favicon.ico icon.png icon.svg /usr/share/nginx/html/
 COPY css /usr/share/nginx/html/css/
 COPY js /usr/share/nginx/html/js/
+COPY partials /usr/share/nginx/html/partials/
 
 # Create directories for future persistent storage.
 # These will be overridden by the volumes defined in docker-compose,

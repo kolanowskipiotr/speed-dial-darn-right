@@ -1,0 +1,40 @@
+<!-- MODAL: Add/Edit Group -->
+<div class="modal-backdrop" id="groupModal">
+    <div class="modal">
+        <div class="modal-title"><span id="groupModalTitle">Add Group</span></div>
+        <div class="form-group">
+            <label class="form-label">Group Name</label>
+            <input type="text" class="form-input" id="groupName" placeholder="e.g. Work, Social...">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Dial Size <span class="size-value" id="groupSizeValue">140px</span></label>
+            <div class="size-slider-wrap">
+                <div class="size-slider-row">
+                    <span style="font-size:14px">🔲</span>
+                    <input type="range" class="size-slider" id="groupSizeSlider"
+                           min="60" max="400" step="10" value="140"
+                           oninput="setGroupSize(+this.value)">
+                    <span style="font-size:22px">🔲</span>
+                </div>
+                <div class="size-labels">
+                    <span>Tiny</span><span>Small</span><span>Medium</span><span>Large</span><span>Huge</span>
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Icon</label>
+            <div class="emoji-row">
+                <div class="emoji-preview" id="groupEmojiPreview" onclick="toggleEmojiPicker('group')">📁</div>
+                <button class="btn-random-emoji" onclick="randomEmoji('group')">🎲 Random</button>
+                <button class="icon-source-btn" id="groupNoIconBtn" onclick="setNoIcon('group')"
+                        style="font-size:11px;padding:4px 10px;">No icon
+                </button>
+            </div>
+            <div class="emoji-picker" id="groupEmojiPicker"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('groupModal')">Cancel</button>
+            <button class="btn-primary" onclick="saveGroup()">Save</button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,56 @@
+<header>
+    <div class="header-top">
+        <div class="header-left">
+            <div class="logo" id="logoText">⚡ Speed Dial Darn Right</div>
+            <div class="header-tagline" id="headerDialCount"></div>
+        </div>
+        <div class="header-center">
+            <div class="header-clock" id="headerClock"></div>
+            <div class="header-date" id="headerDate"></div>
+        </div>
+        <div class="header-actions">
+            <div class="header-search-wrap" id="headerSearchWrap">
+                <input type="search" id="searchInput" class="header-search-input" placeholder="🔍 Search dials…"
+                       autocomplete="off">
+                <div class="search-dropdown" id="searchDropdown" style="display:none"></div>
+            </div>
+            <div class="edit-toggle" id="editToggle" onclick="toggleEditMode()">
+                <span class="edit-toggle-label" id="editLabel">Edit</span>
+                <div class="toggle-track">
+                    <div class="toggle-thumb"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Edit-mode toolbar — second row, only visible in edit mode -->
+    <div class="header-edit-bar">
+        <div class="theme-selector" id="themeSelector"></div>
+        <div class="theme-sep"></div>
+        <button class="btn-export" onclick="exportData()">Export JSON</button>
+        <button class="btn-export" onclick="openImportModal()">Import</button>
+        <div class="theme-sep"></div>
+        <div class="tab-size-control" id="tabSizeControl">
+            <div class="form-label" style="margin:0 0 6px">Dial Size <span class="size-value" id="tabSizeValue">140px</span></div>
+            <div class="size-slider-wrap">
+                <div class="size-slider-row">
+                    <span style="font-size:14px">🔲</span>
+                    <input type="range" class="size-slider tab-size-slider" id="tabSizeSlider"
+                           min="60" max="400" step="10" value="140"
+                           oninput="setTabDialSize(+this.value)">
+                    <span style="font-size:22px">🔲</span>
+                </div>
+                <div class="size-labels">
+                    <span>Tiny</span><span>Small</span><span>Medium</span><span>Large</span><span>Huge</span>
+                </div>
+            </div>
+        </div>
+        <div class="theme-sep"></div>
+        <div class="anim-toggle" id="animToggle" onclick="toggleLogoAnim()">
+            <span class="anim-toggle-label" id="animLabel">⚡ Anim</span>
+            <div class="toggle-track">
+                <div class="toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+    <div class="tabs-bar" id="tabsBar"></div>
+</header>

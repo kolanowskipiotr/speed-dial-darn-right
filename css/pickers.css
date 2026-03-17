@@ -1,0 +1,234 @@
+/* ── Color picker panel ──────────────────────────────────── */
+.color-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.color-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.color-cell-center {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    justify-content: center;
+}
+
+.color-cell-right {
+    grid-column: 3;
+}
+
+.color-cell-label {
+    font-size: 10px;
+    color: var(--text-dimmer);
+    text-align: center;
+    line-height: 1.2;
+}
+
+.color-swatch-input {
+    width: 44px;
+    height: 44px;
+    border: 2px solid var(--border-hover);
+    border-radius: var(--radius-sm);
+    padding: 2px;
+    background: none;
+    cursor: pointer;
+}
+
+.color-swatch-input:hover {
+    border-color: var(--accent);
+}
+
+.color-preview {
+    height: 48px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-hover);
+}
+
+/* ── Favicon picker ───────────────────────────────────────── */
+.favicon-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border-hover);
+    border-radius: var(--radius-sm);
+    min-height: 58px;
+    align-items: center;
+}
+
+.favicon-hint {
+    font-size: 12px;
+    color: var(--text-dimmer);
+    font-style: italic;
+}
+
+.favicon-tile {
+    width: 48px; height: 48px;
+    background: var(--surface3);
+    border: 2px solid transparent;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition);
+    position: relative;
+    flex-shrink: 0;
+}
+
+.favicon-tile img {
+    width: 30px; height: 30px;
+    object-fit: contain;
+}
+
+.favicon-tile:hover {
+    border-color: var(--border-hover);
+    background: var(--surface);
+    transform: scale(1.08);
+}
+
+.favicon-tile.selected {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    box-shadow: 0 0 0 1px var(--accent);
+}
+
+.favicon-tile .favicon-check {
+    display: none;
+    position: absolute;
+    top: -5px; right: -5px;
+    width: 16px; height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    font-size: 10px;
+    align-items: center; justify-content: center;
+    color: var(--accent-text);
+    font-weight: 700;
+}
+
+.favicon-tile.selected .favicon-check { display: flex; }
+
+.favicon-loading {
+    font-size: 12px;
+    color: var(--text-dimmer);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--surface3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+/* ── Emoji picker ─────────────────────────────────────────── */
+.emoji-picker {
+    display: none;
+    flex-direction: column;
+    background: var(--surface2);
+    border: 1px solid var(--border-hover);
+    border-radius: var(--radius-sm);
+    height: 300px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.emoji-picker.open { display: flex; }
+
+.emoji-search-wrap {
+    flex-shrink: 0;
+    background: var(--surface2);
+    padding: 8px 10px 6px;
+    border-bottom: 1px solid var(--border);
+    z-index: 2;
+}
+
+/* Scrollable area below search */
+.emoji-scroll-area {
+    flex: 1;
+    overflow-y: scroll;
+    overscroll-behavior: contain;
+}
+
+.emoji-scroll-area::-webkit-scrollbar { width: 7px; }
+.emoji-scroll-area::-webkit-scrollbar-track { background: var(--surface3); border-radius: 4px; }
+.emoji-scroll-area::-webkit-scrollbar-thumb { background: var(--text-dimmer); border-radius: 4px; }
+.emoji-scroll-area::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+.emoji-search {
+    width: 100%;
+    padding: 6px 10px;
+    background: var(--surface3);
+    border: 1px solid var(--border-hover);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    outline: none;
+}
+
+.emoji-search:focus { border-color: var(--accent); }
+.emoji-search::placeholder { color: var(--text-dimmer); }
+
+.emoji-category {
+    padding: 0 6px 6px;
+}
+
+.emoji-category-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dimmer);
+    padding: 8px 4px 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.emoji-category-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+.emoji-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+.emoji-opt {
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 6px;
+    transition: background var(--transition);
+    line-height: 1;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emoji-opt:hover { background: var(--surface3); }
+
+.emoji-no-results {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-dimmer);
+    font-size: 13px;
+}

@@ -1,6 +1,25 @@
-# HTML Modals — Reference (index.html)
+# HTML Structure — Reference
 
-## Header structure
+## File layout (after split)
+`index.html` is a shell that uses **nginx SSI** (`ssi on` in `nginx.conf`) to include partials:
+
+```
+index.html
+  <!--#include virtual="/partials/header.html" -->
+  <!--#include virtual="/partials/main.html" -->
+  <!--#include virtual="/partials/modal-dial.html" -->
+  <!--#include virtual="/partials/modal-tab.html" -->
+  <!--#include virtual="/partials/modal-group.html" -->
+  <!--#include virtual="/partials/modal-confirm.html" -->
+  <!--#include virtual="/partials/modal-import.html" -->
+  <script> tags
+```
+
+All partials live in `partials/`. Because nginx processes SSI at request time, file changes are live immediately (no build step).
+
+---
+
+## Header structure (`partials/header.html`)
 ```
 <header>
   .header-top  — CSS grid: 1fr auto 1fr; always visible
@@ -33,16 +52,26 @@
   [.group-jump-chip × N]    — one per group in active tab; click scrolls to group
 ```
 
+## Main structure (`partials/main.html`)
+```
+<main>
+  #groupsContainer          — rebuilt by render()
+  #addGroupBtn              — "Add Group" (edit mode only)
+  #emptyState               — shown when no dials exist
+</main>
+<div #toast>                — fixed bottom-center toast notification
+```
+
 ---
 
 ## Modal list
-| id | Purpose |
-|----|---------|
-| `dialModal` | Add / Edit dial |
-| `groupModal` | Add / Edit group |
-| `tabModal` | Add / Edit tab |
-| `confirmModal` | Delete confirmation |
-| `importModal` | File-pick or paste JSON to import (with confirmation) |
+| Partial file | id | Purpose |
+|---|---|---|
+| `partials/modal-dial.html` | `dialModal` | Add / Edit dial |
+| `partials/modal-group.html` | `groupModal` | Add / Edit group |
+| `partials/modal-tab.html` | `tabModal` | Add / Edit tab |
+| `partials/modal-confirm.html` | `confirmModal` | Delete confirmation |
+| `partials/modal-import.html` | `importModal` | File-pick or paste JSON to import |
 
 ## Open / close
 - `openModal(id)` / `closeModal(id)` — toggle `.open` class
@@ -75,8 +104,13 @@ imgFileInput                   — hidden <input type="file"> triggered by click
 imgUploadPreview               — shows resized image preview before save
 imgUploadStatus                — status text (⏳ Resizing… / ⏳ Uploading… / errors)
 
+-- Color picker panel --
+colorPickerGroup               — wrapper div
+colorTL, colorTR, colorBL, colorBR, colorCenter  — color inputs
+colorPreview                   — live gradient preview div
+
 -- Icon source toggle buttons --
-iconSrcFavicon, iconSrcEmoji, iconSrcCustom, iconSrcNone
+iconSrcFavicon, iconSrcEmoji, iconSrcCustom, iconSrcColor, iconSrcNone
 ```
 
 ---
@@ -89,7 +123,6 @@ tabEmojiPicker
 tabNoIconBtn                   — toggles no-icon mode (adds .active when active)
 tabDeleteBtn                   — shown only in edit mode
 ```
-Label changed from "Emoji" → "Icon".
 
 ---
 
@@ -101,7 +134,6 @@ groupEmojiPreview              — shows current emoji; shows '—' when no-icon
 groupEmojiPicker
 groupNoIconBtn                 — toggles no-icon mode (adds .active when active)
 ```
-Label changed from "Emoji" → "Icon".
 
 ---
 

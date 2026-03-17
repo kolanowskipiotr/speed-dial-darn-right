@@ -1,0 +1,11 @@
+<!-- MODAL: Confirm Delete -->
+<div class="modal-backdrop" id="confirmModal">
+    <div class="modal" style="max-width:360px">
+        <div class="modal-title" id="confirmTitle">Are you sure?</div>
+        <p id="confirmMessage" style="font-size:13px; color:var(--text-dim); line-height:1.6; margin-bottom:4px;"></p>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('confirmModal')">Cancel</button>
+            <button class="btn-primary" id="confirmOkBtn" style="background:var(--danger);color:#fff;">Delete</button>
+        </div>
+    </div>
+</div>

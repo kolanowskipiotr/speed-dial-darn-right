@@ -1,0 +1,28 @@
+<!-- MODAL: Add/Edit Tab -->
+<div class="modal-backdrop" id="tabModal">
+    <div class="modal" style="max-width:360px">
+        <div class="modal-title"><span id="tabModalTitle">Add Tab</span></div>
+        <div class="form-group">
+            <label class="form-label">Tab Name</label>
+            <input type="text" class="form-input" id="tabName" placeholder="e.g. Work, Personal...">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Icon</label>
+            <div class="emoji-row">
+                <div class="emoji-preview" id="tabEmojiPreview" onclick="toggleEmojiPicker('tab')">🗂</div>
+                <button class="btn-random-emoji" onclick="randomEmoji('tab')">🎲 Random</button>
+                <button class="icon-source-btn" id="tabNoIconBtn" onclick="setNoIcon('tab')"
+                        style="font-size:11px;padding:4px 10px;">No icon
+                </button>
+            </div>
+            <div class="emoji-picker" id="tabEmojiPicker"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('tabModal')">Cancel</button>
+            <button class="btn-primary" id="tabDeleteBtn" style="background:var(--danger);color:#fff;display:none"
+                    onclick="closeModal('tabModal');deleteTab(editingTabId)">Delete Tab
+            </button>
+            <button class="btn-primary" onclick="saveTab()">Save</button>
+        </div>
+    </div>
+</div>

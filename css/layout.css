@@ -1,0 +1,167 @@
+/* ── MAIN ─────────────────────────────────── */
+main {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    padding: 128px 40px 60px;
+}
+body.edit-mode main { padding-top: 220px; }
+
+/* ── GROUPS ──────────────────────────────── */
+.groups-container { display: flex; flex-direction: column; gap: 16px; }
+
+.group {
+    position: relative;
+    transition: opacity var(--transition);
+}
+
+.group.drag-over > .dials-grid {
+    outline: 2px dashed var(--accent);
+    outline-offset: 4px;
+    border-radius: var(--radius);
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 0 2px;
+    position: relative;
+}
+
+.group-header-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border-hover);
+}
+
+.group-emoji {
+    font-size: 22px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.group-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.group-edit-controls {
+    display: none;
+    align-items: center;
+    gap: 6px;
+}
+
+body.edit-mode .group-edit-controls { display: flex; }
+
+.btn-icon {
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.btn-icon:hover { background: var(--surface3); color: var(--text); border-color: var(--border-hover); }
+.btn-icon.danger:hover { background: rgba(224,85,85,0.15); color: var(--danger); border-color: rgba(224,85,85,0.3); }
+.btn-icon.success:hover { background: rgba(76,175,136,0.15); color: var(--success); border-color: rgba(76,175,136,0.3); }
+
+.group-drag-handle {
+    display: none;
+    cursor: grab;
+    color: var(--text-dimmer);
+    font-size: 14px;
+    padding: 4px;
+}
+
+body.edit-mode .group-drag-handle { display: flex; align-items: center; }
+.group-drag-handle:active { cursor: grabbing; }
+
+/* Add group button */
+.add-group-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 24px;
+    border: 1px dashed var(--surface3);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-dimmer);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+    letter-spacing: 0.03em;
+}
+
+body.edit-mode .add-group-btn { display: flex; }
+
+.add-group-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dimmer);
+}
+
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-state p { font-size: 14px; line-height: 1.6; }
+
+/* Toast */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2);
+    border: 1px solid var(--border-hover);
+    border-radius: 100px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--text);
+    box-shadow: var(--shadow);
+    z-index: 999;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast-undo {
+    margin-left: 12px;
+    padding: 3px 10px;
+    background: var(--accent);
+    border: none;
+    border-radius: 100px;
+    color: var(--accent-text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    pointer-events: all;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
