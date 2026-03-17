@@ -36,7 +36,7 @@
 | `groupModal` | Add / Edit group |
 | `tabModal` | Add / Edit tab |
 | `confirmModal` | Delete confirmation |
-| `importModal` | Paste JSON to import |
+| `importModal` | File-pick or paste JSON to import (with confirmation) |
 
 ## Open / close
 - `openModal(id)` / `closeModal(id)` — toggle `.open` class

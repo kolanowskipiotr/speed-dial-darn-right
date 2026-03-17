@@ -137,10 +137,13 @@ function undoDelete(encodedBackup) {
     } catch(e) { showToast(`${ICONS.error} Could not undo`); }
 }
 
-function showConfirm(title, message, onConfirm) {
+function showConfirm(title, message, onConfirm, opts = {}) {
     document.getElementById('confirmTitle').textContent = title;
     document.getElementById('confirmMessage').textContent = message;
     const btn = document.getElementById('confirmOkBtn');
+    btn.textContent = opts.btnLabel || 'Delete';
+    btn.style.background = opts.danger === false ? '' : 'var(--danger)';
+    btn.style.color = opts.danger === false ? '' : '#fff';
     btn.onclick = () => { closeModal('confirmModal'); onConfirm(); };
     openModal('confirmModal');
 }

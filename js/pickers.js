@@ -269,42 +269,142 @@ document.querySelectorAll('.modal-backdrop').forEach(bd => {
 });
 
 // ─── IMPORT / EXPORT ────────────────────────────────────────────
-function exportData() {
-    const json = JSON.stringify(data, null, 2);
+let _pendingImportJSON = null;
+
+function _blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function exportData() {
+    showToast(`${ICONS.loading} Preparing export…`);
+    const images = {};
+    let imageErrors = 0;
+    for (const tab of data.tabs) {
+        for (const group of (tab.groups || [])) {
+            for (const dial of (group.dials || [])) {
+                if (dial.iconType === 'custom' && dial.icon && dial.icon.startsWith('/uploads/')) {
+                    try {
+                        const resp = await fetch(dial.icon);
+                        if (resp.ok) {
+                            const blob = await resp.blob();
+                            images[dial.id] = await _blobToBase64(blob);
+                        } else {
+                            console.warn(`[export] ${dial.icon} → HTTP ${resp.status}`);
+                            imageErrors++;
+                        }
+                    } catch (e) {
+                        console.error(`[export] failed to fetch ${dial.icon}:`, e);
+                        imageErrors++;
+                    }
+                }
+            }
+        }
+    }
+    const exportObj = {
+        ...data,
+        _config: {
+            theme: localStorage.getItem('speedDial_theme') || 'dark-yellow',
+            logoAnim: logoAnimEnabled,
+        },
+        _images: images,
+    };
+    const json = JSON.stringify(exportObj, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'speed-dial.json';
     a.click();
-    showToast(`${ICONS.ok} Exported speed-dial.json`);
+    const imgCount = Object.keys(images).length;
+    if (imageErrors) {
+        showToast(`${ICONS.warn} Exported — ${imageErrors} image${imageErrors > 1 ? 's' : ''} failed (see console)`);
+    } else {
+        showToast(`${ICONS.ok} Exported${imgCount ? ` (${imgCount} image${imgCount > 1 ? 's' : ''} included)` : ''}`);
+    }
 }
 
 function openImportModal() {
+    _pendingImportJSON = null;
     document.getElementById('importData').value = '';
+    document.getElementById('importFile').value = '';
+    document.getElementById('importFileName').textContent = 'No file chosen';
     openModal('importModal');
 }
 
+function onImportFileSelected(input) {
+    const file = input.files[0];
+    if (!file) return;
+    document.getElementById('importFileName').textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = e => { _pendingImportJSON = e.target.result; };
+    reader.readAsText(file);
+}
+
 function importData() {
+    const raw = _pendingImportJSON || document.getElementById('importData').value.trim();
+    if (!raw) { showToast(`${ICONS.warn} No data to import`); return; }
+    let parsed;
     try {
-        const raw = document.getElementById('importData').value.trim();
-        const imported = JSON.parse(raw);
-        // Support both old { groups } and new { tabs } format
-        if (imported.groups && !imported.tabs) {
-            imported = { tabs: [{ id: uid(), name: 'Home', groups: imported.groups }] };
-        }
-        if (!imported.tabs || !Array.isArray(imported.tabs)) throw new Error('Invalid format');
-        data = imported;
-        // Ensure the non-deletable Start tab is always present after import
-        if (!data.tabs.some(t => t.isHome)) {
-            data.tabs.unshift({ id: uid(), name: 'Start', emoji: '🏠', isHome: true, groups: [] });
-        }
-        activeTabId = data.tabs[0].id;
-        saveData();
-        render();
-        closeModal('importModal');
-        showToast(`${ICONS.ok} Imported successfully`);
+        parsed = JSON.parse(raw);
     } catch(e) {
         showToast(`${ICONS.error} Invalid JSON format`);
+        return;
+    }
+    closeModal('importModal');
+    showConfirm('Import Configuration', 'This will replace your current configuration. Continue?', () => {
+        _doImport(parsed);
+    }, { btnLabel: 'Replace', danger: false });
+}
+
+async function _doImport(imported) {
+    // Support both old { groups } and new { tabs } format
+    if (imported.groups && !imported.tabs) {
+        imported = { tabs: [{ id: uid(), name: 'Home', groups: imported.groups }] };
+    }
+    if (!imported.tabs || !Array.isArray(imported.tabs)) {
+        showToast(`${ICONS.error} Invalid format`);
+        return;
+    }
+    const images = imported._images || {};
+    const config = imported._config || {};
+    delete imported._images;
+    delete imported._config;
+    data = imported;
+
+    if (config.theme) applyTheme(config.theme);
+    if (config.logoAnim !== undefined) {
+        logoAnimEnabled = config.logoAnim;
+        localStorage.setItem('logoAnim', logoAnimEnabled ? 'true' : 'false');
+        updateAnimToggleUI();
+    }
+    if (!data.tabs.some(t => t.isHome)) {
+        data.tabs.unshift({ id: uid(), name: 'Start', emoji: '🏠', isHome: true, groups: [] });
+    }
+    activeTabId = data.tabs[0].id;
+    saveData();
+    render();
+
+    const imageIds = Object.keys(images);
+    if (imageIds.length) {
+        showToast(`${ICONS.loading} Restoring ${imageIds.length} image${imageIds.length > 1 ? 's' : ''}…`);
+        for (const dialId of imageIds) {
+            try {
+                const b64 = images[dialId];
+                const byteStr = atob(b64);
+                const arr = new Uint8Array(byteStr.length);
+                for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
+                const blob = new Blob([arr], { type: 'image/jpeg' });
+                await uploadDialImage(dialId, blob);
+            } catch(e) { /* skip failed images */ }
+        }
+        render();
+        showToast(`${ICONS.ok} Imported — ${imageIds.length} image${imageIds.length > 1 ? 's' : ''} restored`);
+    } else {
+        showToast(`${ICONS.ok} Imported successfully`);
     }
 }
 

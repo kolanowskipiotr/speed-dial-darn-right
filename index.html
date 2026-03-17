@@ -246,10 +246,18 @@
 <!-- MODAL: Import -->
 <div class="modal-backdrop" id="importModal">
     <div class="modal">
-        <div class="modal-title">Import JSON</div>
+        <div class="modal-title">Import Configuration</div>
         <div class="form-group">
-            <label class="form-label">Paste JSON data</label>
-            <textarea class="import-textarea" id="importData" placeholder='{"groups": [...]}'></textarea>
+            <label class="form-label">Choose file</label>
+            <label class="import-file-label">
+                <input type="file" id="importFile" accept=".json" onchange="onImportFileSelected(this)">
+                <span class="import-file-name" id="importFileName">No file chosen</span>
+                <span class="import-file-btn">Browse…</span>
+            </label>
+        </div>
+        <div class="import-or"><span>or paste JSON below</span></div>
+        <div class="form-group">
+            <textarea class="import-textarea" id="importData" placeholder='{"tabs": [...]}'></textarea>
         </div>
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal('importModal')">Cancel</button>

@@ -89,7 +89,7 @@ let logoAnimEnabled = true
 - `getDomain(url)` / `getFaviconCandidates(url)` — favicon URL candidates
 - `attachFavicon(imgEl, dialUrl, fallbackEmoji)` — tries candidates via `onerror` chain
 - `showToast(msg)` / `showToastUndo(msg, backup)` / `undoDelete(encodedBackup)`
-- `showConfirm(title, message, onConfirm)` — confirm dialog
+- `showConfirm(title, message, onConfirm, opts?)` — confirm dialog; `opts.btnLabel` sets button text (default `'Delete'`), `opts.danger: false` removes danger styling
 
 ---
 
@@ -148,7 +148,11 @@ All drag & drop logic:
 - `emojiName(e)` — `EMOJI_KEYWORDS[e] || e`
 - `emojiMatchesFilter(e, filter)` — checks `EMOJI_SYNONYMS[e]` first, then `EMOJI_KEYWORDS[e]`
 - `loadFaviconOptions(url)` / `renderFaviconTiles()` — favicon picker in dial modal
-- `exportData()` / `openImportModal()` / `importData()` — JSON import/export
+- `exportData()` — async; collects all `/uploads/` custom images as raw base64, exports `{ ...data, _config: { theme, logoAnim }, _images: { [dialId]: b64 } }`
+- `openImportModal()` — clears `_pendingImportJSON`, file input, and textarea; opens modal
+- `onImportFileSelected(input)` — reads selected JSON file, stores text in `_pendingImportJSON`
+- `importData()` — parses `_pendingImportJSON` or textarea; calls `showConfirm` before proceeding
+- `_doImport(parsed)` — async; extracts `_images` and `_config`, sets `data`, restores theme via `applyTheme()` and logoAnim via `localStorage`+`updateAnimToggleUI()`, calls `saveData()`/`render()`, then uploads each image via `uploadDialImage()` and calls `render()` again
 
 ---
 
