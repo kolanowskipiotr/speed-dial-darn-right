@@ -140,9 +140,40 @@ Tab reordering uses a simple border+background highlight, not the bracket indica
 
 ---
 
+## Edit mode — action strip
+
+In edit mode each dial card shows no overlay over its content. Instead, a frosted-glass action strip slides up from the card bottom on hover:
+
+```css
+.dial-edit-overlay {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    border-radius: 0 0 var(--radius) var(--radius);
+    flex-direction: row;
+    padding: 6px 4px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    transform: translateY(100%);        /* hidden below card edge */
+    transition: transform var(--transition);
+    pointer-events: none;
+}
+body.edit-mode .dial-edit-overlay { display: flex; }
+body.edit-mode .dial-card:not(.dragging):hover .dial-edit-overlay { transform: translateY(0); }
+```
+
+Card has `overflow: hidden` so the strip is clipped until it slides in.
+
+Hover in edit mode also highlights the border and adds a shadow (to signal the card is hovered):
+```css
+body.edit-mode .dial-card:not(.add-dial-btn):not(.dragging):hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-hover);
+}
+```
+
 ### Post-drag hover suppression
 ```css
-body.post-drag .dial-overlay-btns { opacity: 0 !important; }
-body.post-drag .dial-edit-overlay { background: transparent !important; }
+body.edit-mode .dial-card.dragging .dial-edit-overlay { transform: translateY(100%) !important; }
+body.post-drag .dial-edit-overlay { transform: translateY(100%) !important; }
 ```
 Applied for 300ms after any drop via `resetHoverAfterDrag()` to prevent stuck hover overlays (Safari issue).

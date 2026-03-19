@@ -52,10 +52,14 @@ body:not(.edit-mode) .dial-card:hover {
 }
 
 body.edit-mode .dial-card { cursor: default; }
+body.edit-mode .dial-card:not(.add-dial-btn):not(.dragging):hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-hover);
+}
 body.edit-mode .dial-card.dragging { opacity: 0.4; cursor: grabbing; }
-/* Suppress stuck hover overlays immediately after a drag completes */
-body.post-drag .dial-overlay-btns { opacity: 0 !important; }
-body.post-drag .dial-edit-overlay { background: transparent !important; }
+/* Hide action strip while dragging or just after a drag */
+body.edit-mode .dial-card.dragging .dial-edit-overlay { transform: translateY(100%) !important; }
+body.post-drag .dial-edit-overlay { transform: translateY(100%) !important; }
 
 /* Landing animation when a dial is dropped onto a different tab */
 @keyframes dial-drop-land {
@@ -264,43 +268,37 @@ body:not(.edit-mode) .dial-card.dial-screenshot:hover .dial-screenshot-img {
     width: 100%;
 }
 
-/* Edit overlay on dial */
+/* Edit action strip — slides up from bottom on hover */
 .dial-edit-overlay {
     display: none;
     position: absolute;
-    inset: 0;
+    bottom: 0; left: 0; right: 0;
     z-index: 10;
-    border-radius: var(--radius);
-    flex-direction: column;
+    border-radius: 0 0 var(--radius) var(--radius);
+    flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    background: color-mix(in srgb, var(--bg) 55%, transparent);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
-    transition: background var(--transition);
+    gap: 4px;
+    padding: 6px 4px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transform: translateY(100%);
+    transition: transform var(--transition);
     pointer-events: none;
 }
 
 body.edit-mode .dial-edit-overlay { display: flex; }
 
-/* Buttons hidden by default, appear on card hover */
-.dial-overlay-btns {
-    pointer-events: auto;
-    display: flex;
-    gap: 6px;
-    opacity: 0;
-    transform: translateY(4px);
-    transition: opacity var(--transition), transform var(--transition);
-}
-
-body.edit-mode .dial-card:hover .dial-overlay-btns {
-    opacity: 1;
+body.edit-mode .dial-card:not(.dragging):hover .dial-edit-overlay {
     transform: translateY(0);
 }
 
-body.edit-mode .dial-card:hover .dial-edit-overlay {
-    background: color-mix(in srgb, var(--bg) 78%, transparent);
+/* Buttons always visible inside the strip */
+.dial-overlay-btns {
+    pointer-events: auto;
+    display: flex;
+    gap: 4px;
 }
 
 .dial-drag-handle-overlay {
