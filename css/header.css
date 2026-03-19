@@ -248,7 +248,7 @@ body.edit-mode .theme-sep { display: block; }
 
 .tab-btn {
     position: relative;
-    padding: 4px 14px;
+    padding: 2px 12px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 100px;
