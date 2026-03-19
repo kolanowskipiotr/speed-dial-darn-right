@@ -118,7 +118,11 @@ function renderTabs() {
             chip.title = `Jump to ${group.name}`;
             chip.onclick = () => {
                 const el = document.querySelector(`.group[data-id="${group.id}"]`);
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (el) {
+                    const headerHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 0;
+                    const top = el.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
+                    window.scrollTo({ top, behavior: 'smooth' });
+                }
             };
             bar.appendChild(chip);
         });
