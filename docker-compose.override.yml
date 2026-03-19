@@ -8,4 +8,5 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/speed-dial.conf:ro
       - ./index.html:/usr/share/nginx/html/index.html:ro
       - ./css:/usr/share/nginx/html/css:ro
+      - ./js:/usr/share/nginx/html/js:ro
       - ./partials:/usr/share/nginx/html/partials:ro
