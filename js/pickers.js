@@ -380,6 +380,7 @@ async function _doImport(imported) {
         logoAnimEnabled = config.logoAnim;
         localStorage.setItem('logoAnim', logoAnimEnabled ? 'true' : 'false');
         updateAnimToggleUI();
+        if (logoAnimEnabled) setTimeout(runLogoAnimation, 100);
     }
     if (!data.tabs.some(t => t.isHome)) {
         data.tabs.unshift({ id: uid(), name: 'Start', emoji: '🏠', isHome: true, groups: [] });
