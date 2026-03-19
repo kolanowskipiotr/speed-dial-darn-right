@@ -82,12 +82,21 @@ function setTabDialSize(px) {
     const slider = document.getElementById('tabSizeSlider');
     if (label)  label.textContent = px + 'px';
     if (slider) slider.value = px;
+    document.querySelectorAll('.size-preset').forEach(el => {
+        el.classList.toggle('active', +el.dataset.size === px);
+    });
     const tab = getActiveTab();
     if (tab) {
         tab.groups.forEach(g => g.dialSize = px);
         saveData();
         render();
     }
+}
+
+function initSizePresets() {
+    document.querySelectorAll('.size-preset').forEach(el => {
+        el.addEventListener('click', () => setTabDialSize(+el.dataset.size));
+    });
 }
 
 function openGroupModal(groupId = null) {

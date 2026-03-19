@@ -15,7 +15,7 @@ header {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    padding: 10px 28px;
+    padding: 6px 28px;
     border-bottom: 1px solid var(--border);
 }
 
@@ -70,7 +70,7 @@ header {
     justify-self: end;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
 }
 
 /* Edit-mode second bar */
@@ -79,11 +79,32 @@ header {
     align-items: center;
     justify-content: flex-end;
     gap: 12px;
-    padding: 10px 28px;
-    min-height: 100px;
+    padding: 6px 28px;
     border-bottom: 1px solid var(--border);
     box-sizing: border-box;
 }
+
+/* Slider section inside the edit bar */
+.header-edit-bar .tab-size-control {
+    flex-direction: column;
+    gap: 3px;
+}
+.header-edit-bar .tab-size-control .form-label {
+    margin: 0;
+}
+.header-edit-bar .size-slider-wrap {
+    gap: 3px;
+}
+.header-edit-bar .size-labels { display: flex; }
+
+.size-preset {
+    cursor: pointer;
+    transition: color var(--transition);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+.size-preset:hover { color: var(--text); }
+.size-preset.active { color: var(--accent); font-weight: 600; }
 body.edit-mode .header-edit-bar { display: flex; }
 
 /* Edit toggle switch */
@@ -328,7 +349,7 @@ body.edit-mode .tab-btn.active .tab-edit-btn { display: inline; }
 }
 
 .header-search-input {
-    width: 160px;
+    width: 200px;
     padding: 5px 12px;
     background: var(--surface2);
     border: 1px solid var(--border);

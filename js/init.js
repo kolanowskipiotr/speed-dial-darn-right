@@ -13,6 +13,7 @@ updateDialCount();
 setInterval(updateClock, 1000);
 initLogoAnimation();
 initSearch();
+initSizePresets();
 
 const _hdr = document.querySelector('header');
 const _updateHeaderHeight = () =>

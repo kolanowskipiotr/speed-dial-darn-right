@@ -202,6 +202,9 @@ function updateTabSizeSlider() {
     const label  = document.getElementById('tabSizeValue');
     if (slider) slider.value = px;
     if (label)  label.textContent = px + 'px';
+    document.querySelectorAll('.size-preset').forEach(el => {
+        el.classList.toggle('active', +el.dataset.size === px);
+    });
 }
 
 function render() {

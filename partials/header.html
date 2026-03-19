@@ -31,11 +31,23 @@
                     <span style="font-size:14px">🔲</span>
                     <input type="range" class="size-slider tab-size-slider" id="tabSizeSlider"
                            min="60" max="400" step="10" value="140"
+                           list="sizePresets"
                            oninput="setTabDialSize(+this.value)">
+                    <datalist id="sizePresets">
+                        <option value="80"></option>
+                        <option value="120"></option>
+                        <option value="160"></option>
+                        <option value="220"></option>
+                        <option value="320"></option>
+                    </datalist>
                     <span style="font-size:22px">🔲</span>
                 </div>
                 <div class="size-labels">
-                    <span>Tiny</span><span>Small</span><span>Medium</span><span>Large</span><span>Huge</span>
+                    <span class="size-preset" data-size="80">Tiny</span>
+                    <span class="size-preset" data-size="120">Small</span>
+                    <span class="size-preset" data-size="160">Medium</span>
+                    <span class="size-preset" data-size="220">Large</span>
+                    <span class="size-preset" data-size="320">Huge</span>
                 </div>
             </div>
         </div>
