@@ -3,9 +3,8 @@ main {
     position: relative;
     z-index: 1;
     width: 100%;
-    padding: 128px 40px 60px;
+    padding: var(--header-height, 128px) 40px 60px;
 }
-body.edit-mode main { padding-top: 220px; }
 
 /* ── GROUPS ──────────────────────────────── */
 .groups-container { display: flex; flex-direction: column; gap: 16px; }

@@ -211,12 +211,8 @@ body.edit-mode .theme-sep { display: block; }
     align-items: center;
     gap: 6px;
     padding: 8px 28px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
+    flex-wrap: wrap;
 }
-
-.tabs-bar::-webkit-scrollbar { display: none; }
 
 .tabs-groups-sep {
     width: 1px;
