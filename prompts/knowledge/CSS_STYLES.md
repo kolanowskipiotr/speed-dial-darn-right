@@ -35,6 +35,10 @@
 
 ---
 
+## URL tooltip on dial hover
+
+`#dial-url-tooltip` — `position: fixed`, `z-index: 1000`, `transform: translateX(-50%)`. Positioned by JS below the hovered card (`rect.bottom + 6px`, centered on `rect.left + width/2`). Opacity transitions via `.visible` class. Hidden in edit mode. Only shown when `dial.url` exists.
+
 ## No-icon dial card
 ```css
 .dial-card.dial-no-icon {

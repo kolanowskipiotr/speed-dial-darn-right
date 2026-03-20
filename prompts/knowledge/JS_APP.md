@@ -105,6 +105,7 @@ let logoAnimEnabled = true
   - `iconType === 'emoji'` → emoji span
   - otherwise → favicon via `attachFavicon()`
   - `opts.showMeta` — appends a `.dial-meta` label (`tabName · groupName`); also skips edit overlay, drag handle, and drag events (home tab view)
+  - mouseenter/mouseleave on cards with `dial.url` position and show `#dial-url-tooltip` (fixed, centered below card); hidden in edit mode
   - click handler always calls `trackDialVisit(dial.id)` before `window.open`
 - `trackDialVisit(dialId)` — finds dial by id across all tabs, increments `visitCount`, calls `saveData()`
 - `updateClock()` — writes to `#headerClock` / `#headerDate`

@@ -456,6 +456,23 @@ function makeDialCard(dial, groupId, gi, di, opts = {}) {
         card.addEventListener('drop', e => onDialDrop(e, groupId, dial.id));
     }
 
+    // URL tooltip on hover (non-edit mode only)
+    if (dial.url) {
+        card.addEventListener('mouseenter', () => {
+            if (editMode) return;
+            const tooltip = document.getElementById('dial-url-tooltip');
+            const rect = card.getBoundingClientRect();
+            tooltip.textContent = dial.url;
+            const left = Math.round(rect.left + rect.width / 2 - tooltip.offsetWidth / 2);
+            tooltip.style.top = Math.round(rect.bottom + 6) + 'px';
+            tooltip.style.left = left + 'px';
+            tooltip.classList.add('visible');
+        });
+        card.addEventListener('mouseleave', () => {
+            document.getElementById('dial-url-tooltip').classList.remove('visible');
+        });
+    }
+
     // Click to open
     card.addEventListener('click', e => {
         if (editMode) return;

@@ -340,6 +340,31 @@ body.edit-mode .dial-card.add-dial-btn { display: flex; }
 .add-dial-btn .add-icon { font-size: 24px; }
 .add-dial-btn .add-label { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; }
 
+/* ── DIAL URL TOOLTIP ────────────────────────────────────────── */
+#dial-url-tooltip {
+    position: fixed;
+    z-index: 1000;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 3px 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s;
+    box-shadow: var(--shadow);
+    -webkit-font-smoothing: antialiased;
+}
+
+#dial-url-tooltip.visible {
+    opacity: 1;
+}
+
 /* ── HOME TAB ────────────────────────────────────────────────── */
 .home-section {
     padding: 8px 0 0;
