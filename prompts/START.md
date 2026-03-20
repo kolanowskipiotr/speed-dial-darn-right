@@ -18,7 +18,10 @@ js/utils.js              — uid(), resizeImage(), uploadDialImage(), deleteDial
                            getDomain(), getFaviconCandidates(), attachFavicon(),
                            showToast(), showToastUndo(), undoDelete(), showConfirm()
 js/render.js             — render(), renderTabs(), makeDialCard(), updateClock(),
-                           updateDialCount(), escHtml()
+                           updateDialCount(), escHtml(), renderHomeTab() (two-zone layout)
+js/todo.js               — todo panel: renderTodoPanel(), list CRUD, item CRUD, item editor,
+                           full-screen toggle; module-level state: todoFullScreen, expandedItemId
+js/todo-cm.js            — ES module; imports CodeMirror 6 from esm.sh; exposes window.TodoCM
 js/drag-drop.js          — all drag & drop handlers
 js/crud.js               — toggleEditMode(), all Tab/Group/Dial CRUD, setIconSrc(),
                            previewCustomIcon(), fetchPageTitle(), saveDial()

@@ -135,6 +135,7 @@ function trackDialVisit(dialId) {
             const dial = group.dials.find(d => d.id === dialId);
             if (dial) {
                 dial.visitCount = (dial.visitCount || 0) + 1;
+                dial.lastVisited = new Date().toISOString();
                 saveData();
                 return;
             }
@@ -150,47 +151,105 @@ function renderHomeTab() {
     document.getElementById('addGroupBtn').style.display = 'none';
 
     // Collect all visited dials across non-home tabs
-    const visitedDials = [];
+    const allDials = [];
     for (const tab of data.tabs) {
         if (tab.isHome) continue;
         for (const group of tab.groups || []) {
             for (const dial of group.dials || []) {
-                if ((dial.visitCount || 0) > 0) {
-                    visitedDials.push({ dial, groupId: group.id, groupName: group.name, tabName: tab.name });
+                if ((dial.visitCount || 0) > 0 || dial.lastVisited) {
+                    allDials.push({ dial, groupId: group.id, groupName: group.name, tabName: tab.name });
                 }
             }
         }
     }
-    visitedDials.sort((a, b) => (b.dial.visitCount || 0) - (a.dial.visitCount || 0));
 
-    const totalVisits = visitedDials.reduce((sum, { dial }) => sum + (dial.visitCount || 0), 0);
+    const totalVisits = allDials.reduce((sum, { dial }) => sum + (dial.visitCount || 0), 0);
 
-    if (!visitedDials.length) {
-        const emptyEl = document.createElement('div');
-        emptyEl.className = 'empty-state';
-        emptyEl.innerHTML = `<div class="empty-icon">⭐</div><p>No frequently used dials yet.<br>Click dials on other tabs and they'll appear here.</p>`;
-        container.appendChild(emptyEl);
-        return;
+    // Most Used: sorted by visitCount desc, capped at 12
+    const mostUsed = [...allDials]
+        .sort((a, b) => (b.dial.visitCount || 0) - (a.dial.visitCount || 0))
+        .slice(0, 12);
+
+    // Recently Used: sorted by lastVisited desc, capped at 12
+    const recentlyUsed = [...allDials]
+        .filter(({ dial }) => dial.lastVisited)
+        .sort((a, b) => new Date(b.dial.lastVisited) - new Date(a.dial.lastVisited))
+        .slice(0, 12);
+
+    // Build two-zone home layout
+    const layout = document.createElement('div');
+    layout.className = 'home-layout-a';
+
+    // ─── Dials strip (top zone) ───────────────────────────────────
+    const dialsStrip = document.createElement('div');
+    dialsStrip.className = 'home-dials-strip';
+
+    if (allDials.length) {
+        if (mostUsed.length) {
+            const col = document.createElement('div');
+            col.className = 'home-dials-most-used';
+
+            const heading = document.createElement('div');
+            heading.className = 'home-dials-heading';
+            heading.textContent = '⭐ Most Used';
+            col.appendChild(heading);
+
+            const grid = document.createElement('div');
+            grid.className = 'dials-grid home-dials-grid';
+            grid.style.setProperty('--dial-size', '130px');
+            mostUsed.forEach(({ dial, groupId, groupName, tabName }) => {
+                grid.appendChild(makeDialCard(dial, groupId, 0, 0, { showMeta: true, tabName, groupName, totalVisits }));
+            });
+            col.appendChild(grid);
+            dialsStrip.appendChild(col);
+        }
+
+        if (recentlyUsed.length) {
+            const col = document.createElement('div');
+            col.className = 'home-dials-recent';
+
+            const heading = document.createElement('div');
+            heading.className = 'home-dials-heading';
+            heading.textContent = '🕐 Recently Used';
+            col.appendChild(heading);
+
+            const grid = document.createElement('div');
+            grid.className = 'dials-grid home-dials-grid';
+            grid.style.setProperty('--dial-size', '130px');
+            recentlyUsed.forEach(({ dial, groupId, groupName, tabName }) => {
+                grid.appendChild(makeDialCard(dial, groupId, 0, 0, { showMeta: true, tabName, groupName, totalVisits }));
+            });
+            col.appendChild(grid);
+            dialsStrip.appendChild(col);
+        }
+    } else {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.className = 'home-dials-empty';
+        emptyMsg.textContent = '⭐ No frequently used dials yet — click dials on other tabs and they\'ll appear here.';
+        dialsStrip.appendChild(emptyMsg);
     }
 
-    const section = document.createElement('div');
-    section.className = 'home-section';
+    layout.appendChild(dialsStrip);
 
-    const heading = document.createElement('div');
-    heading.className = 'home-section-heading';
-    heading.textContent = 'Frequently Used';
-    section.appendChild(heading);
+    // ─── Todo column ──────────────────────────────────────────────
+    const todoCol = document.createElement('div');
+    todoCol.className = 'home-col-todo';
+    renderTodoPanel(todoCol);
+    layout.appendChild(todoCol);
 
-    const grid = document.createElement('div');
-    grid.className = 'dials-grid';
-    grid.style.setProperty('--dial-size', '140px');
+    // ─── Notes placeholder ────────────────────────────────────────
+    const notesCol = document.createElement('div');
+    notesCol.className = 'home-col-notes';
+    notesCol.innerHTML = `
+        <div class="home-notes-placeholder">
+            <div class="home-notes-placeholder-icon">📝</div>
+            <div>Notes</div>
+            <div class="home-notes-placeholder-sub">Coming soon</div>
+        </div>
+    `;
+    layout.appendChild(notesCol);
 
-    visitedDials.forEach(({ dial, groupId, groupName, tabName }) => {
-        grid.appendChild(makeDialCard(dial, groupId, 0, 0, { showMeta: true, tabName, groupName, totalVisits }));
-    });
-
-    section.appendChild(grid);
-    container.appendChild(section);
+    container.appendChild(layout);
 }
 
 function updateTabSizeSlider() {

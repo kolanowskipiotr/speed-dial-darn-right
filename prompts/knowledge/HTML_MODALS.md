@@ -12,6 +12,8 @@ index.html
   <!--#include virtual="/partials/modal-group.html" -->
   <!--#include virtual="/partials/modal-confirm.html" -->
   <!--#include virtual="/partials/modal-import.html" -->
+  <!--#include virtual="/partials/modal-todo-list.html" -->
+  <!--#include virtual="/partials/modal-todo-move.html" -->
   <script> tags
 ```
 
@@ -72,6 +74,8 @@ All partials live in `partials/`. Because nginx processes SSI at request time, f
 | `partials/modal-tab.html` | `tabModal` | Add / Edit tab |
 | `partials/modal-confirm.html` | `confirmModal` | Delete confirmation |
 | `partials/modal-import.html` | `importModal` | File-pick or paste JSON to import |
+| `partials/modal-todo-list.html` | `todoListModal` | Add / Edit todo list (name + emoji) |
+| `partials/modal-todo-move.html` | `todoMoveModal` | Move todo item to another list |
 
 ## Open / close
 - `openModal(id)` / `closeModal(id)` — toggle `.open` class

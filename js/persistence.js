@@ -21,6 +21,20 @@ function loadData() {
         saveData();
     }
     activeTabId = data.tabs[0].id;
+
+    // Ensure todoLists exists — create default list on first run
+    if (!data.todoLists) {
+        const now = new Date().toISOString();
+        data.todoLists = [{
+            id: uid(),
+            name: 'TODO',
+            emoji: '✅',
+            createdAt: now,
+            order: 0,
+            items: [],
+        }];
+        saveData();
+    }
 }
 
 function getActiveTab() {

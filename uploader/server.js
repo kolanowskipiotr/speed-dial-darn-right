@@ -6,12 +6,14 @@ const UPLOADS_DIR = '/uploads';
 const PORT = 3001;
 
 http.createServer((req, res) => {
-    // Only allow /upload/<id> where id is alphanumeric (uid() output)
-    const match = req.url.match(/^\/upload\/([a-z0-9]+)$/);
+    // Allow /upload/<id> (dial icons, saved as .jpg) or /upload/<id>.<ext> (todo images, saved as-is)
+    const match = req.url.match(/^\/upload\/([a-z0-9]+(?:\.[a-z0-9]{2,5})?)$/);
     if (!match) { res.writeHead(404); res.end('not found'); return; }
 
     const id       = match[1];
-    const filepath = path.join(UPLOADS_DIR, id + '.jpg');
+    // If id already includes an extension (e.g. abc123.png), use it as-is; else append .jpg for backward compat
+    const filename = id.includes('.') ? id : id + '.jpg';
+    const filepath = path.join(UPLOADS_DIR, filename);
 
     if (req.method === 'POST') {
         const chunks = [];

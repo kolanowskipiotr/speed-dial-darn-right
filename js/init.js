@@ -1,6 +1,34 @@
 // ─── INIT ───────────────────────────────────────────────────────
 document.addEventListener('dragend', () => {
     clearDropIndicators();
+    if (typeof _clearTodoDragIndicators !== 'undefined') _clearTodoDragIndicators();
+});
+
+// Escape key: exit todo full-screen first, then close item editor, then close modals
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    // 1. Exit todo full-screen mode
+    if (typeof todoFullScreen !== 'undefined' && todoFullScreen) {
+        exitTodoFullScreen();
+        e.stopPropagation();
+        return;
+    }
+    // 2. Close item editor if open
+    if (typeof editingTodoItemId !== 'undefined' && editingTodoItemId) {
+        closeItemEditor();
+        e.stopPropagation();
+        return;
+    }
+    // 3. Collapse inline-expanded item
+    if (typeof expandedItemId !== 'undefined' && expandedItemId) {
+        expandedItemId = null;
+        const todoCol = document.querySelector('.home-col-todo');
+        if (todoCol) renderTodoPanel(todoCol);
+        e.stopPropagation();
+        return;
+    }
+    // 4. Close any open modal
+    document.querySelectorAll('.modal-backdrop.open').forEach(bd => bd.classList.remove('open'));
 });
 
 loadTheme();

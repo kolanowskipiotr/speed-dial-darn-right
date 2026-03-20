@@ -12,6 +12,12 @@
     <link rel="stylesheet" href="css/modals.css">
     <link rel="stylesheet" href="css/pickers.css">
     <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/todo.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/markdown/markdown.min.js"></script>
 </head>
 <body>
 
@@ -22,6 +28,8 @@
 <!--#include virtual="/partials/modal-group.html" -->
 <!--#include virtual="/partials/modal-confirm.html" -->
 <!--#include virtual="/partials/modal-import.html" -->
+<!--#include virtual="/partials/modal-todo-list.html" -->
+<!--#include virtual="/partials/modal-todo-move.html" -->
 
 <div id="dial-url-tooltip"></div>
 
@@ -31,6 +39,8 @@
 <script src="js/persistence.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/render.js"></script>
+<script src="js/todo.js"></script>
+<script type="module" src="js/todo-cm.js"></script>
 <script src="js/drag-drop.js"></script>
 <script src="js/crud.js"></script>
 <script src="js/pickers.js"></script>

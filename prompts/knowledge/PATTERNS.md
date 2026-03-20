@@ -39,7 +39,7 @@ showToast('⚠️ Please enter a name');
 button.textContent = '✏️';
 ```
 
-`ICONS` keys: `defaultDial`, `defaultGroup`, `defaultTab`, `faviconFallback`, `edit`, `delete`, `search`, `ok`, `warn`, `error`, `undo`, `loading`.
+`ICONS` keys: `defaultDial`, `defaultGroup`, `defaultTab`, `faviconFallback`, `edit`, `delete`, `search`, `ok`, `warn`, `error`, `undo`, `loading`, `defaultTodoList`, `check`, `uncheck`, `moveTop`, `moveBottom`.
 
 Emoji data (all in `js/state.js`): `ICONS`, `EMOJI_CATEGORIES`, `EMOJI_LIST`, `GROUP_EMOJIS`, `EMOJI_KEYWORDS`.
 Synonym search data: `EMOJI_SYNONYMS` in `js/emoji-synonyms.js`.

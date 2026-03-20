@@ -4,9 +4,10 @@ The app logic is split into focused modules loaded in this order by `index.html`
 
 ```
 js/emoji-synonyms.js  → js/state.js  → js/themes.js  → js/persistence.js
-→ js/utils.js  → js/render.js  → js/drag-drop.js  → js/crud.js
-→ js/pickers.js  → js/logo-animation.js  → js/init.js
+→ js/utils.js  → js/render.js  → js/todo.js  → js/drag-drop.js  → js/crud.js
+→ js/pickers.js  → js/logo-animation.js  → js/search.js  → js/init.js
 ```
+`js/todo-cm.js` is loaded as `type="module"` (ES module) alongside the classic scripts. It imports CodeMirror 6 from `esm.sh` CDN and exposes `window.TodoCM`.
 
 No module system — all files share the global scope. Load order matters.
 
@@ -31,6 +32,8 @@ const ICONS = {
     faviconFallback,                          // '🌐' — favicon load failure
     edit, delete, search,                     // UI affordances
     ok, warn, error, undo, loading,           // status/toast indicators
+    defaultTodoList,                          // '📋'
+    moveTop, moveBottom,                      // '⬆️' / '⬇️' — todo item reorder buttons
 };
 
 const EMOJI_CATEGORIES = [ ... ];   // categorized full emoji set
@@ -55,6 +58,12 @@ let dragSrcGroupId/DialId/TabId = null
 let dragSrcType = null           // 'dial' | 'group'
 let pendingImageBlob = null      // image blob waiting to be uploaded on dial save
 let logoAnimEnabled = true
+
+// Todo state vars (also in js/state.js)
+let currentTodoListEmoji         // emoji for the todo list modal
+let activeTodoListId             // which list is expanded in the accordion
+let editingTodoListId            // id of list being edited in modal
+let editingTodoItemId            // id of item currently in full-screen editor
 ```
 
 > **Rule**: STATE comes after emoji/icon data so `currentDialEmoji = ICONS.defaultDial` is valid.
@@ -97,7 +106,8 @@ let logoAnimEnabled = true
 
 - `render()` — calls `renderTabs()`, `updateDialCount()`, `updateTabSizeSlider()`, rebuilds `#groupsContainer`; if active tab has `isHome`, delegates to `renderHomeTab()` and returns early
 - `updateTabSizeSlider()` — syncs the header `#tabSizeSlider` / `#tabSizeValue` to the first group's `dialSize`; hides the control when the active tab is Home or has no groups
-- `renderHomeTab()` — collects all dials with `visitCount > 0` across non-home tabs, sorts by visit count desc, renders a `.home-section` with a `.dials-grid` of `makeDialCard(..., { showMeta, tabName, groupName })` cards; shows an empty-state message if none yet
+- `renderHomeTab()` — builds `.home-layout-a` (CSS grid) with three children: `.home-dials-strip` (most-used + recently-used sub-sections), `.home-col-todo` (calls `renderTodoPanel()`), `.home-col-notes` (placeholder). Dials sorted by `visitCount` (most used) and `lastVisited` (recently used), capped at 12 each.
+- `trackDialVisit(dialId)` — increments `visitCount` and sets `lastVisited` (ISO string) on the clicked dial
 - `renderTabs()` — renders tab buttons + inline group jump chips; supports dial drag-onto-tab
 - `makeDialCard(dial, groupId, gi, di, opts = {})` — builds one dial card:
   - `iconType === 'custom' && dial.icon` → `.dial-screenshot` full-bleed
@@ -113,6 +123,58 @@ let logoAnimEnabled = true
 - `escHtml(str)` — HTML-escapes `& < > " '`
 
 ---
+
+## js/todo.js
+
+All todo panel logic. Functions:
+
+| Function | Purpose |
+|----------|---------|
+| `renderTodoPanel(container)` | Builds the full todo column into `container`; shows item editor if `editingTodoItemId` is set |
+| `openTodoListModal(listId?)` | Open add/edit list modal |
+| `saveTodoList()` | Save list name+emoji from modal |
+| `deleteTodoListFromModal()` | Confirm → delete list + clean up image uploads |
+| `closeTodoListModal()` | Close todo list modal |
+| `addTodoItem(listId, position)` | Insert inline input at `'top'` or `'bottom'`; Enter commits, Escape cancels, blur auto-commits |
+| `saveTodoItem(id, content)` | Persist content + `updatedAt` |
+| `toggleTodoDone(id)` | Flip `isDone`; set/clear `doneAt` |
+| `deleteTodoItem(id)` | `showToastUndo()` — no confirm; cleans up image uploads |
+| `moveTodoItemToPosition(id, listId, pos)` | Move item to `'top'` or `'bottom'` of its list |
+| `openTodoMoveModal(itemId)` | Open move-to-list picker modal |
+| `closeTodoMoveModal()` | Close move modal |
+| `moveTodoItem(id, targetListId)` | Move item to top of target list; expand target |
+| `openItemEditor(id)` | Show full-screen CodeMirror editor for item (inside todo column) |
+| `closeItemEditor()` | Validate non-empty, auto-save, return to list |
+| `toggleTodoFullScreen()` | Toggle `todoFullScreen` bool + `body.todo-fullscreen` class |
+| `exitTodoFullScreen()` | Always-exit variant (for Escape handler) |
+| `extractUploadIds(content)` | Extract `/uploads/<id>` refs from markdown content |
+| `_reorderTodoItem(dragId, listId, targetId, before)` | Reorder item within same list by drag |
+| `_reorderTodoList(dragListId, targetListId, before)` | Reorder lists by drag |
+| `_clearTodoDragIndicators()` | Remove all drag CSS classes (called on global `dragend`) |
+
+**Module-level state:** `todoFullScreen`, `doneExpandedListId`, `expandedItemId`, `_todoDragItemId`, `_todoDragListId`, `_todoDragListElemId`, `_todoCM5` (all JS-only; reset on page load).
+
+**Item editor (CodeMirror 5 + marked.js split view):**
+- `_todoCM5` — module-level var holding the active CM5 instance, or `null`.
+- `_renderItemEditor(container)` — creates `.todo-edit-view` with `position:absolute; inset:0`. Inside: `.todo-edit-split` flex row with `.todo-edit-cm-host` (CM5 left) + `.todo-edit-preview` (marked.js right).
+- CM5 initialised with `lineNumbers:true`, `lineWrapping:true`, `mode:'markdown'`, autofocus. Falls back to `<textarea class="todo-edit-textarea">` if `CodeMirror` global unavailable.
+- `closeItemEditor()` reads `_todoCM5.getValue()` when CM5 is active; falls back to `.todo-edit-textarea.value`.
+- `_uploadTodoImage()` inserts image markdown via `_todoCM5.setValue()`; textarea fallback if CM5 null.
+
+**CDN dependencies (loaded in `index.html` as classic scripts before body scripts):**
+- `marked.min.js` from jsDelivr
+- `codemirror.min.js`, `mode/xml/xml.min.js`, `mode/markdown/markdown.min.js` from cdnjs (CM5 v5.65.17)
+
+**Drag behaviour:**
+- Item reorder: drag handle on every item row activates `row.draggable`. Drop between items shows top/bottom border indicator, updates `item.order` values sequentially.
+- Cross-list item move: drag item → drop onto collapsed list header → calls `moveTodoItem()`.
+- List reorder: list headers are draggable. Drop indicator on list element, reorders `list.order` values.
+
+**State vars in `js/state.js`:** `activeTodoListId`, `editingTodoListId`, `editingTodoItemId`, `currentTodoListEmoji`.
+
+## js/todo-cm.js
+
+Stub file — unused. Editor uses CodeMirror 5 (classic UMD scripts) + marked.js directly in `todo.js`.
 
 ## js/drag-drop.js
 

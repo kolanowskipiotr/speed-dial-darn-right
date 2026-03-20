@@ -180,6 +180,7 @@ function initEmojiPickers() {
     buildEmojiPicker('dialEmojiPicker', 'dial');
     buildEmojiPicker('groupEmojiPicker', 'group');
     buildEmojiPicker('tabEmojiPicker', 'tab');
+    buildEmojiPicker('todoListEmojiPicker', 'todoList');
 }
 
 function toggleEmojiPicker(type) {
@@ -206,6 +207,10 @@ function selectEmoji(type, emoji) {
         preview.textContent = emoji;
         preview.classList.remove('emoji-preview-none');
         document.getElementById('tabNoIconBtn').classList.remove('active');
+    } else if (type === 'todoList') {
+        currentTodoListEmoji = emoji;
+        const preview = document.getElementById('todoListEmojiPreview');
+        if (preview) preview.textContent = emoji;
     } else {
         currentGroupEmoji = emoji;
         const preview = document.getElementById('groupEmojiPreview');
@@ -217,7 +222,7 @@ function selectEmoji(type, emoji) {
 }
 
 function randomEmoji(type) {
-    const list = (type === 'group' || type === 'tab') ? GROUP_EMOJIS : EMOJI_LIST;
+    const list = (type === 'group' || type === 'tab' || type === 'todoList') ? GROUP_EMOJIS : EMOJI_LIST;
     const emoji = pickRandomEmoji(list);
     if (type === 'dial') {
         currentDialEmoji = emoji;
@@ -228,6 +233,10 @@ function randomEmoji(type) {
         preview.textContent = emoji;
         preview.classList.remove('emoji-preview-none');
         document.getElementById('tabNoIconBtn').classList.remove('active');
+    } else if (type === 'todoList') {
+        currentTodoListEmoji = emoji;
+        const preview = document.getElementById('todoListEmojiPreview');
+        if (preview) preview.textContent = emoji;
     } else {
         currentGroupEmoji = emoji;
         const preview = document.getElementById('groupEmojiPreview');
@@ -305,6 +314,27 @@ async function exportData() {
             }
         }
     }
+    // Also collect images referenced in todo item content
+    for (const list of (data.todoLists || [])) {
+        for (const item of (list.items || [])) {
+            const uploadIds = (item.content || '').match(/\/uploads\/([\w.\-]+)/g) || [];
+            for (const ref of uploadIds) {
+                const id = ref.replace('/uploads/', '');
+                if (!images[id]) {
+                    try {
+                        const resp = await fetch(ref);
+                        if (resp.ok) {
+                            const blob = await resp.blob();
+                            images[id] = await _blobToBase64(blob);
+                        }
+                    } catch (e) {
+                        // skip silently
+                    }
+                }
+            }
+        }
+    }
+
     const exportObj = {
         ...data,
         _config: {

@@ -1,0 +1,25 @@
+<!-- MODAL: Add/Edit Todo List -->
+<div class="modal-backdrop" id="todoListModal">
+    <div class="modal" style="max-width:360px">
+        <div class="modal-title"><span id="todoListModalTitle">New List</span></div>
+        <div class="form-group">
+            <label class="form-label">Name</label>
+            <input type="text" class="form-input" id="todoListName" placeholder="List name…"
+                   onkeydown="if(event.key==='Enter') saveTodoList()">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Icon</label>
+            <div class="emoji-row">
+                <div class="emoji-preview" id="todoListEmojiPreview" onclick="toggleEmojiPicker('todoList')">📋</div>
+                <button class="btn-random-emoji" onclick="randomEmoji('todoList')">🎲 Random</button>
+            </div>
+            <div class="emoji-picker" id="todoListEmojiPicker"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeTodoListModal()">Cancel</button>
+            <button id="btnDeleteTodoList" class="btn-secondary" style="color:var(--danger);display:none"
+                    onclick="deleteTodoListFromModal()">Delete</button>
+            <button class="btn-primary" onclick="saveTodoList()">Save</button>
+        </div>
+    </div>
+</div>

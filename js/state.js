@@ -18,6 +18,13 @@ const ICONS = {
     error:   '❌',
     undo:    '↩️',
     loading: '⏳',
+
+    // Todo list icons
+    defaultTodoList: '📋',
+    check:           '☑',
+    uncheck:         '☐',
+    moveTop:         '⬆️',
+    moveBottom:      '⬇️',
 };
 
 const EMOJI_CATEGORIES = [
@@ -68,3 +75,9 @@ let dragSrcTabId = null;
 let dragSrcType = null; // 'dial' | 'group'
 let pendingImageBlob = null; // image waiting to be uploaded on save
 let logoAnimEnabled = true;
+
+// Todo state
+let currentTodoListEmoji = ICONS.defaultTodoList;
+let activeTodoListId = null;
+let editingTodoListId = null;
+let editingTodoItemId = null;
