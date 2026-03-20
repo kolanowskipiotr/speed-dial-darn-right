@@ -2,6 +2,10 @@
 
 Self-hosted browser speed-dial page. Pure HTML/CSS/JS served by nginx in Docker. No framework, no build step.
 
+## Collaboration
+
+If the user proposes a solution and a better alternative exists, say so before implementing. Explain why briefly, then ask which to proceed with or make a recommendation. Do not silently implement a suboptimal approach.
+
 ## Key rules
 
 - No build step — file changes in the mounted Docker volume are live immediately.

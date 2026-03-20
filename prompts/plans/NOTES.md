@@ -28,6 +28,7 @@ Can go full-screen (same mechanism as Todo lists — `body.notes-fullscreen` CSS
 | Full-screen | `body.notes-fullscreen` hides everything else; `Escape` or button to exit |
 | Auto-save | No save button — content saved on change (debounced ~500ms) |
 | Theming | CodeMirror theme matches app CSS variables |
+| Images | Pasted/dropped images upload and insert as `![alt](/uploads/id.ext)` inline at cursor; CodeMirror widget decoration renders them as actual `<img>` elements in the editor |
 
 ---
 
@@ -70,7 +71,8 @@ Notes are stored in `data.notes` alongside `data.tabs` and `data.todoLists`.
       content: string,      // raw text
       createdAt: string,    // ISO 8601
       updatedAt: string,
-      order: number         // tab order
+      order: number,        // tab order
+      // no images[] field — inline image refs live in content as ![alt](/uploads/id.ext)
     }
   ],
   activeNoteId: string | null  // ? or keep in JS state only — see open questions
@@ -107,10 +109,19 @@ Notes panel structure:
 │ [note1.md ×] [script.js ×] [+]    [⤢]   │  ← tab bar + new-note btn + full-screen btn
 ├──────────────────────────────────────────┤
 │                                          │
-│   CodeMirror editor                      │
+│   Some text                              │
+│                                          │
+│   [    rendered image inline    ]        │  ← CodeMirror widget decoration
+│                                          │
+│   More text                              │
 │                                          │
 └──────────────────────────────────────────┘
 ```
+
+- Paste/drop image anywhere in editor → uploads → inserts `![image](/uploads/id.ext)` at cursor
+- CodeMirror widget decoration renders `![...](...)` as actual `<img>` when cursor is off the line
+- **No resizing** — original format and dimensions preserved
+- Shared `extractUploadIds()` utility and `cm-image-widget` ViewPlugin with Todo
 
 ---
 
@@ -178,7 +189,7 @@ body.notes-fullscreen .home-col-notes {
 
 4. **Storage limit:** Notes stored in `localStorage` alongside everything else. A single large note could hit the ~5MB localStorage limit. Should large notes warn the user? Should notes eventually move to the uploader volume (flat files)?
 
-5. **Export/import:** Notes should be included in the existing `exportData()` / `importData()` flow. Content is plain text so no special handling needed — but confirm before implementing.
+5. **Export/import:** Confirmed — Notes are included in the existing `exportData()` / `_doImport()` flow. Content is stored as a plain JSON string value — no base64 needed. `JSON.stringify()` correctly escapes all text including JSON code, curly braces, backslashes, and newlines. The export file stays human-readable.
 
 6. **Markdown preview:** For Markdown notes, should there be an optional rendered preview mode (split or toggle)? Or is the CodeMirror inline decoration (same as Todo) sufficient?
 
@@ -189,3 +200,39 @@ body.notes-fullscreen .home-col-notes {
 9. **Syntax highlighting theme:** CodeMirror ships with `oneDark` and a few others. Should it use one of those, or should we build a custom theme that reads the app's CSS variables so it changes with the app theme?
 
 10. **Line numbers:** Show by default (included in `basicSetup`), or hide to keep it feeling less "IDE-like"?
+
+---
+
+## Export / Import
+
+Notes are included in the existing `exportData()` / `_doImport()` flow in `js/pickers.js`.
+
+### Content encoding
+
+No special encoding needed. `JSON.stringify()` handles all text correctly — quotes, braces, backslashes, newlines, embedded JSON — everything. Plain string values in JSON. The export file remains human-readable and you can open it in any text editor and read your notes.
+
+Base64 is only used for **binary image data** (fetched as raw bytes from `/uploads/`), same as dial icons today.
+
+### Export shape (additions only)
+
+```js
+{
+    tabs: [...],               // unchanged
+    todoLists: [...],          // from Todo feature
+    notes: [                   // new — content is a plain JSON string
+        { id, name, language, content, createdAt, updatedAt, order }
+    ],
+    _config: { theme, logoAnim },
+    _images: { ... }           // unchanged
+}
+```
+
+Images live inline in `note.content` as `![alt](/uploads/id.ext)` markdown. No separate `images[]` field.
+
+On export: scan `content` for `/uploads/` references via `extractUploadIds(content)` (shared utility with Todo), fetch each as base64, add to `_images` map.
+
+On import: re-upload from `_images`; content paths are preserved so no rewriting needed.
+
+On note delete: `extractUploadIds(note.content).forEach(id => deleteDialImage(id))`.
+
+Images are stored at **original size and format — no resizing**. Same uploader change as Todo (preserve file extension).

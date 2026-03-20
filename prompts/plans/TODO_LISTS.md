@@ -81,12 +81,12 @@ Extend `data` with a top-level `todoLists` array (alongside `tabs`).
       name: string,
       emoji: string,        // '' = no icon
       createdAt: string,    // ISO 8601
+      order: number,        // integer; lists sorted ascending; reordered via drag
       items: [
         {
           id: string,       // uid()
-          content: string,  // raw markdown text (may contain ![alt](/uploads/id.jpg))
-          images: string[], // list of upload IDs referenced in content; for cleanup on delete
-          isDone: boolean,
+          content: string,  // raw markdown; inline images as ![alt](/uploads/id.ext)
+          isDone: boolean,  // no separate images[] — upload IDs extracted from content on delete
           createdAt: string,
           updatedAt: string,
           doneAt: string | null,
@@ -98,7 +98,7 @@ Extend `data` with a top-level `todoLists` array (alongside `tabs`).
 }
 ```
 
-**Migration:** `loadData()` adds `if (!data.todoLists) data.todoLists = []` — no destructive change.
+**Migration:** `loadData()` adds `if (!data.todoLists) data.todoLists = [{ id: uid(), name: 'TODO', emoji: '✅', createdAt: now, order: 0, items: [] }]` — creates the default list if none exist. No destructive change.
 
 ---
 
@@ -188,15 +188,16 @@ Lists are stacked vertically as an accordion. One list is **active** (expanded);
 ### Accordion rules
 
 - **One list expanded at a time.** Clicking a collapsed list header expands it and collapses the current one.
-- **Collapsed list** shows: expand chevron + emoji + name + item count badge (`(N)`).
-- **Active list** shows: collapse chevron + emoji + name + edit icon + add-item button.
-- **Order** is preserved — lists render in their defined order; the active list expands in place, no reordering on click.
+- **Collapsed list** shows: drag handle + expand chevron + emoji + name + active item count badge `(N)` (done items not counted).
+- **Active list** shows: drag handle + collapse chevron + emoji + name + `✏️` (edit name/emoji) + `⊤+` + `⊥+` add buttons.
+- **Order** preserved — lists render in their defined `order` field; reordered via drag.
+- **On page load / refresh:** always expand the first list (`data.todoLists[0]`). Active list state is not persisted — no need to store it.
 
 ### Done section
 
 - Appears as the last row of each active list: `▶ Done (N)` — collapsed by default.
 - Clicking it toggles open, showing done items (dimmed + strike-through on first line) inline below.
-- Can be expanded independently from the list accordion (separate state bit per list: `list.doneExpanded`).
+- Toggle state is **JS-only** (`doneExpandedListId` variable) — resets to collapsed on every page load. No persistence needed.
 - Done items have the same item row actions: mark undone, delete, move.
 
 ### Scrolling
@@ -206,25 +207,42 @@ The panel is a single `overflow-y: auto` container. Natural document flow means 
 ### Item row (active list, collapsed item state)
 
 ```
-[drag] [☐] First line of todo text…          [↑][↓][🗑][⋯]
+[drag] [☐] First line of todo text…   🖼  [↑—][↓—][✏️][🗑][⋯]
 ```
 
-- **Todo lists are self-managing — no dependency on global edit mode.** Drag, reorder, move between lists, and all item actions are always available without toggling edit mode. Global edit mode controls dials only.
-- Drag handle: leftmost, always available (no edit-mode gate)
-- Checkbox: marks as done (moves to Done section); undone from Done section moves back up
-- Text: first line only, truncated with ellipsis; click to open full-screen edit
-- Action buttons (right side, visible on row hover): move to top `↑`, move to bottom `↓`, delete `🗑`, more `⋯` (move to another list)
+- **Todo lists are fully self-managing — global edit mode has zero interaction with todo lists.** All actions always available.
+- **Drag handle:** leftmost, always visible, always active — no edit-mode gate.
+- **Checkbox:** marks as done → item moves to Done section. Clicking again in Done section → moves back to active.
+- **Text (first line):** single click → expands inline to show full content as **rendered markdown** (read-only). Click again or press `Escape` to collapse.
+- **`✏️` button** (hover): opens full-screen CodeMirror editor. This is the **only** way to edit — no double-click.
+- **`🖼` badge:** shown if content contains inline images. Hidden otherwise.
+- **Action buttons** (visible on row hover): `↑—` move to top, `↓—` move to bottom, `🗑` delete (undo toast — no confirm modal), `⋯` move to another list.
+- Add icon constants to `ICONS`: `ICONS.moveTop`, `ICONS.moveBottom` — use arrow-with-line emoji (e.g. `⬆` / `⬇` or similar; pick from emoji set during implementation).
 
 ### Adding an item
 
-- **Add to list (top):** clicking the `+` button on the active list header inserts a new blank item at the **top** of the list, auto-focused.
-- **Add below a specific item:** hovering a row reveals the action buttons; one of them is `+` (add below). Clicking it inserts a new blank item immediately below that row.
-- In both cases: a single-line inline plain text input appears, auto-focused. `Enter` or blur commits the item — auto-saved, no Save button.
-- To write multiline content: open full-screen edit from the item row after adding.
+Active list header shows two add buttons:
+- **`⊤+` Add to top** — inserts new blank item at the top of the list
+- **`⊥+` Add to bottom** — inserts new blank item at the bottom of the list
 
-### Drag between lists
+Both open an inline single-line plain text input, auto-focused.
 
-In edit mode, item rows have a drag handle. Dragging an item and dropping it onto a **collapsed list header** moves it to that list (appended to end). The target list header highlights on drag-over.
+**Keyboard behaviour of the inline add input:**
+- `Enter` — commit the item, close the input, auto-save. Empty content not allowed — if blank, commit is blocked (visual shake or highlight).
+- `Shift+Enter` — no action (reserved, does nothing).
+- `Escape` — cancel; if any text was typed show a small confirm popup ("Discard new item?"); if input was empty cancel silently.
+
+After committing, the item appears in the list as a collapsed row. To write multiline content or paste images, open full-screen edit from the new row.
+
+**Empty items not allowed.** An item with no text and no images cannot be saved. If an existing item's content is deleted entirely during full-screen edit, on close show confirm: "Item is empty — delete it or keep editing?"
+
+### Drag — items and lists
+
+**Item reorder (within list):** drag handle on every item row, always active. Drop between items reorders in place. No edit-mode dependency.
+
+**Item move (between lists):** drag an item and drop onto a **collapsed list header** → moves item to the **top** of that list. Target list header highlights on drag-over. On drop: target list expands, source list collapses (since it is no longer the active list).
+
+**List reorder:** list headers are themselves draggable. Drag a list header to reposition the list in the accordion order. Drop indicator (dashed line) appears between lists during drag.
 
 ---
 
@@ -279,15 +297,9 @@ body.todo-fullscreen .todo-items {
 
 The header itself (logo, edit toggle, settings) stays visible — only the data-display elements are hidden. This keeps the user oriented and lets them exit edit mode or navigate to another tab.
 
-### CodeMirror benefit
+### CodeMirror only lives in full-screen editor
 
-In full-screen mode the CodeMirror editor for expanded items can grow taller — the `.todo-item.expanded` height can use more `vh` in full-screen mode:
-
-```css
-body.todo-fullscreen .todo-item.expanded .cm-editor {
-    min-height: 300px;
-}
-```
+CodeMirror is instantiated only when `openItemEditor()` is called and destroyed when `closeItemEditor()` is called. It never appears in the list view. In full-screen panel mode the editor simply has more vertical space available via CSS — no extra JS needed.
 
 ### Keyboard shortcut
 
@@ -304,35 +316,130 @@ Load after `js/render.js`, before `js/init.js`.
 | Function | Purpose |
 |----------|---------|
 | `renderTodoPanel()` | Builds the entire right column; called from `renderHomeTab()` |
-| `renderTodoListChips()` | List selector chips + add button |
+| `renderTodoAccordion()` | Renders all list headers + active list items; replaces old chip-based navigation |
 | `renderTodoItems(listId)` | Renders items for the active list |
 | `makeTodoItemRow(item)` | Returns a single item DOM node |
-| `expandTodoItem(id)` | Switches row to expanded/edit state |
-| `collapseTodoItem(id)` | Saves changes and collapses back |
+| `inlineExpandItem(id)` | Renders full content as read-only markdown HTML below first line; collapses any previously expanded item |
+| `inlineCollapseItem(id)` | Collapses back to first-line view |
+| `openItemEditor(id)` | Opens full-screen CodeMirror editor for the item; only entry point to editing |
+| `closeItemEditor()` | Closes full-screen editor; validates non-empty; auto-saves; returns to list view |
 | `openTodoListModal(listId?)` | Open add/edit modal for a list |
 | `saveTodoList()` | Save list name+emoji from modal |
-| `deleteTodoList(id)` | Confirm then delete list + cleanup images |
-| `addTodoItem(listId)` | Append a new blank item, immediately expand it |
+| `deleteTodoList(id)` | `showConfirm` with message "Delete list and its N items?" → delete list, scan all item content for `/uploads/` refs, call `deleteDialImage()` for each |
+| `addTodoItem(listId, position)` | `position`: `'top'` or `'bottom'`; inserts inline single-line input at the correct position |
 | `saveTodoItem(id)` | Persist content edits; update `updatedAt` |
 | `toggleTodoDone(id)` | Flip `isDone`; set/clear `doneAt` |
-| `deleteTodoItem(id)` | showConfirm → delete item + call `deleteUploadedImages(item.images)` |
-| `moveTodoItem(id, targetListId)` | Move item to another list |
-| `deleteUploadedImages(ids)` | `ids.forEach(id => deleteDialImage(id))` — reuses existing util |
+| `deleteTodoItem(id)` | `showToastUndo()` (no confirm modal) → scan `extractUploadIds(item.content)` → `deleteDialImage()` for each |
+| `moveTodoItem(id, targetListId)` | Move item to top of target list; expand target list; collapse source list |
 | `initTodoDragDrop()` | Item drag-to-reorder within list |
 | `toggleTodoFullScreen()` | Toggles `todoFullScreen` bool + `body.todo-fullscreen` class |
 | `activeTodoListId` | Module-level state variable (which list chip is selected) |
 | `todoFullScreen` | Module-level boolean; `false` by default |
 
-### Image paste in item editor
+### Item images (inline)
 
-When the user pastes or drops an image into the textarea / contenteditable:
-1. Intercept paste event
-2. `resizeImage(file)` (reuse existing util)
-3. POST to `/api/upload/<uid>` (reuse `uploadDialImage`)
-4. Insert `![image](/uploads/<uid>.jpg)` at cursor position in markdown
-5. Push `<uid>` into `item.images[]`
+Images are pasted/dropped directly into the CodeMirror editor and rendered **inline in the text** using CodeMirror widget decorations. The markdown source contains a standard `![alt](/uploads/id.png)` reference; CodeMirror replaces it visually with the actual `<img>` element while the cursor is elsewhere on the line.
 
-On item delete: call `deleteDialImage(id)` for each entry in `item.images`.
+#### Two distinct item views
+
+**Inline expanded (read-only)** — triggered by single click on item text:
+```
+[drag] [☐] First line of todo text             [✏️][🗑][⋯]
+         Full rendered markdown content
+         (using marked.js, same as collapsed first-line preview)
+
+         [    rendered image here    ]
+
+         createdAt / updatedAt shown here? → No, timestamps only in full-screen editor
+```
+Grows freely in height — no max-height cap. Click again or `Escape` to collapse.
+
+**Full-screen editor** — triggered by `✏️` button only:
+```
+┌─────────────────────────────────────────┐
+│  [←] back                    createdAt  │  ← timestamps shown here
+│       updatedAt                         │
+├─────────────────────────────────────────┤
+│                                         │
+│   CodeMirror editor (full height)       │
+│   with markdown decoration + image      │
+│   widget rendering inline               │
+│                                         │
+└─────────────────────────────────────────┘
+```
+`[←]` back button or `Escape` closes editor, validates non-empty, auto-saves.
+
+When the cursor is on the `![...]()` line the raw markdown syntax is shown; when cursor moves away CodeMirror renders the image widget.
+
+#### Paste / drop flow
+
+1. Intercept `paste` or `drop` event on the CodeMirror EditorView DOM
+2. Extract `File` from `e.clipboardData` or `e.dataTransfer`
+3. POST raw blob to `/api/upload/<uid>.<ext>` — **no resize**, original format preserved
+4. Insert `![image](/uploads/<uid>.<ext>)` at the current cursor position via a CodeMirror transaction
+5. `saveData()` — auto-save
+
+#### Storage — no resizing
+
+Unlike dial custom icons, todo images are **not resized**. `resizeImage()` is **not called**. Original format and dimensions are preserved.
+
+The upload ID includes the file extension: `uid() + '.' + ext` (e.g. `lx3k9z2a.png`) so the sidecar stores the correct format.
+
+> **Uploader change required:** `server.js` currently appends `.jpg` unconditionally. It must use the filename from the request instead. See Changes to existing files.
+
+#### No `images[]` array on item
+
+There is no separate `images[]` field. Images are referenced only via the markdown content. For cleanup on item delete, scan `item.content` for `/uploads/` references:
+
+```js
+function extractUploadIds(content) {
+    const re = /\/uploads\/([\w.\-]+)/g;
+    const ids = [];
+    let m;
+    while ((m = re.exec(content)) !== null) ids.push(m[1]);
+    return ids;
+}
+
+// on delete:
+extractUploadIds(item.content).forEach(id => deleteDialImage(id));
+```
+
+#### CodeMirror image widget
+
+A small ViewPlugin scans the document for `![...](.*)` nodes from the markdown syntax tree and replaces each with a `Decoration.widget` containing an `<img>` element. When the cursor enters the line, the decoration is removed so the raw syntax is editable.
+
+```js
+// sketch — actual implementation in js/todo.js or a shared js/cm-image-widget.js
+const imageWidget = ViewPlugin.fromClass(class {
+    update(update) { this.decorations = buildImageDecorations(update.view); }
+}, { decorations: v => v.decorations });
+```
+
+#### Collapsed item row (list view)
+
+If `item.content` contains at least one `/uploads/` reference, show a small `🖼` indicator next to the first-line text. No inline images in the collapsed view.
+
+---
+
+## Empty states
+
+| Situation | What to show |
+|-----------|-------------|
+| No lists (fresh install) | Never happens — migration always creates a default "TODO ✅" list |
+| List exists, no active items | "No items yet — add one with ⊤+ or ⊥+" dimmed placeholder inside `.todo-items` |
+| List exists, all items done | Same placeholder + Done section visible with its items |
+| Item content empty + no images | Not allowed — blocked on save (inline add) or prompt on exit (full-screen edit) |
+| Item content is only image(s) | Collapsed row shows `(image)` as first-line text fallback, plus `🖼` badge |
+
+---
+
+## `⋯` menus
+
+### Item `⋯` (move to another list)
+Opens a small inline popover listing all other lists with their emoji + name. Clicking one moves the item there (appended to end of target). No modal needed — a simple absolutely-positioned list dismissed by click-outside or `Escape`.
+
+### List `✏️` button (edit list)
+Opens the todo list modal (name + emoji). No `⋯` on the list header — edit is the only non-drag action. Delete is inside the edit modal (same pattern as groups of dials).
 
 ---
 
@@ -402,15 +509,26 @@ Key selectors / blocks:
 .todo-items                item rows container; display: none when list collapsed
 .todo-item                 single row; flex; border-bottom; cursor pointer
 .todo-item.done            opacity 0.45; first-line text has line-through
-.todo-item-drag-handle     leftmost; same style as dial drag handle; edit-mode only
+.todo-item.inline-expanded shows rendered markdown content below first line; grows freely
+.todo-item-drag-handle     leftmost; always visible; no edit-mode dependency
 .todo-item-check           checkbox/circle, clicking marks done/undone
-.todo-item-text            first line truncated with ellipsis; click → full-screen edit
-.todo-item-actions         right side: ↑ ↓ 🗑 ⋯ ; visible on hover or in edit-mode
-.todo-item-add             "+ Add item" inline input row at bottom of active items
+.todo-item-first-line      truncated with ellipsis; click → inline expand/collapse
+.todo-item-inline-content  rendered markdown HTML; hidden by default; shown when .inline-expanded
+.todo-item-actions         right side: ↑— ↓— ✏️ 🗑 ⋯ ; visible on hover; no edit-mode dependency
+.todo-item-add-input       inline single-line input for new item; inserted at top or bottom of list
 
 .todo-done-section         collapsible "Done (N)" row + its items
 .todo-done-header          "▶ Done (N)" toggle row
 .todo-done-items           done item rows; hidden when collapsed
+
+/* Full-screen edit view */
+.todo-edit-view            full-screen item editor container
+.todo-edit-back            back/close button top-left
+.todo-edit-cm              CodeMirror editor area, fills available height
+
+/* CodeMirror inline image widget */
+.cm-todo-image             <img> rendered by widget decoration; max-width 100%; cursor pointer
+.todo-image-badge          🖼 indicator on collapsed item rows when content has images
 ```
 
 Use only CSS vars — no hardcoded colours.
@@ -430,23 +548,23 @@ Use only CSS vars — no hardcoded colours.
 
 | File | Change |
 |------|--------|
-| `js/state.js` | Add `currentTodoListEmoji`, `activeTodoListId`, `editingTodoListId` state vars; add `ICONS.defaultTodoList`, `ICONS.check`, `ICONS.uncheck` |
+| `js/state.js` | Add `currentTodoListEmoji`, `activeTodoListId`, `editingTodoListId`, `editingItemId` state vars; add `ICONS.defaultTodoList`, `ICONS.check`, `ICONS.uncheck`, `ICONS.moveTop`, `ICONS.moveBottom` — pick arrow-with-line emoji during implementation |
 | `js/persistence.js` | `loadData()` — add `if (!data.todoLists) data.todoLists = []` migration line |
 | `js/render.js` | `renderHomeTab()` — full rewrite; builds `.home-layout-a` with dials strip + content row; calls `renderTodoPanel()` for todo col; renders an empty `.home-col-notes` placeholder for notes col |
 | `js/pickers.js` | `initEmojiPickers()` — add `buildEmojiPicker('todoListEmojiPicker', 'todoList')`; `selectEmoji()` — add `'todoList'` branch |
 | `index.html` | Add `<script src="js/todo.js">` after `render.js`; add `<link rel="stylesheet" href="css/todo.css">`; add todo modals |
 | `css/dials.css` | Remove full-width assumption from `.home-section` if needed |
+| `uploader/server.js` | Use filename from request instead of hardcoding `.jpg` extension, so original image formats (PNG, GIF, WebP, etc.) are preserved |
 
 ---
 
-## Drag-to-reorder items
-
-Items within a list are reorderable via drag handle (same UX as dial cards).
+## Drag behaviour (consolidated)
 
 - `item.order` is an integer; items rendered sorted ascending
-- On drop: recalculate order values for affected items, `saveData()`, `renderTodoItems()`
-- Drag only within the same list (no cross-list drag-drop — use the Move button for that)
-- Implementation in `js/todo.js` `initTodoDragDrop()` — follows same pattern as `js/drag-drop.js`
+- **Within-list drop:** recalculate order values, `saveData()`, re-render items
+- **Cross-list drop** (onto a list header): move item to `order = 0` (top) of target list, shift other items' order up; expand target list, collapse source list; `saveData()`, re-render
+- **List header drop:** recalculate list `order` values, `saveData()`, re-render accordion
+- Implementation in `js/todo.js` — three drag contexts handled separately, follows same pattern as `js/drag-drop.js`
 
 ---
 
@@ -466,7 +584,42 @@ Items within a list are reorderable via drag handle (same UX as dial cards).
 - Reuses `uploadDialImage()` / `deleteDialImage()` from `js/utils.js`
 - Tradeoff: images are lost if the Docker volume is wiped without an export — same as dial images today
 
-For the export/import flow (`exportData()` / `_doImport()`): todo item images should be included in `_images` export map, same as dial images. This is a phase-2 concern; document it but don't block the initial implementation.
+## Export / Import
+
+Todo lists are included in the existing `exportData()` / `_doImport()` flow in `js/pickers.js`.
+
+### Content encoding
+
+No special encoding needed. `JSON.stringify()` already escapes all text correctly — quotes, curly braces, backslashes, newlines, code blocks, whatever the content contains. Plain text fields are stored as regular JSON string values. The export file stays human-readable.
+
+Base64 is only used for **binary data** (images fetched as raw bytes from `/uploads/`) — same as today for dial custom icons.
+
+### Images
+
+There is no separate `images[]` field. All image references live inside `item.content` as `![alt](/uploads/id.ext)` markdown syntax.
+
+On export: scan every item's `content` for `/uploads/` references using `extractUploadIds(content)`, fetch each from `/uploads/<id>` as base64, add to the `_images` map. Same mechanism as dial custom icons — no new infrastructure.
+
+On import: `_doImport()` re-uploads each entry from `_images` via `uploadDialImage()`. The markdown content already has the correct `/uploads/` paths so no rewriting needed as long as IDs are preserved (which they are — export/import round-trips the same IDs).
+
+### Export shape (additions only)
+
+```js
+{
+    tabs: [...],               // unchanged
+    todoLists: [               // new — no images[] field; image refs live in content
+        {
+            id, name, emoji, createdAt,
+            items: [{ id, content, isDone, createdAt, updatedAt, doneAt, order }]
+        }
+    ],
+    _config: { theme, logoAnim },
+    _images: {
+        [dialId]: "base64…",   // existing dial images
+        [uploadId]: "base64…"  // todo item images (same map, different IDs)
+    }
+}
+```
 
 ---
 
@@ -485,14 +638,14 @@ For the export/import flow (`exportData()` / `_doImport()`): todo item images sh
 - Add CodeMirror 6 + markdown extension via `esm.sh` CDN
 - Each expanded item mounts a CodeMirror instance; destroyed on collapse
 - Collapsed view renders content with `marked.min.js` (CDN), shows only first line
-- Image paste → intercept EditorView paste event → upload → insert `![](/uploads/id.jpg)` at cursor
+- Image paste → intercept EditorView paste event → upload → insert `![](/uploads/id.ext)` at cursor (original format preserved)
 - Cleanup uploaded images on item delete
 
 ### Phase 3 — Polish
 - Drag-to-reorder items
 - Move item between lists
 - Done section (collapsible archived view)
-- Include todo images in export/import
+- Export/import: `todoLists` included in JSON export; content as plain JSON strings; item images scanned from content and included in `_images` map as base64
 
 ---
 
@@ -510,6 +663,18 @@ For the export/import flow (`exportData()` / `_doImport()`): todo item images sh
 
 1. **Markdown library:** Confirmed — CodeMirror 6 with `@codemirror/lang-markdown` via `esm.sh` CDN.
 2. **Home tab layout:** Confirmed — Option A: dials strip on top, Todo (30%) + Notes placeholder (70%) below.
-3. **Done section:** Confirmed — collapsed by default, toggled per-list, rendered inline below active items.
+3. **Done section toggle state:** Confirmed — JS-only (`doneExpandedListId`), resets to collapsed on every page load. No persistence.
 4. **Multi-list navigation:** Confirmed — accordion; no chip bar needed, all lists visible as collapsed headers.
-5. **Auto-save:** Confirmed — no Save button anywhere. Item text saves on blur (or debounced ~500ms while typing). List name/emoji saves immediately on change in modal. `saveData()` is cheap (JSON stringify to localStorage).
+5. **Auto-save:** Confirmed — no Save button anywhere. Item text saves on blur (or debounced ~500ms while typing). List name/emoji saves immediately on change in modal.
+6. **Edit mode interaction:** Confirmed — none. Todo lists fully self-managing. Drag always active. Actions always visible on hover.
+   **Delete:** undo toast (`showToastUndo`), no confirm modal.
+7. **Item interaction:** Confirmed — single click = inline expand (read-only rendered markdown, grows freely); ✏️ button = full-screen CodeMirror editor. No double-click. These are two distinct states with separate functions (`inlineExpandItem` / `openItemEditor`).
+8. **↑↓ buttons:** Confirmed — move to top / move to bottom. Drag handles one-step reordering.
+9. **Add item:** Confirmed — two buttons with arrow emoji (add to top / add to bottom). Enter commits, Escape with text → confirm discard popup, Escape with no text → silent cancel.
+10. **List reordering:** Confirmed — lists are draggable by their header.
+11. **Collapsed count badge:** Confirmed — active (non-done) items only.
+12. **Delete list confirmation:** Confirmed — "Delete list and its N items?" + clean up all uploaded images from all items in the list.
+13. **Default empty state:** Confirmed — migration always creates one "TODO ✅" list. Panel is never truly empty.
+14. **Active list on refresh:** Confirmed — always expand `data.todoLists[0]`. Not persisted.
+15. **Empty items:** Confirmed — not allowed. Inline add blocks on empty. Full-screen edit prompts on exit if empty.
+16. **Image-only items collapsed view:** Confirmed — show `(image)` as first-line text fallback.
