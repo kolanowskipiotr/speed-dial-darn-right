@@ -484,20 +484,67 @@
     text-align: right;
 }
 
-/* Split editor: CM5 editor | preview */
+/* Split editor: vertical by default (editor on top, preview below) */
 .todo-edit-split {
     flex: 1;
     display: flex;
+    flex-direction: column;
     min-height: 0;
     overflow: hidden;
 }
 
 .todo-edit-cm-host {
     flex: 1;
+    min-width: 0;
     min-height: 0;
     overflow: hidden;
     position: relative;
-    border-right: 1px solid var(--border);
+}
+
+/* Full-screen: horizontal split (editor left, preview right) */
+body.todo-fullscreen .todo-edit-split {
+    flex-direction: row;
+}
+
+/* Draggable divider */
+.todo-edit-divider {
+    flex-shrink: 0;
+    background: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--transition);
+    user-select: none;
+}
+.todo-edit-divider:hover,
+.todo-edit-divider.dragging {
+    background: var(--accent);
+}
+
+/* Vertical split (default): horizontal bar */
+.todo-edit-split .todo-edit-divider {
+    width: 100%;
+    height: 5px;
+    cursor: row-resize;
+}
+.todo-edit-split .todo-edit-divider::after {
+    content: '';
+    width: 28px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--text-dimmer);
+    opacity: 0.6;
+}
+
+/* Horizontal split (fullscreen): vertical bar */
+body.todo-fullscreen .todo-edit-split .todo-edit-divider {
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+}
+body.todo-fullscreen .todo-edit-split .todo-edit-divider::after {
+    width: 2px;
+    height: 28px;
 }
 
 /* Make CodeMirror 5 fill the host */

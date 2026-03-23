@@ -817,8 +817,15 @@ function _renderItemEditor(container) {
         timestamps.appendChild(s);
     }
 
+    const fsBtn = document.createElement('button');
+    fsBtn.className = 'btn-icon todo-fullscreen-btn';
+    fsBtn.title = 'Toggle full screen';
+    fsBtn.textContent = todoFullScreen ? '⛶' : '⤢';
+    fsBtn.onclick = () => toggleTodoFullScreen();
+
     editorHeader.appendChild(backBtn);
     editorHeader.appendChild(timestamps);
+    editorHeader.appendChild(fsBtn);
     editorView.appendChild(editorHeader);
 
     // Split body: CodeMirror 5 (left) + marked.js preview (right)
@@ -829,11 +836,40 @@ function _renderItemEditor(container) {
     cmHost.className = 'todo-edit-cm-host';
     splitBody.appendChild(cmHost);
 
+    // Draggable divider
+    const divider = document.createElement('div');
+    divider.className = 'todo-edit-divider';
+    splitBody.appendChild(divider);
+
     const preview = document.createElement('div');
     preview.className = 'todo-edit-preview todo-item-inline-content';
     splitBody.appendChild(preview);
 
     editorView.appendChild(splitBody);
+
+    // Divider drag-to-resize
+    divider.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const isRow = document.body.classList.contains('todo-fullscreen');
+        const startPos = isRow ? e.clientX : e.clientY;
+        const rect = splitBody.getBoundingClientRect();
+        const splitSize = isRow ? rect.width : rect.height;
+        const startSize = isRow ? cmHost.getBoundingClientRect().width : cmHost.getBoundingClientRect().height;
+        divider.classList.add('dragging');
+
+        const onMove = (ev) => {
+            const delta = (isRow ? ev.clientX : ev.clientY) - startPos;
+            const newSize = Math.max(80, Math.min(startSize + delta, splitSize - 80));
+            cmHost.style.flex = `0 0 ${newSize}px`;
+        };
+        const onUp = () => {
+            divider.classList.remove('dragging');
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
     container.appendChild(editorView);
 
     if (typeof CodeMirror !== 'undefined') {
@@ -857,6 +893,13 @@ function _renderItemEditor(container) {
         preview.innerHTML = typeof marked !== 'undefined'
             ? marked.parse(item.content || '')
             : escHtml(item.content || '');
+
+        // Scroll sync: editor → preview (one-way, no feedback loop)
+        _todoCM5.on('scroll', () => {
+            const info = _todoCM5.getScrollInfo();
+            const ratio = info.top / (info.height - info.clientHeight || 1);
+            preview.scrollTop = ratio * (preview.scrollHeight - preview.clientHeight);
+        });
     } else {
         // CDN unavailable — plain textarea fallback
         const ta = document.createElement('textarea');

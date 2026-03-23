@@ -200,6 +200,7 @@ function renderHomeTab() {
             mostUsed.forEach(({ dial, groupId, groupName, tabName }) => {
                 grid.appendChild(makeDialCard(dial, groupId, 0, 0, { showMeta: true, tabName, groupName, totalVisits }));
             });
+            grid.addEventListener('wheel', (e) => { if (e.deltaY !== 0) { e.preventDefault(); grid.scrollBy({ left: e.deltaY, behavior: 'smooth' }); } }, { passive: false });
             col.appendChild(grid);
             dialsStrip.appendChild(col);
         }
@@ -219,6 +220,7 @@ function renderHomeTab() {
             recentlyUsed.forEach(({ dial, groupId, groupName, tabName }) => {
                 grid.appendChild(makeDialCard(dial, groupId, 0, 0, { showMeta: true, tabName, groupName, totalVisits }));
             });
+            grid.addEventListener('wheel', (e) => { if (e.deltaY !== 0) { e.preventDefault(); grid.scrollBy({ left: e.deltaY, behavior: 'smooth' }); } }, { passive: false });
             col.appendChild(grid);
             dialsStrip.appendChild(col);
         }
