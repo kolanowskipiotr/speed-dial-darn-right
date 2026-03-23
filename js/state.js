@@ -17,6 +17,7 @@ const ICONS = {
     warn:    '⚠️',
     error:   '❌',
     undo:    '↩️',
+    back:    '⬅️',
     loading: '⏳',
 
     // Todo list icons

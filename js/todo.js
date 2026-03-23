@@ -801,7 +801,7 @@ function _renderItemEditor(container) {
 
     const backBtn = document.createElement('button');
     backBtn.className = 'btn-icon todo-edit-back';
-    backBtn.textContent = ICONS.undo + ' Back';
+    backBtn.textContent = ICONS.back;
     backBtn.onclick = () => closeItemEditor();
 
     const timestamps = document.createElement('div');

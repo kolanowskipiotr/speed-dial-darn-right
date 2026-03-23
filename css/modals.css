@@ -14,6 +14,8 @@
 
 .modal-backdrop.open { display: flex; }
 
+#confirmModal { z-index: 300; }
+
 .modal {
     background: var(--surface);
     border: 1px solid var(--border-hover);
