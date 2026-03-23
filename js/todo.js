@@ -121,8 +121,8 @@ function _renderTodoAccordion(container) {
                 <span class="todo-list-name">${escHtml(list.name)}</span>
                 <div class="todo-list-header-actions">
                     <button class="btn-icon" title="Edit list" onclick="openTodoListModal('${list.id}')">${ICONS.edit}</button>
-                    <button class="btn-icon" title="Add to top" onclick="addTodoItem('${list.id}','top')">⊤+</button>
-                    <button class="btn-icon" title="Add to bottom" onclick="addTodoItem('${list.id}','bottom')">⊥+</button>
+                    <button class="btn-icon" title="Add to top" onclick="addTodoItem('${list.id}','top')">⤒+</button>
+                    <button class="btn-icon" title="Add to bottom" onclick="addTodoItem('${list.id}','bottom')">⤓+</button>
                 </div>
             `;
         } else {
@@ -236,7 +236,7 @@ function _renderTodoItems(list, container) {
     if (!activeItems.length) {
         const emptyEl = document.createElement('div');
         emptyEl.className = 'todo-items-empty';
-        emptyEl.textContent = 'No items yet — add one with ⊤+ or ⊥+';
+        emptyEl.textContent = 'No items yet — add one with ⤒+ or ⤓+';
         container.appendChild(emptyEl);
     } else {
         activeItems.forEach(item => {
@@ -321,10 +321,10 @@ function _makeTodoItemRow(item, listId) {
     actions.className = 'todo-item-actions';
     actions.innerHTML = `
         <button class="btn-icon" title="Edit" onclick="openItemEditor('${item.id}')">${ICONS.edit}</button>
-        <button class="btn-icon" title="Move to top" onclick="moveTodoItemToPosition('${item.id}','${listId}','top')">${ICONS.moveTop}</button>
-        <button class="btn-icon" title="Move to bottom" onclick="moveTodoItemToPosition('${item.id}','${listId}','bottom')">${ICONS.moveBottom}</button>
+        <button class="btn-icon todo-item-pos-btn" title="Move to top" onclick="moveTodoItemToPosition('${item.id}','${listId}','top')">${ICONS.moveTop}</button>
+        <button class="btn-icon todo-item-pos-btn" title="Move to bottom" onclick="moveTodoItemToPosition('${item.id}','${listId}','bottom')">${ICONS.moveBottom}</button>
         <button class="btn-icon danger" title="Delete" onclick="deleteTodoItem('${item.id}')">${ICONS.delete}</button>
-        <button class="btn-icon" title="Move to another list" onclick="openTodoMoveModal('${item.id}')">⋯</button>
+        <button class="btn-icon todo-move-list-btn" title="Move to another list" onclick="openTodoMoveModal('${item.id}')">⋯</button>
     `;
 
     row.appendChild(dragHandle);
@@ -801,7 +801,7 @@ function _renderItemEditor(container) {
 
     const backBtn = document.createElement('button');
     backBtn.className = 'btn-icon todo-edit-back';
-    backBtn.textContent = '← Back';
+    backBtn.textContent = ICONS.undo + ' Back';
     backBtn.onclick = () => closeItemEditor();
 
     const timestamps = document.createElement('div');

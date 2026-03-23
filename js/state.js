@@ -23,8 +23,8 @@ const ICONS = {
     defaultTodoList: '📋',
     check:           '☑',
     uncheck:         '☐',
-    moveTop:         '⬆️',
-    moveBottom:      '⬇️',
+    moveTop:         '⤒',
+    moveBottom:      '⤓',
 };
 
 const EMOJI_CATEGORIES = [

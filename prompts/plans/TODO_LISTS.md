@@ -189,7 +189,7 @@ Lists are stacked vertically as an accordion. One list is **active** (expanded);
 
 - **One list expanded at a time.** Clicking a collapsed list header expands it and collapses the current one.
 - **Collapsed list** shows: drag handle + expand chevron + emoji + name + active item count badge `(N)` (done items not counted).
-- **Active list** shows: drag handle + collapse chevron + emoji + name + `✏️` (edit name/emoji) + `⊤+` + `⊥+` add buttons.
+- **Active list** shows: drag handle + collapse chevron + emoji + name + `✏️` (edit name/emoji) + `⤒+` + `⤓+` add buttons.
 - **Order** preserved — lists render in their defined `order` field; reordered via drag.
 - **On page load / refresh:** always expand the first list (`data.todoLists[0]`). Active list state is not persisted — no need to store it.
 
@@ -222,8 +222,8 @@ The panel is a single `overflow-y: auto` container. Natural document flow means 
 ### Adding an item
 
 Active list header shows two add buttons:
-- **`⊤+` Add to top** — inserts new blank item at the top of the list
-- **`⊥+` Add to bottom** — inserts new blank item at the bottom of the list
+- **`⤒+` Add to top** — inserts new blank item at the top of the list
+- **`⤓+` Add to bottom** — inserts new blank item at the bottom of the list
 
 Both open an inline single-line plain text input, auto-focused.
 
@@ -426,7 +426,7 @@ If `item.content` contains at least one `/uploads/` reference, show a small `�
 | Situation | What to show |
 |-----------|-------------|
 | No lists (fresh install) | Never happens — migration always creates a default "TODO ✅" list |
-| List exists, no active items | "No items yet — add one with ⊤+ or ⊥+" dimmed placeholder inside `.todo-items` |
+| List exists, no active items | "No items yet — add one with ⤒+ or ⤓+" dimmed placeholder inside `.todo-items` |
 | List exists, all items done | Same placeholder + Done section visible with its items |
 | Item content empty + no images | Not allowed — blocked on save (inline add) or prompt on exit (full-screen edit) |
 | Item content is only image(s) | Collapsed row shows `(image)` as first-line text fallback, plus `🖼` badge |

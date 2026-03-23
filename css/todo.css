@@ -113,6 +113,22 @@
     gap: 2px;
 }
 
+.todo-panel-header-actions .btn-icon {
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.todo-add-list-btn,
+.todo-move-list-btn {
+    font-size: 18px;
+    padding: 0px 2px;
+}
+
+.todo-fullscreen-btn {
+    font-size: 20px;
+    padding: 0px 2px;
+}
+
 .todo-accordion {
     flex: 1;
     overflow-y: auto;
@@ -198,9 +214,11 @@
 }
 
 .todo-list-header-actions .btn-icon {
-    font-size: 11px;
-    padding: 2px 4px;
+    font-size: 13px;
+    padding: 1px 3px;
     opacity: 0.7;
+    font-weight: 700;
+    letter-spacing: -0.5px;
 }
 
 .todo-list-header-actions .btn-icon:hover {
@@ -312,6 +330,13 @@
 .todo-item-actions .btn-icon {
     font-size: 10px;
     padding: 2px 3px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.todo-item-pos-btn {
+    font-size: 13px;
+    padding: 1px 3px;
 }
 
 /* Inline expanded content */
