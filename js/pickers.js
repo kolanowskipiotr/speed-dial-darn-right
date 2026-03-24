@@ -390,6 +390,27 @@ function importData() {
     }, { btnLabel: 'Replace', danger: false });
 }
 
+function _collectUploadIds(d) {
+    const ids = new Set();
+    for (const tab of (d.tabs || [])) {
+        for (const group of (tab.groups || [])) {
+            for (const dial of (group.dials || [])) {
+                if (dial.iconType === 'custom' && dial.icon?.startsWith('/uploads/')) {
+                    ids.add(dial.icon.replace('/uploads/', ''));
+                }
+            }
+        }
+    }
+    for (const list of (d.todoLists || [])) {
+        for (const item of (list.items || [])) {
+            for (const id of extractUploadIds(item.content || '')) {
+                ids.add(id);
+            }
+        }
+    }
+    return ids;
+}
+
 async function _doImport(imported) {
     // Support both old { groups } and new { tabs } format
     if (imported.groups && !imported.tabs) {
@@ -403,6 +424,8 @@ async function _doImport(imported) {
     const config = imported._config || {};
     delete imported._images;
     delete imported._config;
+
+    const oldUploadIds = _collectUploadIds(data);
     data = imported;
 
     if (config.theme) applyTheme(config.theme);
@@ -436,6 +459,11 @@ async function _doImport(imported) {
         showToast(`${ICONS.ok} Imported — ${imageIds.length} image${imageIds.length > 1 ? 's' : ''} restored`);
     } else {
         showToast(`${ICONS.ok} Imported successfully`);
+    }
+
+    const newUploadIds = _collectUploadIds(data);
+    for (const id of oldUploadIds) {
+        if (!newUploadIds.has(id)) deleteDialImage(id).catch(() => {});
     }
 }
 
