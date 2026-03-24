@@ -1,238 +1,524 @@
 # Plan: Notes
 
-**Status:** Early draft — many open questions
-**Date:** 2026-03-19
+**Status:** Ready to implement — all decisions made
+**Date:** 2026-03-24
 
 ---
 
 ## Overview
 
-A Sublime-style multi-tab text/code/markdown editor embedded in the home tab.
-Occupies the right 70% of the bottom content row (or full-width on narrow screens).
-Can go full-screen (same mechanism as Todo lists — `body.notes-fullscreen` CSS class).
+A Sublime-style multi-tab text/code/markdown editor embedded in the right column of the home tab.
+Replaces the "Coming soon" placeholder in `.home-col-notes`.
+Can go full-screen (same mechanism as Todo — `body.notes-fullscreen` CSS class).
+Mutually exclusive with todo full-screen: entering one exits the other.
 
 ---
 
-## Feature summary (confirmed)
+## Libraries (all plugin-covered — no from-scratch editor behavior)
 
-| Capability | Detail |
-|-----------|--------|
-| Editor engine | CodeMirror 6 — same library as Todo markdown editor, loaded once |
-| Syntax highlighting | Per-tab language: Markdown, JS, TS, Python, HTML, CSS, JSON, plain text, more |
-| Find | `Ctrl+F` — `@codemirror/search` |
-| Find & replace | `Ctrl+H` — same extension |
-| Regex search | Toggle in the search panel |
-| Multi-cursor | `Alt+Click`, `Ctrl+D` (select next occurrence) — Sublime-style |
-| Auto-closing brackets | `closeBrackets()` from `@codemirror/autocomplete` |
-| Tabs | Multiple notes open as tabs, same visual style as existing app tabs |
-| Full-screen | `body.notes-fullscreen` hides everything else; `Escape` or button to exit |
-| Auto-save | No save button — content saved on change (debounced ~500ms) |
-| Theming | CodeMirror theme matches app CSS variables |
-| Images | Pasted/dropped images upload and insert as `![alt](/uploads/id.ext)` inline at cursor; CodeMirror widget decoration renders them as actual `<img>` elements in the editor |
+| Feature | Plugin | Source |
+|---|---|---|
+| Line numbers | `lineNumbers()` from `@codemirror/view` | esm.sh (pinned after impl) |
+| Syntax highlighting | `@codemirror/lang-markdown/json/xml/html/javascript` | esm.sh (pinned) |
+| Multi-cursor: select next occurrence (Ctrl+D) | `selectNextOccurrence` from `@codemirror/commands` | esm.sh (pinned) |
+| Multi-cursor: add cursor above/below | `addCursorDown`/`addCursorUp` from `@codemirror/commands` | esm.sh (pinned) |
+| Rectangular/column selection | `rectangularSelection()` from `@codemirror/view` | esm.sh (pinned) |
+| Find / Find+Replace (case-insensitive, regex) | `@codemirror/search` with `searchKeymap` | esm.sh (pinned) |
+| Dark editor theme | `@codemirror/theme-one-dark` | esm.sh (pinned) |
+| Light editor theme | CM6 default | builtin |
+| Theme hot-swap when app theme changes | CM6 `Compartment` API | builtin |
+| Draggable split divider | `split.js` (creates and owns gutter element) | jsDelivr CDN |
+| Markdown preview | `marked.js` | already loaded |
 
----
-
-## CodeMirror 6 setup (shared with Todo)
-
-```html
-<script type="module">
-  import { EditorView, basicSetup } from 'https://esm.sh/codemirror@6'
-  import { markdown } from 'https://esm.sh/@codemirror/lang-markdown@6'
-  import { javascript } from 'https://esm.sh/@codemirror/lang-javascript@6'
-  import { closeBrackets } from 'https://esm.sh/@codemirror/autocomplete@6'
-  // ... other language packages as needed
-
-  // shared factory used by both Notes and Todo
-  window.createEditor = (parent, lang, doc) => new EditorView({
-    doc,
-    extensions: [basicSetup, lang(), closeBrackets()],
-    parent
-  })
-</script>
-```
-
-Load order: this module script runs after the classic scripts. `window.createEditor` is available to `js/notes.js` and `js/todo.js`.
+**Version pinning:** After the first working implementation, pin all `@6` imports to exact versions (e.g. `@6.0.1`).
 
 ---
 
-## Data model (draft)
+## Data model
 
-Notes are stored in `data.notes` alongside `data.tabs` and `data.todoLists`.
+New top-level key `data.notes[]` alongside `data.tabs` and `data.todoLists`:
 
 ```js
 {
-  tabs: [...],
-  todoLists: [...],
-  notes: [
-    {
-      id: string,           // uid()
-      name: string,         // tab label
-      language: string,     // 'markdown' | 'javascript' | 'python' | 'html' | 'css' | 'json' | 'text' | ...
-      content: string,      // raw text
-      createdAt: string,    // ISO 8601
-      updatedAt: string,
-      order: number,        // tab order
-      // no images[] field — inline image refs live in content as ![alt](/uploads/id.ext)
-    }
-  ],
-  activeNoteId: string | null  // ? or keep in JS state only — see open questions
+  id:        string,   // uid()
+  name:      string,   // tab label
+  content:   string,   // raw text; images as ![alt](/uploads/id.ext)
+  language:  'markdown' | 'json' | 'xml' | 'html' | 'javascript' | 'text',
+  order:     number,   // integer, 0-based; sorted ascending; drag-to-reorder
+  createdAt: string,   // ISO 8601
+  updatedAt: string,   // ISO 8601
 }
 ```
 
-Migration: `loadData()` adds `if (!data.notes) data.notes = []`.
+No `images[]` array — image refs live inline in `content` as `![alt](/uploads/id.ext)`.
+`activeNoteId` is JS-only state — never persisted.
 
----
-
-## Layout in home tab
-
-```
-wide screen:
-┌──────────────────────────────────────────┐
-│  ★ Most Used · · · · 🕐 Recently Used    │
-├─────────────────┬────────────────────────┤
-│   To-Do Lists   │        Notes           │
-│   ~30% width    │      ~70% width        │
-└─────────────────┴────────────────────────┘
-
-narrow screen (<900px):
-┌──────────────────┬───────────────────────┐
-│  Commonly Used   │     To-Do Lists       │
-│     Dials        │                       │
-├──────────────────┴───────────────────────┤
-│              Notes                       │
-└──────────────────────────────────────────┘
-```
-
-Notes panel structure:
-```
-┌──────────────────────────────────────────┐
-│ [note1.md ×] [script.js ×] [+]    [⤢]   │  ← tab bar + new-note btn + full-screen btn
-├──────────────────────────────────────────┤
-│                                          │
-│   Some text                              │
-│                                          │
-│   [    rendered image inline    ]        │  ← CodeMirror widget decoration
-│                                          │
-│   More text                              │
-│                                          │
-└──────────────────────────────────────────┘
-```
-
-- Paste/drop image anywhere in editor → uploads → inserts `![image](/uploads/id.ext)` at cursor
-- CodeMirror widget decoration renders `![...](...)` as actual `<img>` when cursor is off the line
-- **No resizing** — original format and dimensions preserved
-- Shared `extractUploadIds()` utility and `cm-image-widget` ViewPlugin with Todo
-
----
-
-## Full-screen mode
-
-Same mechanism as Todo:
-
-```css
-body.notes-fullscreen .home-col-todo,
-body.notes-fullscreen .home-dials-strip,
-body.notes-fullscreen #headerClock,
-body.notes-fullscreen #headerDate,
-body.notes-fullscreen #headerDialCount,
-body.notes-fullscreen .tabs-bar {
-    display: none;
-}
-body.notes-fullscreen .home-col-notes {
-    flex: 1 1 100%;
-    max-width: 100%;
+**Migration in `loadData()`:** after the existing `todoLists` migration block:
+```js
+if (!data.notes) {
+  const now = new Date().toISOString();
+  data.notes = [{ id: uid(), name: 'Note 1', content: '', language: 'markdown', order: 0, createdAt: now, updatedAt: now }];
+  saveData();
 }
 ```
 
-`Escape` exits (checked before modal-close handler in `js/init.js`).
+---
+
+## New files
+
+| File | Type | Purpose |
+|---|---|---|
+| `js/notes-cm.js` | ES module | CM6 editor — exposes `window.NotesCM`, fires `notescmready` event |
+| `js/notes.js` | Classic script | Panel logic: CRUD, tabs, drag-reorder, image upload, search hookup |
+| `css/notes.css` | CSS | All notes styles (loaded after `todo.css`) |
 
 ---
 
-## New JS module: `js/notes.js`
+## Files touched
 
-| Function | Purpose |
-|----------|---------|
-| `renderNotesPanel()` | Builds tab bar + editor mount; called from `renderHomeTab()` |
-| `openNote(id)` | Switch active note; destroy current CM instance, mount new one |
-| `addNote(lang?)` | Insert new note, auto-focus tab name for rename |
-| `deleteNote(id)` | `showConfirm` → delete + switch to adjacent note |
-| `renameNote(id, name)` | Inline rename via double-click on tab label |
-| `saveNoteContent(id)` | Debounced — reads `view.state.doc.toString()`, `saveData()` |
-| `setNoteLanguage(id, lang)` | Change syntax highlighting; recreate CM instance with new lang |
-| `toggleNotesFullScreen()` | Toggles `body.notes-fullscreen` |
-| `activeNoteId` | Module-level state |
-| `cmView` | Current CodeMirror `EditorView` instance |
+| File | Change |
+|---|---|
+| `js/render.js` | Replace "Coming soon" placeholder with `renderNotesPanel(notesCol)` |
+| `js/state.js` | Add `activeNoteId`, `notesFullScreen`, `_notesSearchHighlight`; extend `ICONS` |
+| `js/persistence.js` | Add `data.notes` migration block |
+| `js/themes.js` | One line at end of `applyTheme()`: `if (window.NotesCM) NotesCM.setTheme(isDark)` |
+| `js/search.js` | Add note result type + `jumpToNote()` |
+| `js/init.js` | Extend Escape handler for notes fullscreen mutual exclusion |
+| `js/pickers.js` | Extend `exportData()` + `_doImport()` to include `data.notes` and note images |
+| `index.html` | Add `split.js` script, `notes.css` link, `notes.js` script, `notes-cm.js` module |
 
 ---
 
-## New CSS file: `css/notes.css`
+## `js/notes-cm.js` — CM6 bridge (ES module)
+
+### Async loading fix — `notescmready` event
+
+ES modules load asynchronously. `notes.js` (classic) may call `renderNotesPanel()` before CM6 finishes loading.
+Fix: at the end of `notes-cm.js`, after `window.NotesCM` is set:
+```js
+document.dispatchEvent(new CustomEvent('notescmready'));
+```
+
+In `renderNotesPanel()`, mount the editor defensively:
+```js
+if (window.NotesCM) {
+  NotesCM.mount(cmHostEl, note.content, note.language, _isAppDark());
+} else {
+  document.addEventListener('notescmready', function h() {
+    document.removeEventListener('notescmready', h);
+    const host = document.querySelector('.notes-cm-host');
+    const n = findNote(activeNoteId);
+    if (host && n) NotesCM.mount(host, n.content, n.language, _isAppDark());
+  }, { once: true });
+}
+```
+Single code path. No fallback textarea. No flicker. Panel shell renders immediately; editor mounts as soon as CM6 is ready.
+
+### `window.NotesCM` API
+
+```js
+mount(hostEl, content, language, isDark)  // creates EditorView
+destroy()                                 // tears down EditorView
+getValue()                                // returns doc string
+setValue(content)                         // full-doc replace transaction
+setLanguage(lang)                         // Compartment reconfigure
+setTheme(isDark)                          // Compartment reconfigure
+focusAndHighlight(query)                  // open search panel with query pre-filled
+insertAtCursor(text)                      // insert text at current cursor (for image upload)
+```
+
+### Extensions on mount
+
+- `lineNumbers()`
+- `history()`
+- `drawSelection()`
+- `rectangularSelection()`
+- `EditorView.lineWrapping`
+- `search({ top: false })` — find/replace panel docked at bottom
+- `_langCompartment.of(langExtension(language))`
+- `_themeCompartment.of(isDark ? oneDark : [])`
+- `keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, { key: 'Mod-d', run: selectNextOccurrence }])`
+- `EditorView.domEventHandlers({ paste: handleImagePaste, drop: handleImageDrop })`
+- `EditorView.updateListener` → debounced (300ms) → `window._notesCMDocChange(content)`
+
+### Image paste/drop handler
+
+Only activates when `note.language === 'markdown'`. For other languages, default CM6 paste applies (text only).
+
+```js
+function handleImagePaste(event, view) {
+  const items = [...(event.clipboardData?.items || [])];
+  const imageItem = items.find(i => i.type.startsWith('image/'));
+  if (!imageItem) return false;
+  event.preventDefault();
+  const file = imageItem.getAsFile();
+  if (file) window._notesUploadImage(file, view);
+  return true;
+}
+// Same shape for handleImageDrop using event.dataTransfer.files[0]
+```
+
+### `langExtension(lang)` helper
+
+```js
+function langExtension(lang) {
+  switch (lang) {
+    case 'markdown':   return markdown();
+    case 'json':       return json();
+    case 'xml':        return xml();
+    case 'html':       return html();
+    case 'javascript': return javascript();
+    default:           return [];
+  }
+}
+```
+
+---
+
+## `js/notes.js` — panel logic (classic script)
+
+### State variables (module-level, not in state.js)
+
+```js
+let _notesSplitInstance = null;    // split.js instance
+let _notesPreviewEl = null;        // .notes-preview DOM element ref
+```
+
+### `renderNotesPanel(container)`
+
+Builds full panel DOM, then mounts CM6 (with `notescmready` guard).
+
+Panel structure:
+```
+.notes-panel
+  .notes-panel-header
+    .notes-panel-title          (📝 Notes)
+    .notes-panel-header-actions
+      button.notes-add-btn      (+  add note)
+      button.notes-info-btn     (ℹ  hover tooltip)
+      button.notes-fullscreen-btn  (⤢/⛶)
+  .notes-tabs-bar
+    [one .notes-tab per note, sorted by order]
+  .notes-toolbar
+    [lang buttons: .txt .md .json .xml .js .html]
+    button.notes-img-btn        (📎  opens hidden file input)
+    input[type=file,accept=image/*,hidden]
+  .notes-split-host
+    .notes-cm-host
+    [.notes-preview — markdown language only; hidden otherwise]
+```
+
+If `language === 'markdown'`: after CM6 mounts, call `_initMarkdownSplit()`.
+
+### Note tabs — `|Note name [x]|`
+
+Each `.notes-tab` element:
+- `draggable="true"`
+- Contains `.notes-tab-name` span + `.notes-tab-close` button (`×`)
+- Click → `openNoteTab(id)` (saves current editor content first)
+- **Double-click on `.notes-tab-name`** → `startNoteTabRename(id)` (inline input)
+- Click `×` → `deleteNote(id)` (blocked if only 1 note remains; uses `showToastUndo`)
+
+### Tab drag-to-reorder
+
+HTML5 drag on the horizontal tab bar (same pattern as todo list reorder, adapted for horizontal):
+- `dragstart` → store `_notesDragId`
+- `dragover` → left/right drop indicator on target tab
+- `drop` → recompute `order` values sequentially, `saveData()`, re-render tabs bar only (not full panel)
+
+**Known limitation:** no auto-scroll near overflow edge. Acceptable for initial implementation.
+
+### Key functions
+
+```js
+findNote(id)                     // data.notes.find(n => n.id === id)
+openNoteTab(noteId)              // save current, set activeNoteId, re-render panel
+addNote()                        // create note, set active, save, re-render, trigger rename
+deleteNote(noteId)               // blocked if last note; showToastUndo; re-render
+renameNote(noteId, newName)      // save, re-render tabs bar only
+startNoteTabRename(noteId)       // replace .notes-tab-name span with inline <input>
+setNoteLanguage(lang)            // save language, full re-render (split appears/disappears)
+toggleNotesFullScreen()          // toggles notesFullScreen + body.notes-fullscreen;
+                                 // exits todo fullscreen first if active (mutual exclusion)
+_renderNotesTabs(container)      // partial re-render of tabs bar only (used after rename/reorder)
+_initMarkdownSplit()             // initialise split.js on .notes-split-host children;
+                                 // render initial marked.js preview
+_isAppDark()                     // !document.body.dataset.theme?.startsWith('light')
+```
+
+### `_initMarkdownSplit()`
+
+Let split.js create and own the gutter element (simpler and more reliable):
+```js
+function _initMarkdownSplit() {
+  const cmHost = document.querySelector('.notes-cm-host');
+  const preview = document.querySelector('.notes-preview');
+  if (!cmHost || !preview || typeof Split === 'undefined') return;
+  _notesPreviewEl = preview;
+  const note = findNote(activeNoteId);
+  if (note) preview.innerHTML = marked.parse(note.content || '');
+  _notesSplitInstance = Split([cmHost, preview], {
+    sizes: [50, 50],
+    minSize: [120, 120],
+    gutterSize: 5,
+    direction: 'horizontal',
+  });
+}
+```
+
+### Window callbacks (set by notes.js, called by notes-cm.js)
+
+```js
+// Called by NotesCM on debounced doc change
+window._notesCMDocChange = function(content) {
+  const note = findNote(activeNoteId);
+  if (!note) return;
+  note.content = content;
+  note.updatedAt = new Date().toISOString();
+  saveData();
+  if (note.language === 'markdown' && _notesPreviewEl) {
+    _notesPreviewEl.innerHTML = marked.parse(content);
+  }
+};
+
+// Called by NotesCM image paste/drop handler and by toolbar 📎 button
+window._notesUploadImage = async function(file, view) {
+  const ext = file.name.split('.').pop() || 'jpg';
+  const id = uid() + '.' + ext;
+  await uploadDialImage(id, file);          // no resize — original format preserved
+  const md = `![image](/uploads/${id})`;
+  NotesCM.insertAtCursor(md);
+  const note = findNote(activeNoteId);
+  if (note) { note.content = NotesCM.getValue(); note.updatedAt = new Date().toISOString(); saveData(); }
+};
+```
+
+### `startNoteTabRename(noteId)` — inline rename
+
+```js
+function startNoteTabRename(noteId) {
+  const tab = document.querySelector(`.notes-tab[data-note-id="${noteId}"]`);
+  const nameSpan = tab?.querySelector('.notes-tab-name');
+  if (!nameSpan) return;
+  const input = document.createElement('input');
+  input.className = 'notes-tab-rename-input';
+  input.value = nameSpan.textContent;
+  nameSpan.replaceWith(input);
+  input.focus(); input.select();
+  const commit = () => renameNote(noteId, input.value || nameSpan.textContent);
+  input.addEventListener('blur', commit, { once: true });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Escape') { input.value = nameSpan.textContent; input.blur(); }
+    e.stopPropagation();
+  });
+}
+```
+
+### Info tooltip content
 
 ```
-.notes-panel              flex column, fills .home-col-notes
-.notes-tab-bar            flex row, tab buttons + add btn + full-screen btn
-.notes-tab                single tab button; same base style as .tab-btn
-.notes-tab.active         highlighted
-.notes-tab-close          × button on each tab
-.notes-editor-wrap        fills remaining height; CodeMirror mounts here
-.cm-editor                CodeMirror root — height 100%, themed to CSS vars
+Ctrl/Cmd+F        Find in note
+Ctrl/Cmd+H        Find & Replace
+Ctrl/Cmd+D        Select next occurrence
+Alt+Click         Add cursor
+Alt+↑ / Alt+↓     Add cursor above / below
+Double-click tab  Rename note
+```
+
+Shown on `mouseenter` of `.notes-info-btn`, hidden on `mouseleave`.
+
+---
+
+## State variables to add
+
+In `js/state.js`, after existing todo state vars:
+
+```js
+let activeNoteId = null;
+let notesFullScreen = false;
+let _notesSearchHighlight = null;   // { noteId, query } — consumed once by NotesCM.mount()
+```
+
+In `ICONS` object:
+```js
+defaultNote: '📝',
+info:        'ℹ️',
 ```
 
 ---
 
-## Open questions
+## `js/init.js` — Escape handler extension
 
-1. **Note naming:** Does a new note get a default name ("Untitled", "note-1") or immediately prompt for a name? Inline rename on tab double-click seems right — but should the name be required or optional?
+Priority chain (highest to lowest):
+1. Notes fullscreen → `toggleNotesFullScreen()`
+2. Todo fullscreen → `exitTodoFullScreen()`
+3. Todo item editor → `closeItemEditor()`
+4. Expanded todo item → collapse
+5. Close any open modal
 
-2. **Language detection:** Auto-detect language from file-extension-style name (e.g. `script.js` → JavaScript)? Or always manual via a dropdown?
+---
 
-3. **Note ordering:** Drag-to-reorder tabs (like browser tabs)? Or fixed order with reorder arrows?
+## `js/search.js` — note search integration
 
-4. **Storage limit:** Notes stored in `localStorage` alongside everything else. A single large note could hit the ~5MB localStorage limit. Should large notes warn the user? Should notes eventually move to the uploader volume (flat files)?
+Add note results after todo results in `renderSearchResults()`:
 
-5. **Export/import:** Confirmed — Notes are included in the existing `exportData()` / `_doImport()` flow. Content is stored as a plain JSON string value — no base64 needed. `JSON.stringify()` correctly escapes all text including JSON code, curly braces, backslashes, and newlines. The export file stays human-readable.
+```js
+(data.notes || []).forEach(note => {
+  if (note.name.toLowerCase().includes(q) || note.content.toLowerCase().includes(q)) {
+    results.push({ type: 'note', note });
+  }
+});
+```
 
-6. **Markdown preview:** For Markdown notes, should there be an optional rendered preview mode (split or toggle)? Or is the CodeMirror inline decoration (same as Todo) sufficient?
+Render note result row: icon `ICONS.defaultNote`, name `note.name`, meta `'Note · ' + snippet`.
+Snippet: find line in `note.content` containing query, truncate to 60 chars.
 
-7. **Note tabs vs app tabs:** The Notes tab bar lives inside the home tab. Visually it will look like a second tier of tabs. Is that acceptable, or should Notes notes be integrated into the main app tab bar somehow?
+### `jumpToNote(note)`
 
-8. **Find/replace scope:** Does `Ctrl+F` search within the current note only, or across all notes? (Across all is complex — current-note-only is the obvious first implementation.)
-
-9. **Syntax highlighting theme:** CodeMirror ships with `oneDark` and a few others. Should it use one of those, or should we build a custom theme that reads the app's CSS variables so it changes with the app theme?
-
-10. **Line numbers:** Show by default (included in `basicSetup`), or hide to keep it feeling less "IDE-like"?
+```js
+function jumpToNote(note) {
+  clearSearch();
+  const homeTab = data.tabs.find(t => t.isHome);
+  if (homeTab && activeTabId !== homeTab.id) { activeTabId = homeTab.id; render(); }
+  activeNoteId = note.id;
+  _notesSearchHighlight = { noteId: note.id, query: currentSearchQuery };
+  requestAnimationFrame(() => {
+    const container = document.querySelector('.home-col-notes');
+    if (container) renderNotesPanel(container);
+    // NotesCM.mount() reads _notesSearchHighlight, calls focusAndHighlight(), clears it
+  });
+}
+```
 
 ---
 
 ## Export / Import
 
-Notes are included in the existing `exportData()` / `_doImport()` flow in `js/pickers.js`.
+### Export (`exportData()` in `js/pickers.js`)
 
-### Content encoding
+- Include `data.notes` array in export JSON as-is
+- Scan all `note.content` fields for `/uploads/` refs using `extractUploadIds(content)` (shared with todo)
+- Fetch those images as base64 and add to `_images` map (same structure as dial + todo images)
 
-No special encoding needed. `JSON.stringify()` handles all text correctly — quotes, braces, backslashes, newlines, embedded JSON — everything. Plain string values in JSON. The export file remains human-readable and you can open it in any text editor and read your notes.
-
-Base64 is only used for **binary image data** (fetched as raw bytes from `/uploads/`), same as dial icons today.
-
-### Export shape (additions only)
-
+Export shape (additions only):
 ```js
 {
-    tabs: [...],               // unchanged
-    todoLists: [...],          // from Todo feature
-    notes: [                   // new — content is a plain JSON string
-        { id, name, language, content, createdAt, updatedAt, order }
-    ],
-    _config: { theme, logoAnim },
-    _images: { ... }           // unchanged
+  tabs: [...],
+  todoLists: [...],
+  notes: [{ id, name, language, content, createdAt, updatedAt, order }],  // new
+  _config: { theme, logoAnim },
+  _images: { [id]: 'base64…' }   // note images added to same map
 }
 ```
 
-Images live inline in `note.content` as `![alt](/uploads/id.ext)` markdown. No separate `images[]` field.
+### Import (`_doImport()` in `js/pickers.js`)
 
-On export: scan `content` for `/uploads/` references via `extractUploadIds(content)` (shared utility with Todo), fetch each as base64, add to `_images` map.
+- Restore `data.notes` from parsed JSON
+- Re-upload note images via `uploadDialImage()` (same loop as todo images)
+- `saveData()` → `render()`
 
-On import: re-upload from `_images`; content paths are preserved so no rewriting needed.
+Old exports without `data.notes` are handled automatically by `loadData()` migration (creates default note).
 
-On note delete: `extractUploadIds(note.content).forEach(id => deleteDialImage(id))`.
+### Note delete cleanup
 
-Images are stored at **original size and format — no resizing**. Same uploader change as Todo (preserve file extension).
+```js
+extractUploadIds(note.content).forEach(id => deleteDialImage(id));
+```
+
+**No resize on note images** — original format and dimensions preserved (same as todo images).
+
+---
+
+## CSS (`css/notes.css`)
+
+Loaded after `todo.css`. All values use CSS vars — never hardcode colours.
+
+### Key rules
+
+```css
+/* Override placeholder alignment from todo.css */
+.home-col-notes { align-items: stretch; justify-content: flex-start; flex-direction: column; overflow: hidden; }
+
+.notes-panel { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+.notes-tabs-bar { display: flex; flex-wrap: nowrap; overflow-x: auto; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+
+/* |Note name [x]| */
+.notes-tab { display: flex; align-items: center; gap: 4px; max-width: 140px; flex-shrink: 0; }
+.notes-tab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notes-tab-close { flex-shrink: 0; opacity: 0.5; }
+.notes-tab-close:hover { opacity: 1; }
+
+.notes-toolbar { display: flex; gap: 4px; padding: 4px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
+.notes-lang-btn { font-family: var(--mono-font, monospace); font-size: 11px; }
+.notes-lang-btn.active { background: var(--accent); color: var(--accent-text); }
+
+.notes-split-host { flex: 1; display: flex; flex-direction: row; overflow: hidden; min-height: 0; }
+.notes-cm-host { flex: 1; overflow: hidden; min-width: 0; }
+.notes-cm-host .cm-editor { height: 100%; }
+.notes-cm-host .cm-scroller { overflow: auto; }
+
+/* CM6 search panel integration */
+.notes-cm-host .cm-search { background: var(--surface2); border-top: 1px solid var(--border); color: var(--text); }
+.notes-cm-host .cm-search input { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+
+.notes-preview { flex: 1; overflow-y: auto; padding: 12px 16px; font-size: 14px; line-height: 1.6; }
+
+/* split.js gutter */
+.gutter.gutter-horizontal { width: 5px; background: var(--border); cursor: col-resize; flex-shrink: 0; }
+
+/* Full-screen */
+body.notes-fullscreen .home-col-todo,
+body.notes-fullscreen .home-dials-strip,
+body.notes-fullscreen #headerClock,
+body.notes-fullscreen #headerDate,
+body.notes-fullscreen #headerDialCount,
+body.notes-fullscreen .tabs-bar { display: none; }
+body.notes-fullscreen .home-col-notes { flex: 1 1 100%; max-width: 100%; }
+```
+
+---
+
+## `index.html` load order changes
+
+**`<head>` — add after existing CM5/marked scripts:**
+```html
+<script src="https://cdn.jsdelivr.net/npm/split.js/dist/split.min.js"></script>
+<link rel="stylesheet" href="css/notes.css">
+```
+
+**Body classic scripts — add `notes.js` after `todo.js`:**
+```
+js/todo.js → js/notes.js → js/drag-drop.js → ...
+```
+
+**Module scripts:**
+```html
+<script type="module" src="js/notes-cm.js"></script>
+```
+(The existing `todo-cm.js` stub can remain or be removed — it is harmless either way.)
+
+---
+
+## Decisions made — all questions resolved
+
+| # | Question | Decision |
+|---|---|---|
+| A | Tab delete UX | `\|Note name [x]\|` — × button always visible on tab |
+| B | Tab drag-to-reorder | Yes; `order` field in data model |
+| C | split.js gutter | Let split.js create its own gutter — simpler and more reliable |
+| D | Non-markdown preview | Hide the preview pane; editor fills full width |
+| E | Fullscreen mutual exclusion | Yes — entering one exits the other |
+| F | Cmd+T shortcut | Removed; only + button to add new note |
+| G | Image insertion | Toolbar 📎 button (file picker) + paste/drop onto editor |
+| H | CM6 version pinning | Pin exact versions after first working implementation |
+| I | Tab rename trigger | Double-click on tab name; documented in info tooltip |
+| J | CM6 async race | `notescmready` custom event; panel shell renders immediately, editor mounts on event |
+| K | Image paste language scope | Only activates for `language === 'markdown'`; other languages get default CM6 paste |
+
+---
+
+## Known limitation
+
+Tab bar drag-to-reorder does not auto-scroll near the overflow edge. Acceptable for initial implementation.
