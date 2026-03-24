@@ -52,82 +52,161 @@ function renderSearchResults() {
     }
 
     // Collect all matching dials across all tabs
-    const results = [];
+    const dialResults = [];
     data.tabs.forEach(tab => {
         tab.groups.forEach(group => {
             group.dials.forEach(dial => {
                 if (dialMatchesSearch(dial, q)) {
-                    results.push({ dial, group, tab });
+                    dialResults.push({ type: 'dial', dial, group, tab });
                 }
             });
         });
     });
+
+    // Collect all matching todo lists and items
+    const todoResults = [];
+    (data.todoLists || []).forEach(list => {
+        if (list.name.toLowerCase().includes(q)) {
+            todoResults.push({ type: 'todoList', list });
+        }
+        list.items.forEach(item => {
+            if (item.content.toLowerCase().includes(q)) {
+                todoResults.push({ type: 'todoItem', item, list });
+            }
+        });
+    });
+
+    const results = [...dialResults, ...todoResults];
 
     dropdown.innerHTML = '';
 
     if (!results.length) {
         const msg = document.createElement('div');
         msg.className = 'search-no-results';
-        msg.textContent = 'No dials found';
+        msg.textContent = 'No results found';
         dropdown.appendChild(msg);
         dropdown.style.display = 'block';
         return;
     }
 
-    results.forEach(({ dial, group, tab }, i) => {
+    results.forEach((result, i) => {
         const item = document.createElement('div');
         item.className = 'search-result-item';
         item.tabIndex = 0;
 
-        // Icon
-        const iconWrap = document.createElement('div');
-        iconWrap.className = 'search-result-icon';
-        if (dial.iconType === 'none') {
-            iconWrap.textContent = ICONS.faviconFallback;
-        } else if (dial.iconType === 'emoji' || !dial.iconType) {
-            iconWrap.textContent = dial.emoji || ICONS.faviconFallback;
-        } else {
-            // favicon or custom image
-            const img = document.createElement('img');
-            img.alt = '';
-            img.width = 20;
-            img.height = 20;
-            img.style.cssText = 'border-radius:3px;object-fit:cover;display:block';
-            img.onerror = () => { iconWrap.textContent = dial.emoji || ICONS.faviconFallback; img.remove(); };
-            if (dial.icon) {
-                img.src = dial.icon;
+        if (result.type === 'dial') {
+            const { dial, group, tab } = result;
+
+            // Icon
+            const iconWrap = document.createElement('div');
+            iconWrap.className = 'search-result-icon';
+            if (dial.iconType === 'none') {
+                iconWrap.textContent = ICONS.faviconFallback;
+            } else if (dial.iconType === 'emoji' || !dial.iconType) {
+                iconWrap.textContent = dial.emoji || ICONS.faviconFallback;
             } else {
-                attachFavicon(img, dial.url, dial.emoji || ICONS.faviconFallback);
+                const img = document.createElement('img');
+                img.alt = '';
+                img.width = 20;
+                img.height = 20;
+                img.style.cssText = 'border-radius:3px;object-fit:cover;display:block';
+                img.onerror = () => { iconWrap.textContent = dial.emoji || ICONS.faviconFallback; img.remove(); };
+                if (dial.icon) {
+                    img.src = dial.icon;
+                } else {
+                    attachFavicon(img, dial.url, dial.emoji || ICONS.faviconFallback);
+                }
+                iconWrap.appendChild(img);
             }
-            iconWrap.appendChild(img);
+
+            const textWrap = document.createElement('div');
+            textWrap.className = 'search-result-text';
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'search-result-name';
+            nameEl.textContent = dial.name;
+
+            const metaEl = document.createElement('div');
+            metaEl.className = 'search-result-meta';
+            const tabPrefix = tab.emoji ? tab.emoji + ' ' : '';
+            metaEl.textContent = `${tabPrefix}${tab.name} › ${group.name}`;
+
+            textWrap.appendChild(nameEl);
+            textWrap.appendChild(metaEl);
+            item.appendChild(iconWrap);
+            item.appendChild(textWrap);
+
+            item.addEventListener('click', () => jumpToDial(dial, tab));
+            item.addEventListener('keydown', e => {
+                if (e.key === 'Enter') jumpToDial(dial, tab);
+                if (e.key === 'ArrowDown') { e.preventDefault(); focusSearchResult(i + 1); }
+                if (e.key === 'ArrowUp') { e.preventDefault(); i > 0 ? focusSearchResult(i - 1) : document.getElementById('searchInput').focus(); }
+                if (e.key === 'Escape') { clearSearch(); document.getElementById('searchInput').blur(); }
+            });
+
+        } else if (result.type === 'todoList') {
+            const { list } = result;
+
+            const iconWrap = document.createElement('div');
+            iconWrap.className = 'search-result-icon';
+            iconWrap.textContent = list.emoji || ICONS.defaultTodoList;
+
+            const textWrap = document.createElement('div');
+            textWrap.className = 'search-result-text';
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'search-result-name';
+            nameEl.textContent = list.name;
+
+            const metaEl = document.createElement('div');
+            metaEl.className = 'search-result-meta';
+            metaEl.textContent = 'To-do list';
+
+            textWrap.appendChild(nameEl);
+            textWrap.appendChild(metaEl);
+            item.appendChild(iconWrap);
+            item.appendChild(textWrap);
+
+            item.addEventListener('click', () => jumpToTodoList(list));
+            item.addEventListener('keydown', e => {
+                if (e.key === 'Enter') jumpToTodoList(list);
+                if (e.key === 'ArrowDown') { e.preventDefault(); focusSearchResult(i + 1); }
+                if (e.key === 'ArrowUp') { e.preventDefault(); i > 0 ? focusSearchResult(i - 1) : document.getElementById('searchInput').focus(); }
+                if (e.key === 'Escape') { clearSearch(); document.getElementById('searchInput').blur(); }
+            });
+
+        } else if (result.type === 'todoItem') {
+            const { item: todoItem, list } = result;
+
+            const iconWrap = document.createElement('div');
+            iconWrap.className = 'search-result-icon';
+            iconWrap.textContent = todoItem.isDone ? ICONS.check : ICONS.uncheck;
+
+            const textWrap = document.createElement('div');
+            textWrap.className = 'search-result-text';
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'search-result-name';
+            nameEl.textContent = getFirstLine(todoItem.content) || todoItem.content.slice(0, 60);
+
+            const metaEl = document.createElement('div');
+            metaEl.className = 'search-result-meta';
+            const listPrefix = list.emoji ? list.emoji + ' ' : '';
+            metaEl.textContent = `${listPrefix}${list.name}${todoItem.isDone ? ' · Done' : ''}`;
+
+            textWrap.appendChild(nameEl);
+            textWrap.appendChild(metaEl);
+            item.appendChild(iconWrap);
+            item.appendChild(textWrap);
+
+            item.addEventListener('click', () => jumpToTodoItem(todoItem, list));
+            item.addEventListener('keydown', e => {
+                if (e.key === 'Enter') jumpToTodoItem(todoItem, list);
+                if (e.key === 'ArrowDown') { e.preventDefault(); focusSearchResult(i + 1); }
+                if (e.key === 'ArrowUp') { e.preventDefault(); i > 0 ? focusSearchResult(i - 1) : document.getElementById('searchInput').focus(); }
+                if (e.key === 'Escape') { clearSearch(); document.getElementById('searchInput').blur(); }
+            });
         }
-
-        // Text
-        const textWrap = document.createElement('div');
-        textWrap.className = 'search-result-text';
-
-        const nameEl = document.createElement('div');
-        nameEl.className = 'search-result-name';
-        nameEl.textContent = dial.name;
-
-        const metaEl = document.createElement('div');
-        metaEl.className = 'search-result-meta';
-        const tabPrefix = tab.emoji ? tab.emoji + ' ' : '';
-        metaEl.textContent = `${tabPrefix}${tab.name} › ${group.name}`;
-
-        textWrap.appendChild(nameEl);
-        textWrap.appendChild(metaEl);
-
-        item.appendChild(iconWrap);
-        item.appendChild(textWrap);
-
-        item.addEventListener('click', () => jumpToDial(dial, tab));
-        item.addEventListener('keydown', e => {
-            if (e.key === 'Enter') jumpToDial(dial, tab);
-            if (e.key === 'ArrowDown') { e.preventDefault(); focusSearchResult(i + 1); }
-            if (e.key === 'ArrowUp') { e.preventDefault(); i > 0 ? focusSearchResult(i - 1) : document.getElementById('searchInput').focus(); }
-            if (e.key === 'Escape') { clearSearch(); document.getElementById('searchInput').blur(); }
-        });
 
         dropdown.appendChild(item);
     });
@@ -143,6 +222,30 @@ function focusSearchResult(index) {
 function dialMatchesSearch(dial, query) {
     return dial.name.toLowerCase().includes(query)
         || (dial.url && dial.url.toLowerCase().includes(query));
+}
+
+function jumpToTodoList(list) {
+    clearSearch();
+    activeTodoListId = list.id;
+    renderTodoPanel(_getTodoContainer());
+    requestAnimationFrame(() => {
+        const listEl = document.querySelector(`.todo-list[data-list-id="${list.id}"]`);
+        if (listEl) listEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+}
+
+function jumpToTodoItem(todoItem, list) {
+    clearSearch();
+    activeTodoListId = list.id;
+    if (todoItem.isDone) {
+        doneExpandedListId = list.id;
+    }
+    expandedItemId = todoItem.id;
+    renderTodoPanel(_getTodoContainer());
+    requestAnimationFrame(() => {
+        const row = document.querySelector(`.todo-item[data-item-id="${todoItem.id}"]`);
+        if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
 }
 
 function jumpToDial(dial, tab) {

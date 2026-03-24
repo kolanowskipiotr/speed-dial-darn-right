@@ -234,6 +234,21 @@ Multi-phase entrance animation on every page load (if enabled).
 
 ---
 
+## js/search.js
+
+Header search bar — searches dials, todo lists, and todo items.
+
+- `initSearch()` — attaches input/keydown/click-outside listeners to `#searchInput`
+- `renderSearchResults()` — on each keystroke, collects matching dials (`dialMatchesSearch`) then matching todo lists/items; renders mixed dropdown
+- `dialMatchesSearch(dial, q)` — matches `dial.name` or `dial.url`
+- Todo matching: list name substring match → `{ type:'todoList' }`; item `content` substring match → `{ type:'todoItem' }`
+- `jumpToDial(dial, tab)` — switches tab if needed, scrolls + shakes card
+- `jumpToTodoList(list)` — sets `activeTodoListId`, re-renders todo panel, scrolls list into view
+- `jumpToTodoItem(todoItem, list)` — sets `activeTodoListId` + `expandedItemId` (and `doneExpandedListId` if item is done), re-renders, scrolls item into view
+- Results order: dial matches first, then todo list/item matches
+
+---
+
 ## js/init.js
 
 `DOMContentLoaded` bootstrap — runs `loadTheme()`, `loadData()`, `initEmojiPickers()`, `render()`, `updateClock()`, `setInterval(updateClock, 1000)`, `initLogoAnimation()`. Also sets up keyboard shortcuts (Escape closes modals) and modal backdrop click handlers.
