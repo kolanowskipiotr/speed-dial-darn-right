@@ -26,6 +26,10 @@ const ICONS = {
     uncheck:         '☐',
     moveTop:         '⤒',
     moveBottom:      '⤓',
+
+    // Notes icons
+    defaultNote: '📝',
+    info:        'ℹ️',
 };
 
 const EMOJI_CATEGORIES = [
@@ -82,3 +86,8 @@ let currentTodoListEmoji = ICONS.defaultTodoList;
 let activeTodoListId = null;
 let editingTodoListId = null;
 let editingTodoItemId = null;
+
+// Notes state
+let activeNoteId = null;
+let notesFullScreen = false;
+let _notesSearchHighlight = null; // { noteId, query } — consumed once on mount

@@ -239,16 +239,10 @@ function renderHomeTab() {
     renderTodoPanel(todoCol);
     layout.appendChild(todoCol);
 
-    // ─── Notes placeholder ────────────────────────────────────────
+    // ─── Notes column ─────────────────────────────────────────────
     const notesCol = document.createElement('div');
     notesCol.className = 'home-col-notes';
-    notesCol.innerHTML = `
-        <div class="home-notes-placeholder">
-            <div class="home-notes-placeholder-icon">📝</div>
-            <div>Notes</div>
-            <div class="home-notes-placeholder-sub">Coming soon</div>
-        </div>
-    `;
+    renderNotesPanel(notesCol);
     layout.appendChild(notesCol);
 
     container.appendChild(layout);

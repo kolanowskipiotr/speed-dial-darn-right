@@ -35,6 +35,14 @@ function loadData() {
         }];
         saveData();
     }
+
+    // Ensure notes exists — create default note on first run
+    if (!data.notes) {
+        const now = new Date().toISOString();
+        data.notes = [{ id: uid(), name: 'Note 1', content: '', language: 'markdown', order: 0, createdAt: now, updatedAt: now }];
+        saveData();
+    }
+    activeNoteId = [...data.notes].sort((a, b) => a.order - b.order)[0].id;
 }
 
 function getActiveTab() {

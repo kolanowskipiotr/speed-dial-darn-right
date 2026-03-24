@@ -14,6 +14,7 @@ function applyTheme(themeId) {
     document.querySelectorAll('.theme-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.theme === themeId);
     });
+    if (window.NotesCM) NotesCM.setTheme(!themeId.startsWith('light'));
 }
 
 function loadTheme() {

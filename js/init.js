@@ -4,22 +4,28 @@ document.addEventListener('dragend', () => {
     if (typeof _clearTodoDragIndicators !== 'undefined') _clearTodoDragIndicators();
 });
 
-// Escape key: exit todo full-screen first, then close item editor, then close modals
+// Escape key: priority chain (highest to lowest)
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    // 1. Exit todo full-screen mode
+    // 1. Exit notes full-screen mode
+    if (typeof notesFullScreen !== 'undefined' && notesFullScreen) {
+        toggleNotesFullScreen();
+        e.stopPropagation();
+        return;
+    }
+    // 2. Exit todo full-screen mode
     if (typeof todoFullScreen !== 'undefined' && todoFullScreen) {
         exitTodoFullScreen();
         e.stopPropagation();
         return;
     }
-    // 2. Close item editor if open
+    // 3. Close item editor if open
     if (typeof editingTodoItemId !== 'undefined' && editingTodoItemId) {
         closeItemEditor();
         e.stopPropagation();
         return;
     }
-    // 3. Collapse inline-expanded item
+    // 4. Collapse inline-expanded item
     if (typeof expandedItemId !== 'undefined' && expandedItemId) {
         expandedItemId = null;
         const todoCol = document.querySelector('.home-col-todo');
@@ -27,7 +33,7 @@ document.addEventListener('keydown', (e) => {
         e.stopPropagation();
         return;
     }
-    // 4. Close any open modal
+    // 5. Close any open modal
     document.querySelectorAll('.modal-backdrop.open').forEach(bd => bd.classList.remove('open'));
 });
 

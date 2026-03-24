@@ -334,6 +334,24 @@ async function exportData() {
             }
         }
     }
+    // Also collect images referenced in notes content
+    for (const note of (data.notes || [])) {
+        const uploadIds = (note.content || '').match(/\/uploads\/([\w.\-]+)/g) || [];
+        for (const ref of uploadIds) {
+            const id = ref.replace('/uploads/', '');
+            if (!images[id]) {
+                try {
+                    const resp = await fetch(ref);
+                    if (resp.ok) {
+                        const blob = await resp.blob();
+                        images[id] = await _blobToBase64(blob);
+                    }
+                } catch (e) {
+                    // skip silently
+                }
+            }
+        }
+    }
 
     const exportObj = {
         ...data,
@@ -408,6 +426,11 @@ function _collectUploadIds(d) {
             }
         }
     }
+    for (const note of (d.notes || [])) {
+        for (const id of extractUploadIds(note.content || '')) {
+            ids.add(id);
+        }
+    }
     return ids;
 }
 
@@ -439,6 +462,12 @@ async function _doImport(imported) {
         data.tabs.unshift({ id: uid(), name: 'Start', emoji: '🏠', isHome: true, groups: [] });
     }
     activeTabId = data.tabs[0].id;
+    // Migrate notes if absent in imported data
+    if (!data.notes || !data.notes.length) {
+        const now = new Date().toISOString();
+        data.notes = [{ id: uid(), name: 'Note 1', content: '', language: 'markdown', order: 0, createdAt: now, updatedAt: now }];
+    }
+    activeNoteId = [...data.notes].sort((a, b) => a.order - b.order)[0].id;
     saveData();
     render();
 

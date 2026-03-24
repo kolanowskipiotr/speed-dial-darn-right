@@ -76,7 +76,15 @@ function renderSearchResults() {
         });
     });
 
-    const results = [...dialResults, ...todoResults];
+    // Collect matching notes
+    const noteResults = [];
+    (data.notes || []).forEach(note => {
+        if (note.name.toLowerCase().includes(q) || note.content.toLowerCase().includes(q)) {
+            noteResults.push({ type: 'note', note });
+        }
+    });
+
+    const results = [...dialResults, ...todoResults, ...noteResults];
 
     dropdown.innerHTML = '';
 
@@ -206,6 +214,42 @@ function renderSearchResults() {
                 if (e.key === 'ArrowUp') { e.preventDefault(); i > 0 ? focusSearchResult(i - 1) : document.getElementById('searchInput').focus(); }
                 if (e.key === 'Escape') { clearSearch(); document.getElementById('searchInput').blur(); }
             });
+
+        } else if (result.type === 'note') {
+            const { note } = result;
+
+            const iconWrap = document.createElement('div');
+            iconWrap.className = 'search-result-icon';
+            iconWrap.textContent = ICONS.defaultNote;
+
+            const textWrap = document.createElement('div');
+            textWrap.className = 'search-result-text';
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'search-result-name';
+            nameEl.textContent = note.name;
+
+            const metaEl = document.createElement('div');
+            metaEl.className = 'search-result-meta';
+            // Find snippet: line containing query
+            const snippet = (() => {
+                const line = (note.content || '').split('\n').find(l => l.toLowerCase().includes(q)) || '';
+                return 'Note · ' + (line.length > 60 ? line.slice(0, 60) + '…' : line);
+            })();
+            metaEl.textContent = snippet;
+
+            textWrap.appendChild(nameEl);
+            textWrap.appendChild(metaEl);
+            item.appendChild(iconWrap);
+            item.appendChild(textWrap);
+
+            item.addEventListener('click', () => jumpToNote(note));
+            item.addEventListener('keydown', e => {
+                if (e.key === 'Enter') jumpToNote(note);
+                if (e.key === 'ArrowDown') { e.preventDefault(); focusSearchResult(i + 1); }
+                if (e.key === 'ArrowUp') { e.preventDefault(); i > 0 ? focusSearchResult(i - 1) : document.getElementById('searchInput').focus(); }
+                if (e.key === 'Escape') { clearSearch(); document.getElementById('searchInput').blur(); }
+            });
         }
 
         dropdown.appendChild(item);
@@ -245,6 +289,22 @@ function jumpToTodoItem(todoItem, list) {
     requestAnimationFrame(() => {
         const row = document.querySelector(`.todo-item[data-item-id="${todoItem.id}"]`);
         if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+}
+
+function jumpToNote(note) {
+    const savedQuery = searchQuery; // save before clearSearch() resets it
+    clearSearch();
+    const homeTab = data.tabs.find(t => t.isHome);
+    if (homeTab && activeTabId !== homeTab.id) {
+        activeTabId = homeTab.id;
+        render();
+    }
+    activeNoteId = note.id;
+    _notesSearchHighlight = { noteId: note.id, query: savedQuery };
+    requestAnimationFrame(() => {
+        const container = document.querySelector('.home-col-notes');
+        if (container) renderNotesPanel(container);
     });
 }
 

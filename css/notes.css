@@ -1,0 +1,380 @@
+/* ── NOTES PANEL ─────────────────────────────────────────────── */
+
+/* Override placeholder alignment from todo.css */
+.home-col-notes {
+    align-items: stretch;
+    justify-content: flex-start;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.notes-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+.notes-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.notes-panel-title {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.notes-panel-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ── Info tooltip ────────────────────────────────────────────── */
+.notes-info-btn {
+    position: relative;
+    font-size: 16px;
+}
+
+.notes-info-tooltip {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 200;
+    pointer-events: none;
+    line-height: 1.8;
+    color: var(--text);
+}
+
+.notes-info-tooltip.visible {
+    display: block;
+}
+
+.notes-info-tooltip kbd {
+    font-family: var(--mono-font, monospace);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 11px;
+}
+
+/* ── Tabs bar ────────────────────────────────────────────────── */
+.notes-tabs-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    scrollbar-width: none;
+}
+
+.notes-tabs-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.notes-tab {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px 5px 12px;
+    max-width: 140px;
+    flex-shrink: 0;
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    transition: background 0.1s;
+    user-select: none;
+}
+
+.notes-tab:hover {
+    background: var(--surface2);
+    color: var(--text);
+}
+
+.notes-tab.active {
+    background: var(--surface2);
+    color: var(--text);
+    border-bottom: 2px solid var(--accent);
+    margin-bottom: -1px;
+}
+
+.notes-tab.drop-before {
+    box-shadow: -2px 0 0 var(--accent);
+}
+
+.notes-tab.drop-after {
+    box-shadow: 2px 0 0 var(--accent);
+}
+
+.notes-tab.dragging {
+    opacity: 0.4;
+}
+
+.notes-tab-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.notes-tab-close {
+    flex-shrink: 0;
+    opacity: 0.4;
+    padding: 0 2px;
+    font-size: 14px;
+    line-height: 1;
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+}
+
+.notes-tab-close:hover {
+    opacity: 1;
+}
+
+.notes-tab-rename-input {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    color: var(--text);
+    font-size: 13px;
+    padding: 1px 4px;
+    width: 100px;
+    outline: none;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────── */
+.notes-toolbar {
+    display: flex;
+    gap: 4px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.notes-lang-btn {
+    font-family: var(--mono-font, monospace);
+    font-size: 11px;
+    padding: 2px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.notes-lang-btn.active {
+    background: var(--accent);
+    color: var(--accent-text);
+}
+
+.notes-img-btn {
+    margin-left: auto;
+    font-size: 14px;
+}
+
+/* ── Split host ──────────────────────────────────────────────── */
+.notes-split-host {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+    min-height: 350px; /* ensure editor is always visible in normal mode */
+}
+
+.notes-cm-host {
+    overflow: hidden;
+    min-width: 0;
+}
+
+/* When not in split (non-markdown), fill full width */
+.notes-split-host > .notes-cm-host:only-child {
+    flex: 1;
+}
+
+.notes-cm-host .cm-editor {
+    /* Normal mode: min-height ensures content fits; fullscreen overrides to 100% */
+    min-height: 300px;
+    font-size: 13px;
+}
+
+.notes-cm-host .cm-scroller {
+    overflow: auto;
+    /* Normal mode: cap at viewport so editor scrolls rather than page */
+    max-height: 65vh;
+}
+
+/* CM6 search panel integration */
+.notes-cm-host .cm-search {
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.notes-cm-host .cm-search input {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 6px;
+}
+
+.notes-cm-host .cm-search button {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 6px;
+    cursor: pointer;
+}
+
+/* ── Markdown preview ────────────────────────────────────────── */
+.notes-preview {
+    overflow-y: auto;
+    padding: 12px 16px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--surface);
+    min-width: 0;
+}
+
+.notes-preview h1,
+.notes-preview h2,
+.notes-preview h3 {
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+    margin-top: 16px;
+    margin-bottom: 8px;
+}
+
+.notes-preview code {
+    font-family: var(--mono-font, monospace);
+    background: var(--surface2);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.notes-preview pre {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    overflow-x: auto;
+}
+
+.notes-preview pre code {
+    background: none;
+    padding: 0;
+}
+
+.notes-preview blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 0;
+    padding-left: 12px;
+    color: var(--text-muted);
+}
+
+.notes-preview a {
+    color: var(--accent);
+}
+
+.notes-preview img {
+    max-width: 100%;
+    border-radius: 4px;
+}
+
+.notes-preview table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.notes-preview th,
+.notes-preview td {
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+}
+
+.notes-preview th {
+    background: var(--surface2);
+}
+
+/* ── split.js gutter ─────────────────────────────────────────── */
+.gutter.gutter-horizontal {
+    width: 5px;
+    background: var(--border);
+    cursor: col-resize;
+    flex-shrink: 0;
+}
+
+/* ── Fullscreen ──────────────────────────────────────────────── */
+body.notes-fullscreen main {
+    padding-bottom: 0 !important;
+}
+
+body.notes-fullscreen .home-layout-a {
+    height: calc(100vh - var(--header-height, 128px));
+    grid-template-areas: "notes";
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+}
+
+body.notes-fullscreen .home-col-todo,
+body.notes-fullscreen .home-dials-strip {
+    display: none !important;
+}
+
+body.notes-fullscreen #headerClock,
+body.notes-fullscreen #headerDate,
+body.notes-fullscreen #headerDialCount,
+body.notes-fullscreen .tabs-bar {
+    display: none;
+}
+
+body.notes-fullscreen .home-col-notes {
+    flex: 1 1 100%;
+    max-width: 100%;
+}
+
+/* In fullscreen, make the panel and editor fill available space */
+body.notes-fullscreen .notes-panel {
+    height: 100%;
+}
+
+body.notes-fullscreen .notes-split-host {
+    min-height: 0;
+}
+
+body.notes-fullscreen .notes-cm-host .cm-editor {
+    height: 100%;
+    min-height: unset;
+}
+
+body.notes-fullscreen .notes-cm-host .cm-scroller {
+    max-height: unset;
+    overflow: auto;
+}
+
+body.notes-fullscreen .notes-preview {
+    max-height: unset;
+}
