@@ -46,11 +46,13 @@
     flex-wrap: nowrap !important;
     overflow-x: auto;
     justify-content: flex-start;
+    gap: 8px;
+    padding: 4px 2px 6px;
 }
 
 .home-dials-grid .dial-card {
     width: auto;
-    height: 120px;
+    height: 88px;
     aspect-ratio: 4 / 3;
 }
 

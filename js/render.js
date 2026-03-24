@@ -401,9 +401,8 @@ function makeDialCard(dial, groupId, gi, di, opts = {}) {
     const isScreenshot = dial.iconType === 'custom' && dial.icon;
     const isColor = dial.iconType === 'color';
 
+    // Shared: color gradient (applied to card background regardless of home/regular)
     if (isColor) {
-        // ── Color gradient card ───────────────────────────────────────
-        card.className = 'dial-card dial-color';
         const c = dial.colors || {};
         card.style.background = [
             `radial-gradient(circle at top left,     ${c.tl     || '#4361ee'} 0%, transparent 70%)`,
@@ -412,70 +411,66 @@ function makeDialCard(dial, groupId, gi, di, opts = {}) {
             `radial-gradient(circle at bottom right, ${c.br     || '#4cc9f0'} 0%, transparent 70%)`,
             c.center || '#1a1a2e',
         ].join(', ');
-
-    } else if (isScreenshot) {
-        // ── Full-bleed screenshot card ────────────────────────────────
-        card.className = 'dial-card dial-screenshot';
-
-        const img = document.createElement('img');
-        img.className = 'dial-screenshot-img';
-        img.alt = '';
-        img.src = dial.icon;
-        img.onload  = () => img.classList.add('loaded');
-        img.onerror = () => {
-            // fallback to emoji if screenshot image fails
-            card.className = 'dial-card';
-            img.remove();
-            const wrap = document.createElement('div');
-            wrap.className = 'dial-icon-wrap';
-            wrap.innerHTML = `<span class="dial-emoji">${dial.emoji || ICONS.faviconFallback}</span>`;
-            card.insertBefore(wrap, card.firstChild);
-        };
-        card.appendChild(img);
-
-    } else if (!isColor) {
-        // ── Standard card (emoji / favicon / none) ───────────────────
-        card.className = 'dial-card' + (dial.iconType === 'none' ? ' dial-no-icon' : '');
-
-        if (dial.iconType !== 'none') {
-            const iconWrap = document.createElement('div');
-            iconWrap.className = 'dial-icon-wrap';
-
-            if (dial.iconType === 'emoji' || !dial.iconType) {
-                const em = document.createElement('span');
-                em.className = 'dial-emoji';
-                em.textContent = dial.emoji || ICONS.faviconFallback;
-                iconWrap.appendChild(em);
-            } else {
-                // favicon
-                const img = document.createElement('img');
-                img.alt = '';
-                img.style.cssText = 'opacity:0;transition:opacity 0.2s';
-                img.onload = () => { img.style.opacity = '1'; };
-                iconWrap.appendChild(img);
-                if (dial.icon) {
-                    img.onerror = () => attachFavicon(img, dial.url, dial.emoji || ICONS.faviconFallback);
-                    img.src = dial.icon;
-                } else {
-                    attachFavicon(img, dial.url, dial.emoji || ICONS.faviconFallback);
-                }
-            }
-            card.appendChild(iconWrap);
-        }
     }
 
-    // Name label (both types)
-    const name = document.createElement('div');
-    name.className = 'dial-name';
-    name.textContent = dial.name;
-    card.appendChild(name);
-
-    // Meta label: tab / group context (shown on home tab)
     if (opts.showMeta) {
-        const meta = document.createElement('div');
-        meta.className = 'dial-meta';
-        meta.textContent = `${opts.tabName} · ${opts.groupName}`;
-        card.appendChild(meta);
+        // ── Home tab: compact card — icon/image as background, text overlaid ──
+        card.className = 'dial-card dial-home-compact';
+
+        if (!isColor && dial.iconType !== 'none') {
+            const bg = document.createElement('div');
+            bg.className = 'home-dial-bg';
+
+            if (isScreenshot) {
+                const img = document.createElement('img');
+                img.className = 'home-dial-bg-img';
+                img.alt = '';
+                img.src = dial.icon;
+                img.onload = () => img.classList.add('loaded');
+                bg.appendChild(img);
+            } else if (dial.iconType === 'emoji' || !dial.iconType) {
+                const em = document.createElement('span');
+                em.className = 'home-dial-bg-emoji';
+                em.textContent = dial.emoji || ICONS.faviconFallback;
+                bg.appendChild(em);
+            } else {
+                // favicon — use getFaviconCandidates directly (attachFavicon clears onload)
+                const img = document.createElement('img');
+                img.className = 'home-dial-bg-img home-dial-bg-favicon';
+                img.alt = '';
+                img.onload = () => img.classList.add('loaded');
+                const _bgFallback = () => {
+                    img.remove();
+                    const em = document.createElement('span');
+                    em.className = 'home-dial-bg-emoji';
+                    em.textContent = dial.emoji || ICONS.faviconFallback;
+                    bg.appendChild(em);
+                };
+                if (dial.icon) {
+                    img.onerror = _bgFallback;
+                    img.src = dial.icon;
+                } else {
+                    const cands = getFaviconCandidates(dial.url);
+                    if (cands.length) { img.onerror = _bgFallback; img.src = cands[0]; }
+                    else _bgFallback();
+                }
+                bg.appendChild(img);
+            }
+            card.appendChild(bg);
+        }
+
+        // Text overlay at bottom
+        const info = document.createElement('div');
+        info.className = 'home-dial-info';
+        const namEl = document.createElement('div');
+        namEl.className = 'dial-name';
+        namEl.textContent = dial.name;
+        info.appendChild(namEl);
+        const metEl = document.createElement('div');
+        metEl.className = 'dial-meta';
+        metEl.textContent = `${opts.tabName} · ${opts.groupName}`;
+        info.appendChild(metEl);
+        card.appendChild(info);
 
         if (opts.totalVisits > 0) {
             const count = dial.visitCount || 0;
@@ -485,10 +480,64 @@ function makeDialCard(dial, groupId, gi, di, opts = {}) {
             usage.textContent = `${count}× · ${pct}%`;
             card.appendChild(usage);
         }
-    }
 
-    if (!opts.showMeta) {
-        // Edit overlay
+    } else {
+        // ── Regular dial tab card ─────────────────────────────────────────
+        if (isColor) {
+            card.className = 'dial-card dial-color';
+
+        } else if (isScreenshot) {
+            card.className = 'dial-card dial-screenshot';
+            const img = document.createElement('img');
+            img.className = 'dial-screenshot-img';
+            img.alt = '';
+            img.src = dial.icon;
+            img.onload  = () => img.classList.add('loaded');
+            img.onerror = () => {
+                card.className = 'dial-card';
+                img.remove();
+                const wrap = document.createElement('div');
+                wrap.className = 'dial-icon-wrap';
+                wrap.innerHTML = `<span class="dial-emoji">${dial.emoji || ICONS.faviconFallback}</span>`;
+                card.insertBefore(wrap, card.firstChild);
+            };
+            card.appendChild(img);
+
+        } else {
+            card.className = 'dial-card' + (dial.iconType === 'none' ? ' dial-no-icon' : '');
+            if (dial.iconType !== 'none') {
+                const iconWrap = document.createElement('div');
+                iconWrap.className = 'dial-icon-wrap';
+                if (dial.iconType === 'emoji' || !dial.iconType) {
+                    const em = document.createElement('span');
+                    em.className = 'dial-emoji';
+                    em.textContent = dial.emoji || ICONS.faviconFallback;
+                    iconWrap.appendChild(em);
+                } else {
+                    // favicon
+                    const img = document.createElement('img');
+                    img.alt = '';
+                    img.style.cssText = 'opacity:0;transition:opacity 0.2s';
+                    img.onload = () => { img.style.opacity = '1'; };
+                    iconWrap.appendChild(img);
+                    if (dial.icon) {
+                        img.onerror = () => attachFavicon(img, dial.url, dial.emoji || ICONS.faviconFallback);
+                        img.src = dial.icon;
+                    } else {
+                        attachFavicon(img, dial.url, dial.emoji || ICONS.faviconFallback);
+                    }
+                }
+                card.appendChild(iconWrap);
+            }
+        }
+
+        // Name label
+        const name = document.createElement('div');
+        name.className = 'dial-name';
+        name.textContent = dial.name;
+        card.appendChild(name);
+
+        // Edit overlay + drag handle
         const overlay = document.createElement('div');
         overlay.className = 'dial-edit-overlay';
         overlay.innerHTML = `
@@ -499,19 +548,14 @@ function makeDialCard(dial, groupId, gi, di, opts = {}) {
       <button class="btn-icon" title="Move right" onclick="moveDial('${groupId}','${dial.id}',1)">→</button>
     </div>
   `;
-
-        // Drag handle overlay
         const dragHandle = document.createElement('div');
         dragHandle.className = 'dial-drag-handle-overlay';
         dragHandle.innerHTML = '⠿';
         dragHandle.title = 'Drag to reorder';
         card.draggable = editMode;
         card.addEventListener('dragend', () => { card.classList.remove('dragging'); });
-
         card.appendChild(dragHandle);
         card.appendChild(overlay);
-
-        // Dial drag events
         card.addEventListener('dragstart', e => onDialDragStart(e, groupId, dial.id));
         card.addEventListener('dragover', e => onDialDragOver(e, groupId, dial.id));
         card.addEventListener('drop', e => onDialDrop(e, groupId, dial.id));
