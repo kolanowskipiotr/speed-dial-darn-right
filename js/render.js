@@ -539,7 +539,11 @@ function makeDialCard(dial, groupId, gi, di, opts = {}) {
         if (editMode) return;
         if (e.target.closest('.dial-edit-overlay') || e.target.closest('.dial-drag-handle-overlay')) return;
         trackDialVisit(dial.id);
-        window.open(dial.url, '_blank');
+        if (e.metaKey || e.ctrlKey) {
+            window.open(dial.url, '_blank');
+        } else {
+            window.location.href = dial.url;
+        }
     });
 
     return card;
