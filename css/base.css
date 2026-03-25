@@ -1,5 +1,17 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* ── Shared CodeMirror editor typography ─────────────────────── */
+.todo-edit-cm-host .cm-editor,
+.notes-cm-host .cm-editor {
+    font-size: 13px;
+    line-height: 1.6;
+}
+/* Override CM theme-injected font-weight on the content area (3-class beats CM's 2-class) */
+.todo-edit-cm-host .cm-editor .cm-content,
+.notes-cm-host .cm-editor .cm-content {
+    font-weight: 400;
+}
+
 body {
     font-family: 'DM Sans', sans-serif;
     background: var(--bg);

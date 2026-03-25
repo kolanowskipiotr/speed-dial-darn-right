@@ -534,7 +534,6 @@
     min-width: 0;
     min-height: 0;
     overflow: hidden;
-    position: relative;
 }
 
 /* Full-screen: horizontal split (editor left, preview right) */
@@ -583,24 +582,13 @@ body.todo-fullscreen .todo-edit-split .todo-edit-divider::after {
     height: 28px;
 }
 
-/* Make CM6 fill the host */
-.todo-edit-cm-host {
-    display: flex;
-    flex-direction: column;
-}
-
+/* Make CM6 fill the host — standard fixed-height pattern */
 .todo-edit-cm-host .cm-editor {
-    position: absolute;
-    inset: 0;
-    font-size: 13px;
-    font-family: 'DM Mono', monospace;
-    line-height: 1.6;
+    height: 100%;
 }
 
 .todo-edit-cm-host .cm-scroller {
-    height: 100%;
     overflow: auto;
-    font-family: inherit;
 }
 
 .todo-edit-textarea {

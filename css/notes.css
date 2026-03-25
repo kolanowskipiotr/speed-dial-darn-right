@@ -207,7 +207,6 @@
 .notes-cm-host .cm-editor {
     /* Normal mode: min-height ensures content fits; fullscreen overrides to 100% */
     min-height: 300px;
-    font-size: 13px;
 }
 
 .notes-cm-host .cm-scroller {
@@ -315,12 +314,48 @@
     background: var(--surface2);
 }
 
+.notes-preview p {
+    margin-bottom: 8px;
+}
+
+.notes-preview ul,
+.notes-preview ol {
+    padding-left: 20px;
+    margin: 4px 0 8px;
+}
+
+.notes-preview li {
+    margin-bottom: 2px;
+}
+
 /* ── split.js gutter ─────────────────────────────────────────── */
 .gutter.gutter-horizontal {
     width: 5px;
     background: var(--border);
     cursor: col-resize;
     flex-shrink: 0;
+    transition: background var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gutter.gutter-horizontal:hover {
+    background: var(--accent);
+}
+
+.gutter.gutter-horizontal::after {
+    content: '';
+    width: 2px;
+    height: 28px;
+    border-radius: 1px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity var(--transition);
+}
+
+.gutter.gutter-horizontal:hover::after {
+    opacity: 1;
 }
 
 /* ── Fullscreen ──────────────────────────────────────────────── */
