@@ -15,6 +15,7 @@ function applyTheme(themeId) {
         btn.classList.toggle('active', btn.dataset.theme === themeId);
     });
     if (window.NotesCM) NotesCM.setTheme(!themeId.startsWith('light'));
+    if (window.TodoCM) TodoCM.setTheme(!themeId.startsWith('light'));
 }
 
 function loadTheme() {

@@ -13,6 +13,9 @@ import { xml } from 'https://esm.sh/@codemirror/lang-xml@6';
 import { html } from 'https://esm.sh/@codemirror/lang-html@6';
 import { javascript } from 'https://esm.sh/@codemirror/lang-javascript@6';
 import { oneDark } from 'https://esm.sh/@codemirror/theme-one-dark@6';
+import { syntaxHighlighting, defaultHighlightStyle } from 'https://esm.sh/@codemirror/language@6';
+
+const lightHighlight = syntaxHighlighting(defaultHighlightStyle, { fallback: true });
 
 let _view = null;
 let _currentLanguage = 'markdown';
@@ -69,7 +72,7 @@ window.NotesCM = {
             EditorView.lineWrapping,
             search({ top: false }),
             _langCompartment.of(langExtension(language)),
-            _themeCompartment.of(isDark ? oneDark : []),
+            _themeCompartment.of(isDark ? oneDark : lightHighlight),
             // Custom keybindings first so they override defaultKeymap conflicts
             keymap.of([
                 { key: 'Mod-d', run: selectNextOccurrence, preventDefault: true },
@@ -122,7 +125,7 @@ window.NotesCM = {
 
     setTheme(isDark) {
         if (!_view) return;
-        _view.dispatch({ effects: _themeCompartment.reconfigure(isDark ? oneDark : []) });
+        _view.dispatch({ effects: _themeCompartment.reconfigure(isDark ? oneDark : lightHighlight) });
     },
 
     focusAndHighlight(query) {

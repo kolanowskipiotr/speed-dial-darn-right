@@ -6,6 +6,9 @@ import { EditorState, Compartment } from 'https://esm.sh/@codemirror/state@6';
 import { history, defaultKeymap, historyKeymap } from 'https://esm.sh/@codemirror/commands@6';
 import { markdown } from 'https://esm.sh/@codemirror/lang-markdown@6';
 import { oneDark } from 'https://esm.sh/@codemirror/theme-one-dark@6';
+import { syntaxHighlighting, defaultHighlightStyle } from 'https://esm.sh/@codemirror/language@6';
+
+const lightHighlight = syntaxHighlighting(defaultHighlightStyle, { fallback: true });
 
 let _view = null;
 const _themeCompartment = new Compartment();
@@ -20,7 +23,7 @@ window.TodoCM = {
             drawSelection(),
             EditorView.lineWrapping,
             markdown(),
-            _themeCompartment.of(isDark ? oneDark : []),
+            _themeCompartment.of(isDark ? oneDark : lightHighlight),
             keymap.of([
                 ...(onEsc ? [{ key: 'Escape', run: () => { onEsc(); return true; } }] : []),
                 ...defaultKeymap,
@@ -65,7 +68,7 @@ window.TodoCM = {
 
     setTheme(isDark) {
         if (!_view) return;
-        _view.dispatch({ effects: _themeCompartment.reconfigure(isDark ? oneDark : []) });
+        _view.dispatch({ effects: _themeCompartment.reconfigure(isDark ? oneDark : lightHighlight) });
     },
 };
 
