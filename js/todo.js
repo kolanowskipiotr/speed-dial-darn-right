@@ -768,9 +768,7 @@ function moveTodoItem(id, targetListId) {
     renderTodoPanel(_getTodoContainer());
 }
 
-// ─── ITEM EDITOR — CodeMirror 5 + marked.js live preview ─────────
-
-let _todoCM5 = null; // active CodeMirror 5 instance
+// ─── ITEM EDITOR — CodeMirror 6 + marked.js live preview ─────────
 
 function openItemEditor(id) {
     const result = findTodoItem(id);
@@ -790,7 +788,7 @@ function _renderItemEditor(container) {
     const { item } = result;
 
     // Destroy previous CM instance before clearing DOM
-    if (_todoCM5) { _todoCM5 = null; }
+    if (window.TodoCM) TodoCM.destroy();
     container.innerHTML = '';
     const editorView = document.createElement('div');
     editorView.className = 'todo-edit-view';
@@ -828,7 +826,7 @@ function _renderItemEditor(container) {
     editorHeader.appendChild(fsBtn);
     editorView.appendChild(editorHeader);
 
-    // Split body: CodeMirror 5 (left) + marked.js preview (right)
+    // Split body: CM6 editor (top/left) + marked.js preview (bottom/right)
     const splitBody = document.createElement('div');
     splitBody.className = 'todo-edit-split';
 
@@ -872,36 +870,23 @@ function _renderItemEditor(container) {
     });
     container.appendChild(editorView);
 
-    if (typeof CodeMirror !== 'undefined') {
-        _todoCM5 = CodeMirror(cmHost, {
-            value: item.content || '',
-            mode: 'markdown',
-            lineNumbers: true,
-            lineWrapping: true,
-            autofocus: true,
-            tabSize: 2,
-            extraKeys: { 'Esc': () => closeItemEditor() },
+    const _isDark = !document.body.dataset.theme?.startsWith('light');
+    if (window.TodoCM) {
+        TodoCM.mount(cmHost, item.content || '', _isDark, {
+            onChange: (text) => {
+                preview.innerHTML = typeof marked !== 'undefined'
+                    ? marked.parse(text) : escHtml(text);
+            },
+            onPaste: (e) => _handleTodoImagePaste(e),
+            onDrop:  (e) => _handleTodoImageDrop(e),
+            onEsc:   () => closeItemEditor(),
         });
-        _todoCM5.on('change', () => {
-            preview.innerHTML = typeof marked !== 'undefined'
-                ? marked.parse(_todoCM5.getValue())
-                : escHtml(_todoCM5.getValue());
-        });
-        _todoCM5.on('paste', (_cm, e) => { _handleTodoImagePaste(e); });
-        _todoCM5.on('drop',  (_cm, e) => { _handleTodoImageDrop(e); });
         // initial preview
         preview.innerHTML = typeof marked !== 'undefined'
             ? marked.parse(item.content || '')
             : escHtml(item.content || '');
-
-        // Scroll sync: editor → preview (one-way, no feedback loop)
-        _todoCM5.on('scroll', () => {
-            const info = _todoCM5.getScrollInfo();
-            const ratio = info.top / (info.height - info.clientHeight || 1);
-            preview.scrollTop = ratio * (preview.scrollHeight - preview.clientHeight);
-        });
     } else {
-        // CDN unavailable — plain textarea fallback
+        // Fallback — plain textarea
         const ta = document.createElement('textarea');
         ta.className = 'todo-edit-textarea';
         ta.value = item.content || '';
@@ -921,8 +906,9 @@ function _renderItemEditor(container) {
 function closeItemEditor() {
     if (!editingTodoItemId) return;
 
-    const content = _todoCM5 ? _todoCM5.getValue()
+    const content = window.TodoCM ? TodoCM.getValue()
         : (document.querySelector('.todo-edit-textarea')?.value ?? '');
+    if (window.TodoCM) TodoCM.destroy();
 
     const trimmed = (content || '').trim();
 
@@ -986,11 +972,10 @@ async function _uploadTodoImage(file) {
         showToast(`${ICONS.loading} Uploading image…`);
         await uploadDialImage(id, file);  // POST /api/upload/<id.ext>
         const mdRef = `![image](/uploads/${id})`;
-        if (_todoCM5) {
-            const cur = _todoCM5.getValue();
+        if (window.TodoCM && editingTodoItemId) {
+            const cur = TodoCM.getValue();
             const sep = cur && !cur.endsWith('\n') ? '\n' : '';
-            _todoCM5.setValue(cur + sep + mdRef + '\n');
-            _todoCM5.setCursor(_todoCM5.lineCount(), 0);
+            TodoCM.appendText(sep + mdRef + '\n');
         } else {
             const ta = document.querySelector('.todo-edit-textarea');
             if (ta) {

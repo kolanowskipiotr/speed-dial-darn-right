@@ -152,18 +152,16 @@ All todo panel logic. Functions:
 | `_reorderTodoList(dragListId, targetListId, before)` | Reorder lists by drag |
 | `_clearTodoDragIndicators()` | Remove all drag CSS classes (called on global `dragend`) |
 
-**Module-level state:** `todoFullScreen`, `doneExpandedListId`, `expandedItemId`, `_todoDragItemId`, `_todoDragListId`, `_todoDragListElemId`, `_todoCM5` (all JS-only; reset on page load).
+**Module-level state:** `todoFullScreen`, `doneExpandedListId`, `expandedItemId`, `_todoDragItemId`, `_todoDragListId`, `_todoDragListElemId` (all JS-only; reset on page load).
 
-**Item editor (CodeMirror 5 + marked.js split view):**
-- `_todoCM5` — module-level var holding the active CM5 instance, or `null`.
-- `_renderItemEditor(container)` — creates `.todo-edit-view` with `position:absolute; inset:0`. Inside: `.todo-edit-split` flex row with `.todo-edit-cm-host` (CM5 left) + `.todo-edit-preview` (marked.js right).
-- CM5 initialised with `lineNumbers:true`, `lineWrapping:true`, `mode:'markdown'`, autofocus. Falls back to `<textarea class="todo-edit-textarea">` if `CodeMirror` global unavailable.
-- `closeItemEditor()` reads `_todoCM5.getValue()` when CM5 is active; falls back to `.todo-edit-textarea.value`.
-- `_uploadTodoImage()` inserts image markdown via `_todoCM5.setValue()`; textarea fallback if CM5 null.
+**Item editor (CodeMirror 6 via `window.TodoCM` + marked.js split view):**
+- `_renderItemEditor(container)` — creates `.todo-edit-view` with `position:absolute; inset:0`. Inside: `.todo-edit-split` flex column with `.todo-edit-cm-host` (CM6 top) + `.todo-edit-preview` (marked.js bottom; horizontal in fullscreen).
+- Calls `TodoCM.mount(cmHost, content, isDark, { onChange, onPaste, onDrop, onScroll, onEsc })`. Falls back to `<textarea class="todo-edit-textarea">` if `window.TodoCM` unavailable.
+- `closeItemEditor()` reads `TodoCM.getValue()` then calls `TodoCM.destroy()`; falls back to `.todo-edit-textarea.value`.
+- `_uploadTodoImage()` appends image markdown via `TodoCM.appendText()`; textarea fallback.
 
 **CDN dependencies (loaded in `index.html` as classic scripts before body scripts):**
 - `marked.min.js` from jsDelivr
-- `codemirror.min.js`, `mode/xml/xml.min.js`, `mode/markdown/markdown.min.js` from cdnjs (CM5 v5.65.17)
 
 **Drag behaviour:**
 - Item reorder: drag handle on every item row activates `row.draggable`. Drop between items shows top/bottom border indicator, updates `item.order` values sequentially.
@@ -174,7 +172,14 @@ All todo panel logic. Functions:
 
 ## js/todo-cm.js
 
-Stub file — unused. Editor uses CodeMirror 5 (classic UMD scripts) + marked.js directly in `todo.js`.
+ES module (`type="module"`). Imports CM6 from `esm.sh`, exposes `window.TodoCM`, fires `todocmready` event.
+
+**API:**
+- `TodoCM.mount(hostEl, content, isDark, callbacks)` — mounts CM6 markdown editor with `oneDark` theme in dark mode. Callbacks: `onChange(text)`, `onPaste(e)`, `onDrop(e)`, `onScroll(ratio)`, `onEsc()`.
+- `TodoCM.destroy()` — destroys the view (call before clearing DOM or closing editor).
+- `TodoCM.getValue()` — returns current doc string.
+- `TodoCM.appendText(text)` — appends text and moves cursor to end.
+- `TodoCM.setTheme(isDark)` — switches oneDark on/off dynamically.
 
 ## js/drag-drop.js
 

@@ -11,7 +11,7 @@
 | `css/modals.css` | `.modal-backdrop`, `.modal`, form controls (`.form-group`, `.form-input`, `.emoji-preview`), size slider, icon source buttons, image upload zone, modal actions (`.btn-primary`, `.btn-secondary`), import modal styles |
 | `css/pickers.css` | Color picker grid, favicon picker + tiles, emoji picker + search + grid, spinner |
 | `css/animations.css` | Logo crash `@keyframes` + animation classes, `.logo-spark`, `.anim-toggle` |
-| `css/todo.css` | Home tab two-zone layout (`.home-layout-a` grid with `height: calc(100vh - var(--header-height) - 60px)` to fill viewport), todo panel, accordion lists/items, done section, item editor (`.todo-edit-split`, `.todo-edit-cm-host`, `.todo-edit-preview`), CodeMirror 5 theme overrides, full-screen mode (`body.todo-fullscreen`), responsive breakpoint |
+| `css/todo.css` | Home tab two-zone layout (`.home-layout-a` grid with `height: calc(100vh - var(--header-height) - 60px)` to fill viewport), todo panel, accordion lists/items, done section, item editor (`.todo-edit-split`, `.todo-edit-cm-host`, `.todo-edit-preview`), CM6 editor styles (position:absolute fill, background/color vars; oneDark handles syntax coloring in dark mode), full-screen mode (`body.todo-fullscreen`), responsive breakpoint |
 
 > `css/style.css` is now empty (kept as a stub with a comment). All styles are in the files above.
 
