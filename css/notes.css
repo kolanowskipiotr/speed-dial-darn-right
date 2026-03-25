@@ -160,23 +160,15 @@
     outline: none;
 }
 
-/* ── Toolbar ─────────────────────────────────────────────────── */
-.notes-toolbar {
-    display: flex;
-    gap: 4px;
-    padding: 4px 8px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
+/* ── Header note controls ────────────────────────────────────── */
 .notes-lang-btn {
     font-family: var(--mono-font, monospace);
     font-size: 11px;
-    padding: 2px 8px;
+    padding: 2px 6px;
     white-space: nowrap;
     flex-shrink: 0;
+    width: fit-content;
+    min-width: 0;
 }
 
 .notes-lang-btn.active {
@@ -184,9 +176,13 @@
     color: var(--accent-text);
 }
 
-.notes-img-btn {
-    margin-left: auto;
-    font-size: 14px;
+.notes-header-sep {
+    display: inline-block;
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    margin: 0 4px;
+    flex-shrink: 0;
 }
 
 /* ── Split host ──────────────────────────────────────────────── */

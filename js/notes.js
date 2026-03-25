@@ -74,6 +74,44 @@ function renderNotesPanel(container) {
     const headerActions = document.createElement('div');
     headerActions.className = 'notes-panel-header-actions';
 
+    const languages = [
+        { id: 'text',       label: 'txt' },
+        { id: 'markdown',   label: 'md' },
+        { id: 'json',       label: 'json' },
+        { id: 'xml',        label: 'xml' },
+        { id: 'javascript', label: 'js' },
+        { id: 'html',       label: 'html' },
+    ];
+    languages.forEach(({ id, label }) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-icon notes-lang-btn' + (note.language === id ? ' active' : '');
+        btn.textContent = label;
+        btn.onclick = () => setNoteLanguage(id);
+        headerActions.appendChild(btn);
+    });
+
+    const imgBtn = document.createElement('button');
+    imgBtn.className = 'btn-icon notes-img-btn';
+    imgBtn.title = 'Insert image';
+    imgBtn.textContent = '📎';
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    fileInput.onchange = () => {
+        const file = fileInput.files[0];
+        if (file && window._notesUploadImage) window._notesUploadImage(file, null);
+        fileInput.value = '';
+    };
+    imgBtn.onclick = () => fileInput.click();
+    headerActions.appendChild(imgBtn);
+    headerActions.appendChild(fileInput);
+
+    const sep = document.createElement('span');
+    sep.className = 'notes-header-sep';
+    headerActions.appendChild(sep);
+
     const addBtn = document.createElement('button');
     addBtn.className = 'btn-icon notes-add-btn';
     addBtn.title = 'Add new note';
@@ -117,46 +155,6 @@ function renderNotesPanel(container) {
     tabsBar.className = 'notes-tabs-bar';
     _buildNotesTabs(tabsBar);
     panel.appendChild(tabsBar);
-
-    // Toolbar
-    const toolbar = document.createElement('div');
-    toolbar.className = 'notes-toolbar';
-
-    const languages = [
-        { id: 'text',       label: '.txt' },
-        { id: 'markdown',   label: '.md' },
-        { id: 'json',       label: '.json' },
-        { id: 'xml',        label: '.xml' },
-        { id: 'javascript', label: '.js' },
-        { id: 'html',       label: '.html' },
-    ];
-    languages.forEach(({ id, label }) => {
-        const btn = document.createElement('button');
-        btn.className = 'btn-icon notes-lang-btn' + (note.language === id ? ' active' : '');
-        btn.textContent = label;
-        btn.onclick = () => setNoteLanguage(id);
-        toolbar.appendChild(btn);
-    });
-
-    const imgBtn = document.createElement('button');
-    imgBtn.className = 'btn-icon notes-img-btn';
-    imgBtn.title = 'Insert image';
-    imgBtn.textContent = '📎';
-
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.style.display = 'none';
-    fileInput.onchange = () => {
-        const file = fileInput.files[0];
-        if (file && window._notesUploadImage) window._notesUploadImage(file, null);
-        fileInput.value = '';
-    };
-    imgBtn.onclick = () => fileInput.click();
-
-    toolbar.appendChild(imgBtn);
-    toolbar.appendChild(fileInput);
-    panel.appendChild(toolbar);
 
     // Split host (editor + optional preview)
     const splitHost = document.createElement('div');

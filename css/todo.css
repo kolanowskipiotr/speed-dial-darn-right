@@ -4,8 +4,8 @@
     grid-template-areas: "dials dials" "todo notes";
     grid-template-columns: minmax(220px, 30%) 1fr;
     grid-template-rows: auto 1fr;
-    height: calc(100vh - var(--header-height, 128px) - 60px);
-    gap: 0;
+    height: calc(100vh - var(--header-height, 128px) - 28px);
+    column-gap: 12px;
 }
 
 .home-dials-strip {

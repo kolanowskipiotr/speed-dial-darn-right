@@ -3,7 +3,7 @@ main {
     position: relative;
     z-index: 1;
     width: 100%;
-    padding: var(--header-height, 128px) 40px 60px;
+    padding: var(--header-height, 128px) 20px 20px;
 }
 
 /* ── GROUPS ──────────────────────────────── */
