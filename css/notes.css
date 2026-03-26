@@ -215,6 +215,24 @@
     max-height: 65vh;
 }
 
+/* When in split mode (editor + preview), fill full height like the preview pane */
+.notes-split-host > .notes-cm-host:not(:only-child) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.notes-split-host > .notes-cm-host:not(:only-child) .cm-editor {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+}
+
+.notes-split-host > .notes-cm-host:not(:only-child) .cm-scroller {
+    flex: 1;
+    max-height: unset;
+}
+
 /* CM6 search panel integration */
 .notes-cm-host .cm-search {
     background: var(--surface2);
