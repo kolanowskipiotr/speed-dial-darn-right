@@ -43,6 +43,12 @@ function loadData() {
         saveData();
     }
     activeNoteId = [...data.notes].sort((a, b) => a.order - b.order)[0].id;
+
+    // Ensure notesTrash exists
+    if (!data.notesTrash) {
+        data.notesTrash = [];
+        saveData();
+    }
 }
 
 function getActiveTab() {

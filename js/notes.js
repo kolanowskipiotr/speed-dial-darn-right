@@ -5,11 +5,54 @@ let _notesSplitInstance = null;  // split.js instance
 let _notesPreviewEl = null;      // .notes-preview DOM element ref
 let _notesDragId = null;         // id of tab being dragged for reorder
 let _pendingNoteFocusId = null;  // note to make active after undo restores it
+let _notesTrashOpen = false;     // whether the trash panel is visible
+let _notesTrashPreviewId = null; // id of trash note currently previewed
 
 // ─── HELPERS ─────────────────────────────────────────────────────
 
 function findNote(id) {
     return (data.notes || []).find(n => n.id === id) || null;
+}
+
+function _findTrashNote(id) {
+    return (data.notesTrash || []).find(n => n.id === id) || null;
+}
+
+function _noteExcerpt(note, maxLen = 140) {
+    const raw = (note.content || '').trim();
+    if (!raw) return '';
+    let text;
+    if (note.language === 'markdown' && window.marked) {
+        // Render to HTML then strip tags to get readable plain text
+        const html = marked.parse(raw);
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        text = tmp.textContent || tmp.innerText || '';
+    } else {
+        text = raw;
+    }
+    text = text.replace(/\s+/g, ' ').trim();
+    return text.length > maxLen ? text.slice(0, maxLen) + '…' : text;
+}
+
+function _formatDeletedAt(iso) {
+    const d = new Date(iso);
+    const pad = n => String(n).padStart(2, '0');
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function _purgeOldTrash() {
+    if (!data.notesTrash?.length) return;
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const expired = data.notesTrash.filter(n => new Date(n.deletedAt).getTime() < cutoff);
+    if (!expired.length) return;
+    data.notesTrash = data.notesTrash.filter(n => new Date(n.deletedAt).getTime() >= cutoff);
+    saveData();
+    expired.forEach(n => {
+        const ids = extractUploadIds(n.content || '');
+        if (ids.length) Promise.all(ids.map(id => deleteDialImage(id))).catch(() => {});
+    });
 }
 
 function _isAppDark() {
@@ -27,6 +70,9 @@ function _getNotesContainer() {
 // ─── RENDER ──────────────────────────────────────────────────────
 
 function renderNotesPanel(container) {
+    // Purge expired trash entries on every render
+    _purgeOldTrash();
+
     // Destroy old split instance before touching DOM
     if (_notesSplitInstance) {
         try { _notesSplitInstance.destroy(); } catch (e) {}
@@ -154,11 +200,38 @@ function renderNotesPanel(container) {
     const tabsBar = document.createElement('div');
     tabsBar.className = 'notes-tabs-bar';
     _buildNotesTabs(tabsBar);
+
+    const trashCount = (data.notesTrash || []).length;
+    const trashBtn = document.createElement('button');
+    trashBtn.className = 'btn-icon notes-trash-btn' + (_notesTrashOpen ? ' active' : '');
+    trashBtn.title = 'Trash';
+    trashBtn.textContent = ICONS.delete;
+    if (trashCount) {
+        const badge = document.createElement('span');
+        badge.className = 'notes-trash-badge';
+        badge.textContent = trashCount;
+        trashBtn.appendChild(badge);
+    }
+    trashBtn.onclick = () => {
+        _notesTrashOpen = !_notesTrashOpen;
+        _notesTrashPreviewId = null;
+        const c = _getNotesContainer();
+        if (c) renderNotesPanel(c);
+    };
+    tabsBar.appendChild(trashBtn);
+
     panel.appendChild(tabsBar);
 
-    // Split host (editor + optional preview)
+    // Split host (editor + optional preview, OR trash panel)
     const splitHost = document.createElement('div');
     splitHost.className = 'notes-split-host';
+
+    if (_notesTrashOpen) {
+        _buildTrashPanel(splitHost);
+        panel.appendChild(splitHost);
+        container.appendChild(panel);
+        return;
+    }
 
     const cmHost = document.createElement('div');
     cmHost.className = 'notes-cm-host';
@@ -308,6 +381,7 @@ function _initMarkdownSplit() {
 
 function openNoteTab(noteId) {
     if (noteId === activeNoteId) return;
+    _notesTrashOpen = false;
     // Save current editor content before switching
     if (window.NotesCM && activeNoteId) {
         const cur = findNote(activeNoteId);
@@ -323,6 +397,7 @@ function openNoteTab(noteId) {
 }
 
 function addNote() {
+    _notesTrashOpen = false;
     const sorted = _getNotesSortedByOrder();
     const maxOrder = sorted.length ? sorted[sorted.length - 1].order : -1;
     const now = new Date().toISOString();
@@ -346,37 +421,224 @@ function addNote() {
 }
 
 function deleteNote(noteId) {
-    if ((data.notes || []).length <= 1) {
-        showToast(ICONS.warn + ' Cannot delete the last note');
-        return;
-    }
     const note = findNote(noteId);
     if (!note) return;
 
-    // Full-data backup for undo; remember which note to re-activate if undo is clicked
-    const backup = JSON.stringify(data);
-    _pendingNoteFocusId = noteId;
-
-    // Clean up image uploads in note content
-    const _noteImgIds = extractUploadIds(note.content || '');
-    if (_noteImgIds.length) {
-        Promise.all(_noteImgIds.map(id => deleteDialImage(id))).then(() => {
-            showToast(`${ICONS.delete} ${_noteImgIds.length} image${_noteImgIds.length > 1 ? 's' : ''} removed from storage`);
-        }).catch(() => {});
+    // Save current editor content before moving to trash
+    if (window.NotesCM && noteId === activeNoteId) {
+        note.content = NotesCM.getValue();
+        note.updatedAt = new Date().toISOString();
     }
+
+    // Move to trash with deletion timestamp
+    if (!data.notesTrash) data.notesTrash = [];
+    data.notesTrash.push({ ...note, deletedAt: new Date().toISOString() });
 
     data.notes = data.notes.filter(n => n.id !== noteId);
 
+    // If all notes were deleted, create a fresh default note
+    if (!data.notes.length) {
+        const now = new Date().toISOString();
+        data.notes = [{ id: uid(), name: 'Note 1', content: '', language: 'markdown', order: 0, createdAt: now, updatedAt: now }];
+    }
+
     // Update activeNoteId if needed
     if (activeNoteId === noteId) {
-        const sorted = _getNotesSortedByOrder();
-        activeNoteId = sorted.length ? sorted[0].id : null;
+        activeNoteId = _getNotesSortedByOrder()[0].id;
     }
 
     saveData();
     const container = _getNotesContainer();
     if (container) renderNotesPanel(container);
-    showToastUndo(ICONS.delete + ' Note deleted', backup);
+    showToast(`${ICONS.delete} Note moved to trash`);
+}
+
+function restoreNote(noteId) {
+    const note = _findTrashNote(noteId);
+    if (!note) return;
+
+    // Remove deletedAt and put back in active notes
+    const { deletedAt, ...restored } = note;
+    // Give it a fresh order at the end
+    const maxOrder = _getNotesSortedByOrder().reduce((m, n) => Math.max(m, n.order), -1);
+    restored.order = maxOrder + 1;
+    data.notes.push(restored);
+    data.notesTrash = data.notesTrash.filter(n => n.id !== noteId);
+
+    activeNoteId = restored.id;
+    _notesTrashOpen = false;
+    _notesTrashPreviewId = null;
+    saveData();
+    const container = _getNotesContainer();
+    if (container) renderNotesPanel(container);
+    showToast(`${ICONS.ok} Note restored`);
+}
+
+function permanentlyDeleteNote(noteId) {
+    const note = _findTrashNote(noteId);
+    if (!note) return;
+    showConfirm(
+        'Delete permanently?',
+        `"${note.name}" will be deleted forever with all its images.`,
+        () => {
+            const ids = extractUploadIds(note.content || '');
+            data.notesTrash = data.notesTrash.filter(n => n.id !== noteId);
+            saveData();
+            const container = _getNotesContainer();
+            if (container) renderNotesPanel(container);
+            if (ids.length) {
+                Promise.all(ids.map(id => deleteDialImage(id))).then(() => {
+                    showToast(`${ICONS.delete} ${ids.length} image${ids.length > 1 ? 's' : ''} removed from storage`);
+                }).catch(() => {});
+            } else {
+                showToast(`${ICONS.delete} Permanently deleted`);
+            }
+        },
+        { btnLabel: 'Delete forever', danger: true }
+    );
+}
+
+function emptyTrash() {
+    if (!data.notesTrash?.length) return;
+    showConfirm(
+        'Empty trash?',
+        'All notes in trash will be permanently deleted along with their images.',
+        () => {
+            const allIds = data.notesTrash.flatMap(n => extractUploadIds(n.content || ''));
+            data.notesTrash = [];
+            saveData();
+            const container = _getNotesContainer();
+            if (container) renderNotesPanel(container);
+            if (allIds.length) {
+                Promise.all(allIds.map(id => deleteDialImage(id))).then(() => {
+                    showToast(`${ICONS.delete} ${allIds.length} image${allIds.length > 1 ? 's' : ''} removed from storage`);
+                }).catch(() => {});
+            } else {
+                showToast(`${ICONS.delete} Trash emptied`);
+            }
+        },
+        { btnLabel: 'Empty trash', danger: true }
+    );
+}
+
+function _buildTrashPanel(container) {
+    const trash = [...(data.notesTrash || [])].sort(
+        (a, b) => new Date(b.deletedAt) - new Date(a.deletedAt)
+    );
+
+    const panel = document.createElement('div');
+    panel.className = 'notes-trash-panel';
+
+    const header = document.createElement('div');
+    header.className = 'notes-trash-header';
+
+    const title = document.createElement('span');
+    title.className = 'notes-trash-title';
+    title.textContent = `${ICONS.delete} Trash`;
+
+    header.appendChild(title);
+
+    if (trash.length) {
+        const emptyBtn = document.createElement('button');
+        emptyBtn.className = 'btn-icon notes-trash-empty-btn';
+        emptyBtn.title = 'Empty trash';
+        emptyBtn.textContent = ICONS.sweep;
+        emptyBtn.onclick = () => emptyTrash();
+        header.appendChild(emptyBtn);
+    }
+
+    panel.appendChild(header);
+
+    if (!trash.length) {
+        const empty = document.createElement('div');
+        empty.className = 'notes-trash-empty';
+        empty.textContent = 'Trash is empty';
+        panel.appendChild(empty);
+    } else {
+        const list = document.createElement('div');
+        list.className = 'notes-trash-list';
+
+        trash.forEach(note => {
+            const row = document.createElement('div');
+            row.className = 'notes-trash-row';
+
+            const info = document.createElement('div');
+            info.className = 'notes-trash-info';
+
+            const name = document.createElement('span');
+            name.className = 'notes-trash-name';
+            name.textContent = note.name;
+
+            const daysLeft = Math.ceil((new Date(note.deletedAt).getTime() + 30 * 24 * 60 * 60 * 1000 - Date.now()) / (24 * 60 * 60 * 1000));
+
+            const date = document.createElement('span');
+            date.className = 'notes-trash-date';
+            date.textContent = `${_formatDeletedAt(note.deletedAt)} · deletes in ${daysLeft}d`;
+
+            info.appendChild(name);
+            info.appendChild(date);
+
+            const excerpt = _noteExcerpt(note);
+            if (excerpt) {
+                const preview = document.createElement('span');
+                preview.className = 'notes-trash-preview';
+                preview.textContent = excerpt;
+                info.appendChild(preview);
+            }
+
+            const actions = document.createElement('div');
+            actions.className = 'notes-trash-actions';
+
+            const isExpanded = _notesTrashPreviewId === note.id;
+
+            const previewBtn = document.createElement('button');
+            previewBtn.className = 'btn-icon notes-trash-preview-btn' + (isExpanded ? ' active' : '');
+            previewBtn.title = isExpanded ? 'Hide preview' : 'Preview note';
+            previewBtn.textContent = ICONS.preview;
+            previewBtn.onclick = () => {
+                _notesTrashPreviewId = isExpanded ? null : note.id;
+                const c = _getNotesContainer();
+                if (c) renderNotesPanel(c);
+            };
+
+            const restoreBtn = document.createElement('button');
+            restoreBtn.className = 'btn-icon';
+            restoreBtn.title = 'Restore';
+            restoreBtn.textContent = ICONS.undo;
+            restoreBtn.onclick = () => restoreNote(note.id);
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn-icon notes-trash-del-btn';
+            delBtn.title = 'Delete permanently';
+            delBtn.textContent = ICONS.delete;
+            delBtn.onclick = () => permanentlyDeleteNote(note.id);
+
+            actions.appendChild(previewBtn);
+            actions.appendChild(restoreBtn);
+            actions.appendChild(delBtn);
+
+            row.appendChild(info);
+            row.appendChild(actions);
+            list.appendChild(row);
+
+            if (isExpanded) {
+                const previewEl = document.createElement('div');
+                previewEl.className = 'notes-trash-full-preview';
+                if (note.language === 'markdown' && window.marked) {
+                    previewEl.classList.add('notes-preview');
+                    previewEl.innerHTML = marked.parse(note.content || '');
+                } else {
+                    previewEl.classList.add('notes-trash-full-preview-plain');
+                    previewEl.textContent = note.content || '';
+                }
+                list.appendChild(previewEl);
+            }
+        });
+
+        panel.appendChild(list);
+    }
+
+    container.appendChild(panel);
 }
 
 function renameNote(noteId, newName) {

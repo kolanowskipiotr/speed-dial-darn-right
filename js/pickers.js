@@ -334,8 +334,8 @@ async function exportData() {
             }
         }
     }
-    // Also collect images referenced in notes content
-    for (const note of (data.notes || [])) {
+    // Also collect images referenced in notes content (active + trash)
+    for (const note of [...(data.notes || []), ...(data.notesTrash || [])]) {
         const uploadIds = (note.content || '').match(/\/uploads\/([\w.\-]+)/g) || [];
         for (const ref of uploadIds) {
             const id = ref.replace('/uploads/', '');
@@ -426,7 +426,7 @@ function _collectUploadIds(d) {
             }
         }
     }
-    for (const note of (d.notes || [])) {
+    for (const note of [...(d.notes || []), ...(d.notesTrash || [])]) {
         for (const id of extractUploadIds(note.content || '')) {
             ids.add(id);
         }
@@ -467,6 +467,7 @@ async function _doImport(imported) {
         const now = new Date().toISOString();
         data.notes = [{ id: uid(), name: 'Note 1', content: '', language: 'markdown', order: 0, createdAt: now, updatedAt: now }];
     }
+    if (!data.notesTrash) data.notesTrash = [];
     activeNoteId = [...data.notes].sort((a, b) => a.order - b.order)[0].id;
     saveData();
     render();

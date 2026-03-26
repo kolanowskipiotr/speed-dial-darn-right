@@ -30,6 +30,8 @@ const ICONS = {
     // Notes icons
     defaultNote: '📝',
     info:        'ℹ️',
+    sweep:       '🧹',
+    preview:     '👁',
 };
 
 const EMOJI_CATEGORIES = [
