@@ -358,7 +358,12 @@ function deleteNote(noteId) {
     _pendingNoteFocusId = noteId;
 
     // Clean up image uploads in note content
-    extractUploadIds(note.content || '').forEach(id => deleteDialImage(id));
+    const _noteImgIds = extractUploadIds(note.content || '');
+    if (_noteImgIds.length) {
+        Promise.all(_noteImgIds.map(id => deleteDialImage(id))).then(() => {
+            showToast(`${ICONS.delete} ${_noteImgIds.length} image${_noteImgIds.length > 1 ? 's' : ''} removed from storage`);
+        }).catch(() => {});
+    }
 
     data.notes = data.notes.filter(n => n.id !== noteId);
 
@@ -433,11 +438,19 @@ function startNoteTabRename(noteId) {
 window._notesCMDocChange = function(content) {
     const note = findNote(activeNoteId);
     if (!note) return;
+    const oldIds = extractUploadIds(note.content || '');
     note.content = content;
     note.updatedAt = new Date().toISOString();
     saveData();
     if (note.language === 'markdown' && _notesPreviewEl) {
         _notesPreviewEl.innerHTML = marked.parse(content);
+    }
+    const newIds = new Set(extractUploadIds(content));
+    const removed = oldIds.filter(id => !newIds.has(id));
+    if (removed.length) {
+        Promise.all(removed.map(id => deleteDialImage(id))).then(() => {
+            showToast(`${ICONS.delete} ${removed.length} image${removed.length > 1 ? 's' : ''} removed from storage`);
+        }).catch(() => {});
     }
 };
 

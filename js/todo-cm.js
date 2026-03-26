@@ -30,8 +30,16 @@ window.TodoCM = {
                 ...historyKeymap,
             ]),
             EditorView.domEventHandlers({
-                paste: (e) => { if (onPaste) onPaste(e); return false; },
-                drop:  (e) => { if (onDrop)  onDrop(e);  return false; },
+                paste: (e) => {
+                    const hasImage = [...(e.clipboardData?.items || [])].some(i => i.type.startsWith('image/'));
+                    if (hasImage && onPaste) { onPaste(e); return true; }
+                    return false;
+                },
+                drop: (e) => {
+                    const hasImage = [...(e.dataTransfer?.files || [])].some(f => f.type.startsWith('image/'));
+                    if (hasImage && onDrop) { onDrop(e); return true; }
+                    return false;
+                },
             }),
             EditorView.updateListener.of(update => {
                 if (!update.docChanged) return;
@@ -54,6 +62,16 @@ window.TodoCM = {
 
     getValue() {
         return _view ? _view.state.doc.toString() : '';
+    },
+
+    insertAtCursor(text) {
+        if (!_view) return;
+        const cursor = _view.state.selection.main.head;
+        _view.dispatch({
+            changes: { from: cursor, insert: text },
+            selection: { anchor: cursor + text.length },
+            scrollIntoView: true,
+        });
     },
 
     appendText(text) {

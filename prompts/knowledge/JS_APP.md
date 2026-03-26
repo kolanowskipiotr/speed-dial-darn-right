@@ -136,7 +136,7 @@ All todo panel logic. Functions:
 | `deleteTodoListFromModal()` | Confirm → delete list + clean up image uploads |
 | `closeTodoListModal()` | Close todo list modal |
 | `addTodoItem(listId, position)` | Insert inline input at `'top'` or `'bottom'`; Enter commits, Escape cancels, blur auto-commits |
-| `saveTodoItem(id, content)` | Persist content + `updatedAt` |
+| `saveTodoItem(id, content)` | Persist content + `updatedAt`; diffs image refs vs old content, deletes orphaned uploads, shows toast after DELETE completes |
 | `toggleTodoDone(id)` | Flip `isDone`; set/clear `doneAt` |
 | `deleteTodoItem(id)` | `showToastUndo()` — no confirm; cleans up image uploads |
 | `moveTodoItemToPosition(id, listId, pos)` | Move item to `'top'` or `'bottom'` of its list |
@@ -158,7 +158,7 @@ All todo panel logic. Functions:
 - `_renderItemEditor(container)` — creates `.todo-edit-view` with `position:absolute; inset:0`. Inside: `.todo-edit-split` flex column with `.todo-edit-cm-host` (CM6 top) + `.todo-edit-preview` (marked.js bottom; horizontal in fullscreen).
 - Calls `TodoCM.mount(cmHost, content, isDark, { onChange, onPaste, onDrop, onScroll, onEsc })`. Falls back to `<textarea class="todo-edit-textarea">` if `window.TodoCM` unavailable.
 - `closeItemEditor()` reads `TodoCM.getValue()` then calls `TodoCM.destroy()`; falls back to `.todo-edit-textarea.value`.
-- `_uploadTodoImage()` appends image markdown via `TodoCM.appendText()`; textarea fallback.
+- `_uploadTodoImage()` inserts image markdown at cursor via `TodoCM.insertAtCursor()`; textarea fallback also inserts at `selectionStart`.
 
 **CDN dependencies (loaded in `index.html` as classic scripts before body scripts):**
 - `marked.min.js` from jsDelivr
@@ -178,6 +178,7 @@ ES module (`type="module"`). Imports CM6 from `esm.sh`, exposes `window.TodoCM`,
 - `TodoCM.mount(hostEl, content, isDark, callbacks)` — mounts CM6 markdown editor with `oneDark` theme in dark mode. Callbacks: `onChange(text)`, `onPaste(e)`, `onDrop(e)`, `onScroll(ratio)`, `onEsc()`.
 - `TodoCM.destroy()` — destroys the view (call before clearing DOM or closing editor).
 - `TodoCM.getValue()` — returns current doc string.
+- `TodoCM.insertAtCursor(text)` — inserts text at current cursor position and moves cursor to end of inserted text.
 - `TodoCM.appendText(text)` — appends text and moves cursor to end.
 - `TodoCM.setTheme(isDark)` — switches oneDark on/off dynamically.
 
@@ -276,3 +277,14 @@ After any data change: `saveData(); render();`
 2. `handleImageFile(file)` → `resizeImage()` → stores blob in `pendingImageBlob`
 3. `_doSaveDial()` — if `pendingImageBlob` set → POST `/api/upload/<id>` → `icon: /uploads/<id>.jpg`
 4. Typing a custom icon URL cancels `pendingImageBlob`
+
+## Image orphan cleanup
+
+Images are deleted from `/uploads/` in these scenarios:
+- **Note deleted**: `deleteNote()` collects all `/uploads/` refs in content, `Promise.all(deleteDialImage)` → toast after complete.
+- **Todo item deleted**: `deleteTodoItem()` same pattern.
+- **Todo list deleted**: `deleteTodoListFromModal()` flattens refs from all items, same pattern.
+- **Content edited (images removed from text)**: `_notesCMDocChange()` and `saveTodoItem()` both diff old vs new image IDs and delete any that were removed, with a toast after DELETE resolves. This prevents orphans from manual ref deletion.
+- **Import**: `_doImport()` collects IDs before and after, deletes anything not in new data.
+
+All deletion toasts fire after the HTTP DELETE resolves, not before.

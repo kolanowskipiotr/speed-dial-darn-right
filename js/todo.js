@@ -501,8 +501,11 @@ function deleteTodoListFromModal() {
         'Delete List',
         `Delete "${list.name}" and its ${itemCount} item${itemCount !== 1 ? 's' : ''}?`,
         () => {
-            for (const item of list.items || []) {
-                extractUploadIds(item.content || '').forEach(id => deleteDialImage(id));
+            const _listImgIds = (list.items || []).flatMap(item => extractUploadIds(item.content || ''));
+            if (_listImgIds.length) {
+                Promise.all(_listImgIds.map(id => deleteDialImage(id))).then(() => {
+                    showToast(`${ICONS.delete} ${_listImgIds.length} image${_listImgIds.length > 1 ? 's' : ''} removed from storage`);
+                }).catch(() => {});
             }
             data.todoLists = data.todoLists.filter(l => l.id !== editingTodoListId);
             if (activeTodoListId === editingTodoListId) {
@@ -638,9 +641,17 @@ function addTodoItem(listId, position) {
 function saveTodoItem(id, content) {
     const result = findTodoItem(id);
     if (!result) return;
+    const oldIds = extractUploadIds(result.item.content || '');
     result.item.content = content;
     result.item.updatedAt = new Date().toISOString();
     saveData();
+    const newIds = new Set(extractUploadIds(content));
+    const removed = oldIds.filter(imgId => !newIds.has(imgId));
+    if (removed.length) {
+        Promise.all(removed.map(imgId => deleteDialImage(imgId))).then(() => {
+            showToast(`${ICONS.delete} ${removed.length} image${removed.length > 1 ? 's' : ''} removed from storage`);
+        }).catch(() => {});
+    }
 }
 
 function toggleTodoDone(id) {
@@ -666,7 +677,12 @@ function deleteTodoItem(id) {
     const backup = JSON.stringify(data);
 
     // Clean up uploads
-    extractUploadIds(item.content || '').forEach(imgId => deleteDialImage(imgId));
+    const _itemImgIds = extractUploadIds(item.content || '');
+    if (_itemImgIds.length) {
+        Promise.all(_itemImgIds.map(imgId => deleteDialImage(imgId))).then(() => {
+            showToast(`${ICONS.delete} ${_itemImgIds.length} image${_itemImgIds.length > 1 ? 's' : ''} removed from storage`);
+        }).catch(() => {});
+    }
 
     list.items = list.items.filter(i => i.id !== id);
     if (expandedItemId === id) expandedItemId = null;
@@ -973,14 +989,13 @@ async function _uploadTodoImage(file) {
         await uploadDialImage(id, file);  // POST /api/upload/<id.ext>
         const mdRef = `![image](/uploads/${id})`;
         if (window.TodoCM && editingTodoItemId) {
-            const cur = TodoCM.getValue();
-            const sep = cur && !cur.endsWith('\n') ? '\n' : '';
-            TodoCM.appendText(sep + mdRef + '\n');
+            TodoCM.insertAtCursor(mdRef);
         } else {
             const ta = document.querySelector('.todo-edit-textarea');
             if (ta) {
-                const sep = ta.value && !ta.value.endsWith('\n') ? '\n' : '';
-                ta.value += sep + mdRef + '\n';
+                const start = ta.selectionStart;
+                ta.value = ta.value.slice(0, start) + mdRef + ta.value.slice(ta.selectionEnd);
+                ta.selectionStart = ta.selectionEnd = start + mdRef.length;
                 ta.dispatchEvent(new Event('input'));
             }
         }
