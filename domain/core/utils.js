@@ -112,6 +112,7 @@ function showEmojiInstead(imgEl, emoji) {
 }
 
 let toastTimer = null;
+let _undoBackup = null;
 
 function showToast(msg) {
     const t = document.getElementById('toast');
@@ -122,19 +123,32 @@ function showToast(msg) {
 }
 
 function showToastUndo(msg, backup) {
+    _undoBackup = backup;
     const t = document.getElementById('toast');
-    t.innerHTML = `<span>${msg}</span><button class="toast-undo" onclick="undoDelete('${encodeURIComponent(backup)}')">Undo</button>`;
+    t.innerHTML = `<span>${msg}</span><button class="toast-undo" onclick="undoDelete()">Undo</button>`;
     t.classList.add('show');
     if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+    toastTimer = setTimeout(() => { t.classList.remove('show'); _undoBackup = null; }, 4000);
 }
 
-function undoDelete(encodedBackup) {
+function undoDelete() {
+    if (!_undoBackup) return;
     try {
-        data = JSON.parse(decodeURIComponent(encodedBackup));
+        data = JSON.parse(_undoBackup);
+        _undoBackup = null;
         saveData(); render();
         showToast(`${ICONS.undo} Restored`);
     } catch(e) { showToast(`${ICONS.error} Could not undo`); }
+}
+
+function openModal(id) {
+    const m = document.getElementById(id);
+    if (m) m.classList.add('open');
+}
+
+function closeModal(id) {
+    const m = document.getElementById(id);
+    if (m) m.classList.remove('open');
 }
 
 function showConfirm(title, message, onConfirm, opts = {}) {

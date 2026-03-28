@@ -7,6 +7,12 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/speed-dial.conf:ro
       - ./index.html:/usr/share/nginx/html/index.html:ro
-      - ./css:/usr/share/nginx/html/css:ro
-      - ./js:/usr/share/nginx/html/js:ro
-      - ./partials:/usr/share/nginx/html/partials:ro
+      - ./domain:/usr/share/nginx/html/domain:ro
+
+  uploader:
+    environment:
+      - GDRIVE_FOLDER_ID=${GDRIVE_FOLDER_ID:-}
+      - GDRIVE_SERVICE_ACCOUNT_JSON=${GDRIVE_SERVICE_ACCOUNT_JSON:-}
+    volumes:
+      - ./uploader:/app:rw
+      - speed_dial_uploads:/uploads:rw

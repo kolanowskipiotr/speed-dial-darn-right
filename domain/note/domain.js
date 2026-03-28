@@ -44,10 +44,17 @@ function _formatDeletedAt(iso) {
 
 function _purgeOldTrash() {
     if (!data.notesTrash?.length) return;
-    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const expired = data.notesTrash.filter(n => new Date(n.deletedAt).getTime() < cutoff);
+    const now = Date.now();
+    const cutoff = now - 30 * 24 * 60 * 60 * 1000;
+    const expired = data.notesTrash.filter(n => {
+        const deletedAt = n.deletedAt ? new Date(n.deletedAt).getTime() : 0;
+        return deletedAt > 0 && deletedAt < cutoff;
+    });
     if (!expired.length) return;
-    data.notesTrash = data.notesTrash.filter(n => new Date(n.deletedAt).getTime() >= cutoff);
+    data.notesTrash = data.notesTrash.filter(n => {
+        const deletedAt = n.deletedAt ? new Date(n.deletedAt).getTime() : 0;
+        return deletedAt === 0 || deletedAt >= cutoff;
+    });
     saveData();
     expired.forEach(n => {
         const ids = extractUploadIds(n.content || '');
@@ -196,10 +203,40 @@ function renderNotesPanel(container) {
     header.appendChild(headerActions);
     panel.appendChild(header);
 
-    // Tabs bar
+    // Tabs bar with anchored trash
     const tabsBar = document.createElement('div');
     tabsBar.className = 'notes-tabs-bar';
-    _buildNotesTabs(tabsBar);
+
+    const scrollArea = document.createElement('div');
+    scrollArea.className = 'notes-tabs-scroll-area';
+    _buildNotesTabs(scrollArea);
+    tabsBar.appendChild(scrollArea);
+
+    // Ensure active tab is visible
+    requestAnimationFrame(() => {
+        const active = scrollArea.querySelector('.notes-tab.active');
+        if (active) {
+            const containerWidth = scrollArea.clientWidth;
+            const scrollLeft = Math.ceil(scrollArea.scrollLeft);
+            const itemLeft = active.offsetLeft;
+            const itemWidth = active.offsetWidth;
+            const buffer = 2; // small margin to prevent micro-jumps
+
+            if (itemLeft < scrollLeft) {
+                scrollArea.scrollTo({ left: itemLeft - buffer, behavior: 'smooth' });
+            } else if (itemLeft + itemWidth > scrollLeft + containerWidth) {
+                scrollArea.scrollTo({ left: itemLeft + itemWidth - containerWidth + buffer, behavior: 'smooth' });
+            }
+        }
+    });
+
+    // Horizontal scroll with mouse wheel
+    scrollArea.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0) {
+            e.preventDefault();
+            scrollArea.scrollBy({ left: e.deltaY, behavior: 'auto' });
+        }
+    }, { passive: false });
 
     const trashCount = (data.notesTrash || []).length;
     const trashBtn = document.createElement('button');

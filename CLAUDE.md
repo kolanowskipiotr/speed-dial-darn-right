@@ -9,9 +9,20 @@ If the user proposes a solution and a better alternative exists, say so before i
 ## Key rules
 
 - No build step — file changes in the mounted Docker volume are live immediately.
+- Domain-Driven Design (DDD) — All features are organized in `domain/`.
 - All CRUD follows: mutate `data` → `saveData()` → `render()`.
+- `saveData()` automatically triggers an async background sync to Google Drive via the `uploader` service.
 - Use existing CSS variables, never hardcode colours.
-- Never hardcode emoji strings outside of data definitions — always use `ICONS.*` from `js/state.js`.
+- Never hardcode emoji strings outside of data definitions — always use `ICONS.*` from `domain/core/state.js`.
+
+## Domain Structure
+
+- `domain/core/` — Shared state, themes, tokens, base layout, and utility functions.
+- `domain/persistence/` — Data loading, saving, migration, and unified export/sync logic.
+- `domain/dial/` — Management of tabs, groups, and dials.
+- `domain/todo/` — Todo lists and items, including CodeMirror 6 integration.
+- `domain/note/` — Note-taking logic, trash management, and CodeMirror 6 integration.
+- `domain/ui/` — Global UI components like the header, search, pickers, and animations.
 
 ## Compose file split
 

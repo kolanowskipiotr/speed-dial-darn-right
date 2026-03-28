@@ -4,48 +4,68 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Speed Dial Darn Right</title>
-    <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/header.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/dials.css">
-    <link rel="stylesheet" href="css/modals.css">
-    <link rel="stylesheet" href="css/pickers.css">
-    <link rel="stylesheet" href="css/animations.css">
-    <link rel="stylesheet" href="css/todo.css">
-    <link rel="stylesheet" href="css/notes.css">
+    
+    <!-- CORE DOMAIN -->
+    <link rel="stylesheet" href="domain/core/tokens.css">
+    <link rel="stylesheet" href="domain/core/base.css">
+    <link rel="stylesheet" href="domain/core/layout.css">
+    <link rel="stylesheet" href="domain/core/animations.css">
+    
+    <!-- UI DOMAIN -->
+    <link rel="stylesheet" href="domain/ui/header.css">
+    <link rel="stylesheet" href="domain/ui/modals.css">
+    <link rel="stylesheet" href="domain/ui/pickers.css">
+    
+    <!-- FEATURE DOMAINS -->
+    <link rel="stylesheet" href="domain/dial/styles.css">
+    <link rel="stylesheet" href="domain/todo/styles.css">
+    <link rel="stylesheet" href="domain/note/styles.css">
+
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/split.js/dist/split.min.js"></script>
 </head>
 <body>
 
-<!--#include virtual="/partials/header.html" -->
-<!--#include virtual="/partials/main.html" -->
-<!--#include virtual="/partials/modal-dial.html" -->
-<!--#include virtual="/partials/modal-tab.html" -->
-<!--#include virtual="/partials/modal-group.html" -->
-<!--#include virtual="/partials/modal-confirm.html" -->
-<!--#include virtual="/partials/modal-import.html" -->
-<!--#include virtual="/partials/modal-todo-list.html" -->
-<!--#include virtual="/partials/modal-todo-move.html" -->
+<!-- UI DOMAIN PARTIALS -->
+<!--#include virtual="/domain/ui/header.html" -->
+<!--#include virtual="/domain/ui/main.html" -->
+<!--#include virtual="/domain/ui/modal-confirm.html" -->
+<!--#include virtual="/domain/ui/modal-import.html" -->
+
+<!-- FEATURE DOMAIN PARTIALS -->
+<!--#include virtual="/domain/dial/modal-dial.html" -->
+<!--#include virtual="/domain/dial/modal-tab.html" -->
+<!--#include virtual="/domain/dial/modal-group.html" -->
+<!--#include virtual="/domain/todo/modal-list.html" -->
+<!--#include virtual="/domain/todo/modal-move.html" -->
 
 <div id="dial-url-tooltip"></div>
 
-<script src="js/emoji-synonyms.js"></script>
-<script src="js/state.js"></script>
-<script src="js/themes.js"></script>
-<script src="js/persistence.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/render.js"></script>
-<script src="js/todo.js"></script>
-<script src="js/notes.js"></script>
-<script type="module" src="js/todo-cm.js"></script>
-<script type="module" src="js/notes-cm.js"></script>
-<script src="js/drag-drop.js"></script>
-<script src="js/crud.js"></script>
-<script src="js/pickers.js"></script>
-<script src="js/logo-animation.js"></script>
-<script src="js/search.js"></script>
-<script src="js/init.js"></script>
+<!-- CORE DOMAIN SCRIPTS -->
+<script src="domain/core/state.js"></script>
+<script src="domain/core/themes.js"></script>
+<script src="domain/core/utils.js"></script>
+
+<!-- PERSISTENCE DOMAIN SCRIPTS -->
+<script src="domain/persistence/domain.js"></script>
+<script src="domain/persistence/export.js"></script>
+
+<!-- UI DOMAIN SCRIPTS -->
+<script src="domain/ui/emoji-synonyms.js"></script>
+<script src="domain/ui/pickers.js"></script>
+<script src="domain/ui/logo-animation.js"></script>
+<script src="domain/ui/search.js"></script>
+
+<!-- FEATURE DOMAIN SCRIPTS -->
+<script src="domain/todo/domain.js"></script>
+<script type="module" src="domain/todo/codemirror.js"></script>
+<script src="domain/note/domain.js"></script>
+<script type="module" src="domain/note/codemirror.js"></script>
+<script src="domain/dial/domain.js"></script>
+<script src="domain/dial/view.js"></script>
+<script src="domain/dial/drag-drop.js"></script>
+
+<!-- INIT -->
+<script src="domain/ui/init.js"></script>
 </body>
 </html>

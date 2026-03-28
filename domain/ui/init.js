@@ -1,4 +1,9 @@
 // ─── INIT ───────────────────────────────────────────────────────
+// Ensure Safari doesn't steal focus from address bar on new tab
+if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+    document.activeElement.blur();
+}
+
 document.addEventListener('dragend', () => {
     clearDropIndicators();
     if (typeof _clearTodoDragIndicators !== 'undefined') _clearTodoDragIndicators();
@@ -46,8 +51,10 @@ updateClock();
 updateDialCount();
 setInterval(updateClock, 1000);
 initLogoAnimation();
-initSearch();
 initSizePresets();
+
+// Delay search init to avoid focus contention
+setTimeout(initSearch, 100);
 
 const _hdr = document.querySelector('header');
 const _updateHeaderHeight = () =>

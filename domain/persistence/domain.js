@@ -57,4 +57,5 @@ function getActiveTab() {
 
 function saveData() {
     localStorage.setItem('speedDial_v2', JSON.stringify(data));
+    if (typeof triggerSync === 'function') triggerSync();
 }
