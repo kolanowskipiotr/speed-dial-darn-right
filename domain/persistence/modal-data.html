@@ -1,0 +1,100 @@
+<!-- MODAL: Unified Data Management (Local + Sync) -->
+<div class="modal-backdrop" id="dataModal">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-title">Data Management</div>
+
+        <!-- Section: Local File Export/Import -->
+        <div class="data-section">
+            <div class="data-section-title">Local File (JSON)</div>
+            <div class="data-cols">
+                <div style="flex: 1;">
+                    <div class="form-label" style="margin-bottom: 8px;">Export</div>
+                    <button class="btn-secondary" style="width: 100%;" onclick="exportData()">Download config.json</button>
+                    <div style="font-size: 11px; color: var(--text-dimmer); margin-top: 6px;">
+                        Save your entire setup as a local file.
+                    </div>
+                </div>
+                <div class="data-vert-divider"></div>
+                <div style="flex: 1;">
+                    <div class="form-label" style="margin-bottom: 8px;">Import</div>
+                    <label class="import-file-label" style="margin-bottom: 8px;">
+                        <input type="file" id="importFile" accept=".json" onchange="onImportFileSelected(this)">
+                        <span class="import-file-name" id="importFileName" style="font-size: 11px;">No file chosen</span>
+                        <span class="import-file-btn" style="padding: 4px 8px; font-size: 11px;">Browse…</span>
+                    </label>
+                    <button class="btn-primary" style="width: 100%;" onclick="importData()">Import from File</button>
+                </div>
+            </div>
+
+            <details style="margin-top: 12px; cursor: pointer;">
+                <summary style="font-size: 12px; color: var(--accent); opacity: 0.8;">Or paste JSON directly</summary>
+                <div class="form-group" style="margin-top: 10px;">
+                    <textarea class="import-textarea" id="importData" placeholder='{"tabs": [...]}' style="height: 100px; font-size: 11px;"></textarea>
+                </div>
+            </details>
+        </div>
+
+        <div class="data-sep"></div>
+
+        <!-- Section: Google Drive Sync -->
+        <div class="data-section">
+            <div class="data-section-title">Google Drive Sync</div>
+
+            <div class="form-group" id="gdriveAuthSection">
+                <div id="gdriveUser" class="gdrive-user-row" style="display: none;">
+                    <span>Logged in as: <span id="gdriveEmail" style="font-weight: 600;"></span></span>
+                    <button class="btn-secondary" id="gdriveLogoutBtn" onclick="logoutGDrive()" style="font-size: 11px; padding: 4px 8px;">
+                        Log out
+                    </button>
+                </div>
+                <button class="btn-primary" id="gdriveLoginBtn" onclick="loginGDrive()" style="width: 100%;">
+                    <span style="margin-right: 8px;">🔑</span> Log in with Google
+                </button>
+            </div>
+
+            <div id="syncConfigSection" class="gdrive-config-section" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Backup Folder</label>
+                    <div class="gdrive-folder-row">
+                        <select class="form-input" id="gdriveFolderSelect" style="flex: 1;" onchange="onFolderSelected(this)">
+                            <option value="">Loading folders...</option>
+                        </select>
+                        <button class="btn-icon" title="Refresh folders" onclick="fetchGDriveFolders(true)">🔄</button>
+                        <button class="btn-icon" title="Create Backup Folder" onclick="createBackupFolder()">➕</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label form-label-row" style="cursor: pointer;">
+                        Daily Auto-Backup
+                        <div class="edit-toggle" id="autoSyncToggle" onclick="toggleAutoSync()">
+                            <div class="toggle-track">
+                                <div class="toggle-thumb"></div>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label form-label-row">
+                        Available Backups
+                        <button class="btn-secondary" style="font-size: 11px; padding: 2px 8px;" onclick="fetchGDriveBackups()">Refresh</button>
+                    </label>
+                    <div id="gdriveBackupList" class="notes-trash-list gdrive-backup-list">
+                        <div style="padding: 20px; text-align: center; color: var(--text-dimmer);">
+                            Select a folder to see backups
+                        </div>
+                    </div>
+                    <div id="syncStatus" class="sync-status"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('dataModal')">Close</button>
+            <button class="btn-primary" id="manualSyncBtn" style="display: none;" onclick="triggerManualSync()">
+                Backup Now
+            </button>
+        </div>
+    </div>
+</div>

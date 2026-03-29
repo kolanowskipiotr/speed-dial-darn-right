@@ -1,7 +1,7 @@
 const http = require('http');
 const fs   = require('fs');
 const path = require('path');
-const { performSync, listGDriveFolders, listGDriveBackups, fetchGDriveFile } = require('./sync');
+const { performSync, listGDriveFolders, listGDriveBackups, fetchGDriveFile, createGDriveFolder } = require('./sync');
 
 const UPLOADS_DIR = '/uploads';
 const PORT = 3001;
@@ -11,30 +11,7 @@ if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
-// Helper to get authenticated drive client from request headers/token
-async function getAuthenticatedDrive(req) {
-    const token = req.headers['authorization']?.split(' ')[1];
-    if (!token) throw new Error('No auth token provided');
-
-    // This token is from the frontend (OAuth access token), not a service account.
-    // We need to create a JWT client on the fly using the service account key
-    // but authorize it with the user's token scope. This is complex.
-    // A simpler approach for now: assume the token is directly usable or the backend proxies calls.
-    // For this example, let's assume the token itself is enough or the backend has it.
-    // In a real app, you'd validate the token and get user-specific credentials or use Google APIs directly if possible without server keys.
-
-    // For now, we will pass the token to the sync module, which might need adjustments.
-    // The initial initDrive() in sync.js uses service account. We need to make it flexible.
-    // Or, the server itself should instantiate the drive client.
-
-    // Simulating drive client init for now, would need proper JWT setup with user token
-    // This part requires careful handling of Google API auth for user tokens vs service accounts.
-    // For this exercise, we'll assume sync.js can take a token and folderId and it knows how to use it.
-    // This is a simplification.
-    return { token }; // Returning token to sync module
-}
-
-http.createServer((req, res) => {
+http.createServer(async (req, res) => {
     // API: SYNC OPERATIONS (POST, GET)
     if (req.url.startsWith('/api/sync')) {
         const folderId = req.headers['x-gdrive-folder-id'];
@@ -48,20 +25,35 @@ http.createServer((req, res) => {
 
         // --- Folders API ---
         if (req.url === '/api/sync/folders' && req.method === 'GET') {
-            getAuthenticatedDrive(req).then(async ({ token }) => {
+            try {
+                const folders = await listGDriveFolders(token);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(folders));
+            } catch (e) {
+                const status = e.status || e.code;
+                if (status === 401) { res.writeHead(401); res.end('Unauthorized'); return; }
+                console.error('[sync] GET /api/sync/folders failed:', e.message);
+                res.writeHead(500);
+                res.end('error');
+            }
+            return;
+        }
+
+        // --- Create Folder API ---
+        if (req.url === '/api/sync/create-folder' && req.method === 'POST') {
+            const chunks = [];
+            req.on('data', chunk => chunks.push(chunk));
+            req.on('end', async () => {
                 try {
-                    const folders = await listGDriveFolders(token); // Assumes listGDriveFolders can use token
+                    const { name } = JSON.parse(Buffer.concat(chunks).toString());
+                    const folder = await createGDriveFolder(token, name);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify(folders));
+                    res.end(JSON.stringify(folder));
                 } catch (e) {
-                    console.error('[sync] GET /api/sync/folders failed:', e);
+                    console.error('[sync] POST /api/sync/create-folder failed:', e.message);
                     res.writeHead(500);
                     res.end('error');
                 }
-            }).catch(e => {
-                console.error('[sync] Auth error for /api/sync/folders:', e.message);
-                res.writeHead(401);
-                res.end('Unauthorized');
             });
             return;
         }
@@ -72,7 +64,7 @@ http.createServer((req, res) => {
             req.on('end', async () => {
                 try {
                     const data = JSON.parse(Buffer.concat(chunks).toString());
-                    await performSync(data, token, folderId); // Pass token and folderId
+                    await performSync(data, token, folderId);
                     res.writeHead(200);
                     res.end('ok');
                 } catch (e) {
@@ -83,8 +75,8 @@ http.createServer((req, res) => {
             });
             return;
         } else if (req.url.startsWith('/api/sync/list') && req.method === 'GET') { // List backups
-            const { folderId: queryFolderId } = req.query;
-            const targetFolderId = queryFolderId || folderId;
+            const urlObj = new URL(req.url, `http://${req.headers.host}`);
+            const targetFolderId = urlObj.searchParams.get('folderId') || folderId;
             if (!targetFolderId) {
                 res.writeHead(400);
                 res.end('Bad Request: Folder ID missing');
@@ -95,12 +87,16 @@ http.createServer((req, res) => {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(backups));
             } catch (e) {
+                const status = e.status || e.code;
+                if (status === 401) { res.writeHead(401); res.end('Unauthorized'); return; }
                 console.error(`[sync] GET /api/sync/list failed for folder ${targetFolderId}:`, e);
                 res.writeHead(500);
                 res.end('error');
             }
+            return;
         } else if (req.url.startsWith('/api/sync/fetch') && req.method === 'GET') { // Fetch backup
-            const fileId = req.url.split('?fileId=')[1];
+            const urlObj = new URL(req.url, `http://${req.headers.host}`);
+            const fileId = urlObj.searchParams.get('fileId');
             if (!fileId) {
                 res.writeHead(400);
                 res.end('Bad Request: File ID missing');
@@ -109,14 +105,15 @@ http.createServer((req, res) => {
             try {
                 const content = await fetchGDriveFile(token, fileId);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(content);
+                res.end(JSON.stringify(content));
             } catch (e) {
                 console.error(`[sync] GET /api/sync/fetch failed for file ${fileId}:`, e);
                 res.writeHead(500);
                 res.end('error');
             }
+            return;
         }
-        return; // Handle sync API requests
+        return;
     }
 
     // --- File Uploads ---

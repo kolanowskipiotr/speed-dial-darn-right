@@ -1,10 +1,48 @@
 // ─── GOOGLE DRIVE SYNC CONFIGURATION ──────────────────────────────
 
 // --- Constants & State ---
-const GAPI_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // Replace with actual client ID
+const GAPI_CLIENT_ID = '130093064192-5odc4arfjdpj0370emlse0rvg3e84jiq.apps.googleusercontent.com';
 const GAPI_API_KEY = 'YOUR_GOOGLE_API_KEY'; // Needed for some non-auth calls, if any
-const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
+const SCOPES = [
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/userinfo.email'
+];
 const BACKUP_BASE_URL = '/api/sync'; // Base URL for backend sync API
+
+// ... initSyncConfig remains same ...
+
+async function createBackupFolder() {
+    if (!googleUser || !currentAccessToken) {
+        showToast(`${ICONS.warn} Please log in first.`);
+        return;
+    }
+    const folderName = prompt('Enter a name for the new backup folder:', 'Speed Dial Darn Right - Backups');
+    if (!folderName) return;
+
+    syncStatusSpan.textContent = 'Creating folder...';
+    try {
+        const res = await fetch(`${BACKUP_BASE_URL}/create-folder`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAccessToken}` 
+            },
+            body: JSON.stringify({ name: folderName })
+        });
+        if (!res.ok) throw new Error('Folder creation failed');
+        const folder = await res.json();
+        
+        showToast(`${ICONS.ok} Folder created!`);
+        await fetchGDriveFolders(true); // Re-fetch with force
+        currentFolderId = folder.id;
+        folderSelect.value = folder.id;
+        onFolderSelected(folderSelect);
+    } catch (e) {
+        console.error('Failed to create folder:', e);
+        showToast(`${ICONS.error} Could not create folder.`);
+        syncStatusSpan.textContent = 'Folder creation error.';
+    }
+}
 
 let googleUser = null;
 let currentAccessToken = null;
@@ -13,7 +51,7 @@ let gdriveSyncEnabled = false;
 let lastAutoSync = null;
 
 // --- DOM Elements ---
-const syncModal = document.getElementById('syncModal');
+const dataModal = document.getElementById('dataModal');
 const gdriveAuthSection = document.getElementById('gdriveAuthSection');
 const gdriveUserDiv = document.getElementById('gdriveUser');
 const gdriveEmailSpan = document.getElementById('gdriveEmail');
@@ -44,10 +82,10 @@ function loadSyncSettings() {
 
     if (googleUser) {
         updateAuthUI();
+        fetchGDriveFolders(true); // Always populate folder list when logged in
         if (currentFolderId) {
-            fetchGDriveFolders(true); // Fetch folders if already configured
+            fetchGDriveBackups(); // Only fetch backups if a folder is already selected
         }
-        fetchGDriveBackups(); // Fetch backups if logged in
     }
     updateAutoSyncToggleUI();
 }
@@ -63,6 +101,23 @@ function saveSyncSettings() {
 }
 
 // --- UI Updaters ---
+function openDataModal() {
+    // Reset import fields
+    const dataEl = document.getElementById('importData');
+    const fileEl = document.getElementById('importFile');
+    const nameEl = document.getElementById('importFileName');
+    if (dataEl) dataEl.value = '';
+    if (fileEl) fileEl.value = '';
+    if (nameEl) nameEl.textContent = 'No file chosen';
+    _pendingImportJSON = null;
+
+    openModal('dataModal');
+    if (googleUser && currentAccessToken) {
+        fetchGDriveFolders();
+        fetchGDriveBackups();
+    }
+}
+
 function updateAuthUI() {
     if (!gdriveAuthSection || !gdriveUserDiv || !gdriveLoginBtn || !gdriveLogoutBtn) return;
     if (googleUser) {
@@ -89,39 +144,50 @@ function updateAutoSyncToggleUI() {
 }
 
 // --- Google Auth ---
-async function loginGDrive() {
-    // Use Google Identity Services (GIS) for client-side OAuth2
-    // This will trigger the Google Sign-In prompt
-    // For simplicity, this example assumes a basic implicit flow for token retrieval
-    // A more robust implementation might use the authorization code flow
-    try {
-        // This part depends heavily on GIS setup and callback handling
-        // For now, we'll simulate a login and token retrieval.
-        // In a real app, GIS would handle the popup and return tokens.
-        
-        // Placeholder for actual GIS token retrieval
-        const tokenResponse = await new Promise(resolve => setTimeout(() => resolve({ 
-            access_token: 'mock_access_token_xyz', 
-            expires_at: Date.now() + 3600 * 1000 // 1 hour expiry
-        }), 500)); // Simulate async token fetch
+let tokenClient;
 
-        if (tokenResponse && tokenResponse.access_token) {
-            googleUser = { email: 'user@example.com' }; // Mock user info
-            currentAccessToken = tokenResponse.access_token;
-            // In a real app, you'd store refresh token securely if using auth code flow
-            
+function initGis() {
+    if (typeof google === 'undefined') {
+        console.warn('GIS script not loaded yet');
+        return;
+    }
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GAPI_CLIENT_ID,
+        scope: SCOPES.join(' '),
+        callback: async (resp) => {
+            if (resp.error !== undefined) {
+                console.error('GIS Error:', resp);
+                showToast(`${ICONS.error} Login failed.`);
+                return;
+            }
+            currentAccessToken = resp.access_token;
+            // Fetch user info to get email (optional, but good for UI)
+            try {
+                const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { 'Authorization': `Bearer ${currentAccessToken}` }
+                }).then(r => r.json());
+                googleUser = { email: userInfo.email };
+            } catch (e) {
+                googleUser = { email: 'Logged in' };
+            }
+
             saveSyncSettings();
             updateAuthUI();
-            fetchGDriveFolders(true); // Fetch folders after login
+            updateSyncConfigUI();
+            await fetchGDriveFolders(true); // await so currentFolderId is set before fetching backups
+            if (currentFolderId) fetchGDriveBackups();
             syncStatusSpan.textContent = 'Logged in successfully.';
-        } else {
-            throw new Error('Failed to get access token.');
-        }
-    } catch (e) {
-        console.error('Google Login Error:', e);
-        showToast(`${ICONS.error} Login failed. Please try again.`);
-        logoutGDrive(); // Clear state on failure
+        },
+    });
+}
+
+async function loginGDrive() {
+    if (!tokenClient) initGis();
+    if (!tokenClient) {
+        showToast(`${ICONS.error} Google login not available.`);
+        return;
     }
+    tokenClient.requestAccessToken({ prompt: 'consent' });
 }
 
 function logoutGDrive() {
@@ -152,7 +218,7 @@ async function fetchGDriveFolders(force = false) {
     folderSelect.innerHTML = '<option value="">Loading folders…</option>';
     try {
         const folders = await listGDriveFolders(currentAccessToken);
-        folderSelect.innerHTML = ''; // Clear loading message
+        folderSelect.innerHTML = '<option value="">— Select a folder —</option>'; // placeholder
         if (!folders || folders.length === 0) {
             folderSelect.innerHTML = '<option value="">No folders found</option>';
             return;
@@ -166,19 +232,25 @@ async function fetchGDriveFolders(force = false) {
         // Restore previously selected folder if available
         if (currentFolderId && folderSelect.querySelector(`option[value="${currentFolderId}"]`)) {
             folderSelect.value = currentFolderId;
+            fetchGDriveBackups(); // Ensure backups are fetched for the restored folder
         } else {
-            // If folderId is missing or not found, clear it and disable sync config
+            // If folderId is missing or not found, clear it — show placeholder so user knows to pick
             currentFolderId = null;
+            folderSelect.value = '';
             saveSyncSettings();
-            updateSyncConfigUI(); // This will hide sync config if folderId is null
         }
         folderSelect.dataset.foldersLoaded = 'true';
-    } catch (e) {
+        } catch (e) {
         console.error('Failed to fetch GDrive folders:', e);
-        folderSelect.innerHTML = '<option value="">Error loading folders</option>';
-        showToast(`${ICONS.error} Could not load Google Drive folders.`);
-    }
-}
+        if (e.message.includes('Invalid Credentials')) {
+            logoutGDrive();
+            showToast(`${ICONS.error} Your Google login expired. Please log in again.`);
+        } else {
+            folderSelect.innerHTML = '<option value="">Error loading folders</option>';
+            showToast(`${ICONS.error} Could not load Google Drive folders.`);
+        }
+        }
+        }
 
 async function onFolderSelected(selectElement) {
     currentFolderId = selectElement.value;
@@ -205,8 +277,15 @@ async function fetchGDriveBackups() {
         syncStatusSpan.textContent = `${backups.length} backup(s) found.`;
     } catch (e) {
         console.error('Failed to fetch GDrive backups:', e);
-        gdriveBackupList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--danger);">Error loading backups</div>';
-        syncStatusSpan.textContent = 'Error loading backups.';
+        if (e.message && e.message.includes('Invalid Credentials')) {
+            currentAccessToken = null;
+            saveSyncSettings();
+            gdriveBackupList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dimmer);">Session expired — please log in again.</div>';
+            showToast(`${ICONS.warn} Google session expired. Please log in again.`);
+        } else {
+            gdriveBackupList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--danger);">Error loading backups</div>';
+            syncStatusSpan.textContent = 'Error loading backups.';
+        }
     }
 }
 
@@ -241,15 +320,15 @@ async function restoreFromGDrive(fileId, fileName) {
             try {
                 const backupData = await fetchGDriveFile(fileId);
                 if (!backupData) throw new Error('Failed to fetch backup data.');
-                
+
                 // _doImport expects the parsed JSON object
                 await _doImport(JSON.parse(backupData));
-                
+
                 // Update sync settings after successful restore
                 // This assumes the restored data might contain _config, but we might want to re-fetch folder selection
                 // For now, just mark as restored
                 showToast(`${ICONS.ok} Restored from ${fileName}`);
-                
+
             } catch (e) {
                 console.error('Restore failed:', e);
                 showToast(`${ICONS.error} Restore failed. See console for details.`);
@@ -270,7 +349,7 @@ async function triggerManualSync() {
         const exportObj = await getExportObject(); // Reuse export logic
         const res = await fetch(BACKUP_BASE_URL, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${currentAccessToken}`, // Pass token for backend auth
                 'X-GDrive-Folder-Id': currentFolderId // Pass folder ID for backend
@@ -281,7 +360,8 @@ async function triggerManualSync() {
             syncStatusSpan.textContent = 'Backup successful!';
             lastAutoSync = Date.now(); // Update last sync time
             saveSyncSettings();
-            fetchGDriveBackups(); // Refresh list
+            showToast(`${ICONS.ok} Backup complete!`);
+            setTimeout(fetchGDriveBackups, 1500); // brief delay for GDrive to index the new file
         } else {
             syncStatusSpan.textContent = `Backup failed: ${res.status}`;
             console.warn('[sync] Manual backup failed:', res.status);
@@ -314,7 +394,7 @@ async function checkAutoSync() {
             const exportObj = await getExportObject(); // Reuse export logic
             const res = await fetch(BACKUP_BASE_URL, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${currentAccessToken}`,
                     'X-GDrive-Folder-Id': currentFolderId
@@ -337,46 +417,33 @@ async function checkAutoSync() {
     }
 }
 
-// --- Placeholder functions (will be called by backend API) ---
-// These functions would be called by the backend API endpoints
-// and would handle the actual Google Drive API interactions.
-// For now, they are placeholders or rely on frontend token.
+// --- Backend API Calls ---
 
 async function listGDriveFolders(accessToken) {
-    // Placeholder: In a real app, call GDrive API here with accessToken
-    // Example: Using Google Picker API or Drive API directly (requires setup)
-    console.log("Listing GDrive folders with token:", accessToken);
-    // Simulate fetching folders
-    return new Promise(resolve => setTimeout(() => resolve([
-        { id: 'root', name: 'My Drive (Root)' },
-        { id: 'folder_123', name: 'Speed Dial Backups' },
-        { id: 'folder_456', name: 'Important Data' }
-    ]), 500));
+    const res = await fetch(`${BACKUP_BASE_URL}/folders`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (res.status === 401) throw new Error('Invalid Credentials');
+    if (!res.ok) throw new Error('Failed to fetch folders');
+    return res.json();
 }
 
 async function listGDriveBackups(accessToken, folderId) {
-    console.log(`Listing backups for folder ${folderId} with token:`, accessToken);
-    // Placeholder: Call GDrive API to list files in folderId
-    // Filter for .json files, sort by date desc
-    return new Promise(resolve => setTimeout(() => resolve([
-        { id: 'backup_abc', name: 'backup-2023-10-27.full.json', createdTime: '2023-10-27T10:00:00Z' },
-        { id: 'backup_def', name: 'backup-2023-10-26.diff.json', createdTime: '2023-10-26T11:00:00Z' },
-        { id: 'backup_ghi', name: 'backup-2023-10-25.full.json', createdTime: '2023-10-25T12:00:00Z' },
-    ]), 500));
+    const res = await fetch(`${BACKUP_BASE_URL}/list?folderId=${folderId}`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (res.status === 401) throw new Error('Invalid Credentials');
+    if (!res.ok) throw new Error('Failed to fetch backups');
+    return res.json();
 }
 
 async function fetchGDriveFile(fileId) {
-    console.log("Fetching GDrive file:", fileId);
-    // Placeholder: Call GDrive API to download file content
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            if (fileId === 'backup_abc') {
-                resolve(JSON.stringify({ tabs: [{ id: 'tab1', name: 'Restored Tab', groups: [] }] }));
-            } else {
-                reject(new Error('File not found or invalid'));
-            }
-        }, 500);
+    const res = await fetch(`${BACKUP_BASE_URL}/fetch?fileId=${fileId}`, {
+        headers: { 'Authorization': `Bearer ${currentAccessToken}` }
     });
+    if (!res.ok) throw new Error('Failed to fetch file');
+    const data = await res.json();
+    return JSON.stringify(data); // Return as string to match existing logic
 }
 
 // Initial setup call when the script loads

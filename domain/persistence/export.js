@@ -120,17 +120,6 @@ async function triggerSync() {
 
 let _pendingImportJSON = null;
 
-function openImportModal() {
-    _pendingImportJSON = null;
-    const dataEl = document.getElementById('importData');
-    const fileEl = document.getElementById('importFile');
-    const nameEl = document.getElementById('importFileName');
-    if (dataEl) dataEl.value = '';
-    if (fileEl) fileEl.value = '';
-    if (nameEl) nameEl.textContent = 'No file chosen';
-    openModal('importModal');
-}
-
 function onImportFileSelected(input) {
     const file = input.files[0];
     if (!file) return;
@@ -152,7 +141,7 @@ function importData() {
         showToast(`${ICONS.error} Invalid JSON format`);
         return;
     }
-    closeModal('importModal');
+    closeModal('dataModal');
     showConfirm('Import Configuration', 'This will replace your current configuration. Continue?', () => {
         _doImport(parsed);
     }, { btnLabel: 'Replace', danger: false });

@@ -1,0 +1,70 @@
+/* ── DATA MANAGEMENT MODAL ─────────────────── */
+.data-section {
+    padding: 5px 0;
+}
+
+.data-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: var(--accent);
+}
+
+.data-cols {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+}
+
+.data-vert-divider {
+    width: 1px;
+    background: var(--border);
+    align-self: stretch;
+}
+
+.data-sep {
+    border-top: 1px solid var(--border);
+    margin: 15px 0;
+}
+
+/* ── GOOGLE DRIVE SYNC ─────────────────────── */
+.gdrive-user-row {
+    margin-bottom: 12px;
+    font-size: 13px;
+    display: flex; /* initial display:none set inline; JS resets to '' which falls back here */
+    align-items: center;
+    justify-content: space-between;
+}
+
+.gdrive-config-section {
+    border-top: 1px dashed var(--border);
+    padding-top: 15px;
+    margin-top: 15px;
+    /* display:none set inline; controlled by JS */
+}
+
+.gdrive-folder-row {
+    display: flex;
+    gap: 8px;
+}
+
+.gdrive-backup-list {
+    max-height: 150px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface2);
+    overflow-y: auto;
+}
+
+.sync-status {
+    font-size: 11px;
+    color: var(--text-dimmer);
+    margin-top: 6px;
+    text-align: right;
+}
+
+.form-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}

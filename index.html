@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="domain/dial/styles.css">
     <link rel="stylesheet" href="domain/todo/styles.css">
     <link rel="stylesheet" href="domain/note/styles.css">
+    <link rel="stylesheet" href="domain/persistence/styles.css">
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/split.js/dist/split.min.js"></script>
@@ -31,7 +32,6 @@
 <!--#include virtual="/domain/ui/header.html" -->
 <!--#include virtual="/domain/ui/main.html" -->
 <!--#include virtual="/domain/ui/modal-confirm.html" -->
-<!--#include virtual="/domain/ui/modal-import.html" -->
 
 <!-- FEATURE DOMAIN PARTIALS -->
 <!--#include virtual="/domain/dial/modal-dial.html" -->
@@ -39,7 +39,7 @@
 <!--#include virtual="/domain/dial/modal-group.html" -->
 <!--#include virtual="/domain/todo/modal-list.html" -->
 <!--#include virtual="/domain/todo/modal-move.html" -->
-<!--#include virtual="/domain/persistence/modal-sync.html" -->
+<!--#include virtual="/domain/persistence/modal-data.html" -->
 
 <div id="dial-url-tooltip"></div>
 
@@ -47,28 +47,28 @@
 <script src="domain/core/state.js"></script>
 <script src="domain/core/themes.js"></script>
 <script src="domain/core/utils.js"></script>
-
-<!-- PERSISTENCE DOMAIN SCRIPTS -->
 <script src="domain/persistence/domain.js"></script>
-<script src="domain/persistence/export.js"></script>
 <script src="domain/persistence/sync.js"></script>
-
-<!-- FEATURE DOMAIN SCRIPTS -->
-<script src="domain/dial/domain.js"></script>
-<script src="domain/dial/drag-drop.js"></script>
-<script src="domain/dial/view.js"></script>
-
-<script src="domain/todo/codemirror.js"></script>
-<script src="domain/todo/domain.js"></script>
-
-<script src="domain/note/codemirror.js"></script>
-<script src="domain/note/domain.js"></script>
+<script src="domain/persistence/export.js"></script>
 
 <!-- UI DOMAIN SCRIPTS -->
 <script src="domain/ui/emoji-synonyms.js"></script>
 <script src="domain/ui/pickers.js"></script>
 <script src="domain/ui/logo-animation.js"></script>
 <script src="domain/ui/search.js"></script>
+
+<!-- FEATURE DOMAIN SCRIPTS: TODO -->
+<script src="domain/todo/domain.js"></script>
+<script src="domain/todo/codemirror.js" type="module"></script>
+
+<!-- FEATURE DOMAIN SCRIPTS: NOTES -->
+<script src="domain/note/domain.js"></script>
+<script src="domain/note/codemirror.js" type="module"></script>
+
+<!-- FEATURE DOMAIN SCRIPTS: DIALS -->
+<script src="domain/dial/domain.js"></script>
+<script src="domain/dial/view.js"></script>
+<script src="domain/dial/drag-drop.js"></script>
 
 <!-- INIT -->
 <script src="domain/ui/init.js"></script>

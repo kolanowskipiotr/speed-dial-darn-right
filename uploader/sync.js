@@ -1,41 +1,16 @@
 const { google } = require('googleapis');
-const { JWT } = require('google-auth-library');
 const fs = require('fs');
 const path = require('path');
 
-const BACKUP_FOLDER_ID = process.env.GDRIVE_FOLDER_ID;
-const SERVICE_ACCOUNT_KEY = process.env.GDRIVE_SERVICE_ACCOUNT_JSON;
-
-let drive = null;
-
-async function initDrive() {
-    if (drive) return drive;
-    if (!SERVICE_ACCOUNT_KEY) {
-        console.warn('[sync] GDRIVE_SERVICE_ACCOUNT_JSON not set, skipping GDrive sync');
-        return null;
-    }
-
-    try {
-        const credentials = JSON.parse(SERVICE_ACCOUNT_KEY);
-        const auth = new JWT({
-            email: credentials.client_email,
-            key: credentials.private_key,
-            scopes: ['https://www.googleapis.com/auth/drive.file'],
-        });
-        drive = google.drive({ version: 'v3', auth });
-        return drive;
-    } catch (e) {
-        console.error('[sync] Failed to initialize GDrive:', e);
-        return null;
-    }
+function getDriveClient(token) {
+    const auth = new google.auth.OAuth2();
+    auth.setCredentials({ access_token: token });
+    return google.drive({ version: 'v3', auth });
 }
 
-async function getLatestFullBackup() {
-    const d = await initDrive();
-    if (!d) return null;
-
+async function getLatestFullBackup(d, folderId) {
     const res = await d.files.list({
-        q: `'${BACKUP_FOLDER_ID}' in parents and name contains 'full' and trashed = false`,
+        q: `'${folderId}' in parents and name contains 'full' and trashed = false`,
         orderBy: 'createdTime desc',
         pageSize: 1,
         fields: 'files(id, name)',
@@ -49,7 +24,6 @@ async function getLatestFullBackup() {
 }
 
 function calculateDiff(oldData, newData) {
-    // Simple top-level diff for now, can be improved
     const diff = {
         _meta: {
             diffAt: new Date().toISOString(),
@@ -73,7 +47,6 @@ function calculateDiff(oldData, newData) {
         diff._config = newData._config;
     }
     
-    // Only include new/changed images
     const newImages = {};
     for (const id in newData._images) {
         if (newData._images[id] !== oldData._images[id]) {
@@ -87,40 +60,40 @@ function calculateDiff(oldData, newData) {
     return diff;
 }
 
-async function performSync(data) {
-    const d = await initDrive();
-    if (!d) return;
+async function performSync(data, token, folderId) {
+    if (!token || !folderId) {
+        console.warn('[sync] Missing token or folderId, skipping sync');
+        return;
+    }
+    const d = getDriveClient(token);
 
     try {
-        const latestFull = await getLatestFullBackup();
+        const latestFull = await getLatestFullBackup(d, folderId);
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         
-        // Decide if we should do a full backup or a diff
-        // Policy: Full backup every 10 syncs or if no full backup exists
-        const syncCount = await countRecentSyncs();
+        const syncCount = await countRecentSyncs(d, folderId);
         const shouldDoFull = !latestFull || syncCount % 10 === 0;
 
         if (shouldDoFull) {
             console.log('[sync] Performing full backup');
-            await uploadToDrive(`backup_${timestamp}.full.json`, JSON.stringify(data, null, 2));
+            await uploadToDrive(d, folderId, `backup_${timestamp}.full.json`, JSON.stringify(data, null, 2));
         } else {
             console.log('[sync] Performing incremental backup (diff)');
             const diff = calculateDiff(latestFull, data);
-            await uploadToDrive(`backup_${timestamp}.diff.json`, JSON.stringify(diff, null, 2));
+            await uploadToDrive(d, folderId, `backup_${timestamp}.diff.json`, JSON.stringify(diff, null, 2));
         }
 
-        await cleanupOldBackups();
+        await cleanupOldBackups(d, folderId);
     } catch (e) {
         console.error('[sync] Sync failed:', e);
     }
 }
 
-async function uploadToDrive(name, content) {
-    const d = await initDrive();
+async function uploadToDrive(d, folderId, name, content) {
     return d.files.create({
         requestBody: {
             name,
-            parents: [BACKUP_FOLDER_ID],
+            parents: [folderId],
             mimeType: 'application/json',
         },
         media: {
@@ -130,25 +103,22 @@ async function uploadToDrive(name, content) {
     });
 }
 
-async function countRecentSyncs() {
-    const d = await initDrive();
+async function countRecentSyncs(d, folderId) {
     const res = await d.files.list({
-        q: `'${BACKUP_FOLDER_ID}' in parents and trashed = false`,
+        q: `'${folderId}' in parents and trashed = false`,
         fields: 'files(id)',
     });
     return res.data.files.length;
 }
 
-async function cleanupOldBackups() {
-    const d = await initDrive();
+async function cleanupOldBackups(d, folderId) {
     const res = await d.files.list({
-        q: `'${BACKUP_FOLDER_ID}' in parents and trashed = false`,
+        q: `'${folderId}' in parents and trashed = false`,
         orderBy: 'createdTime desc',
         fields: 'files(id, name, createdTime)',
     });
 
     const files = res.data.files;
-    // Retention Policy: Keep last 50 backups
     if (files.length > 50) {
         const toDelete = files.slice(50);
         for (const file of toDelete) {
@@ -158,4 +128,41 @@ async function cleanupOldBackups() {
     }
 }
 
-module.exports = { performSync };
+async function listGDriveFolders(token) {
+    const d = getDriveClient(token);
+    const res = await d.files.list({
+        q: "mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+        fields: 'files(id, name)',
+    });
+    return res.data.files;
+}
+
+async function listGDriveBackups(token, folderId) {
+    const d = getDriveClient(token);
+    const res = await d.files.list({
+        q: `'${folderId}' in parents and trashed = false`,
+        orderBy: 'createdTime desc',
+        fields: 'files(id, name, createdTime)',
+    });
+    return res.data.files;
+}
+
+async function fetchGDriveFile(token, fileId) {
+    const d = getDriveClient(token);
+    const res = await d.files.get({ fileId, alt: 'media' });
+    return res.data;
+}
+
+async function createGDriveFolder(token, name) {
+    const d = getDriveClient(token);
+    const res = await d.files.create({
+        requestBody: {
+            name: name,
+            mimeType: 'application/vnd.google-apps.folder',
+        },
+        fields: 'id, name',
+    });
+    return res.data;
+}
+
+module.exports = { performSync, listGDriveFolders, listGDriveBackups, fetchGDriveFile, createGDriveFolder };
