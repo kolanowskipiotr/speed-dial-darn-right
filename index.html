@@ -23,6 +23,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/split.js/dist/split.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -38,6 +39,7 @@
 <!--#include virtual="/domain/dial/modal-group.html" -->
 <!--#include virtual="/domain/todo/modal-list.html" -->
 <!--#include virtual="/domain/todo/modal-move.html" -->
+<!--#include virtual="/domain/persistence/modal-sync.html" -->
 
 <div id="dial-url-tooltip"></div>
 
@@ -49,21 +51,24 @@
 <!-- PERSISTENCE DOMAIN SCRIPTS -->
 <script src="domain/persistence/domain.js"></script>
 <script src="domain/persistence/export.js"></script>
+<script src="domain/persistence/sync.js"></script>
+
+<!-- FEATURE DOMAIN SCRIPTS -->
+<script src="domain/dial/domain.js"></script>
+<script src="domain/dial/drag-drop.js"></script>
+<script src="domain/dial/view.js"></script>
+
+<script src="domain/todo/codemirror.js"></script>
+<script src="domain/todo/domain.js"></script>
+
+<script src="domain/note/codemirror.js"></script>
+<script src="domain/note/domain.js"></script>
 
 <!-- UI DOMAIN SCRIPTS -->
 <script src="domain/ui/emoji-synonyms.js"></script>
 <script src="domain/ui/pickers.js"></script>
 <script src="domain/ui/logo-animation.js"></script>
 <script src="domain/ui/search.js"></script>
-
-<!-- FEATURE DOMAIN SCRIPTS -->
-<script src="domain/todo/domain.js"></script>
-<script type="module" src="domain/todo/codemirror.js"></script>
-<script src="domain/note/domain.js"></script>
-<script type="module" src="domain/note/codemirror.js"></script>
-<script src="domain/dial/domain.js"></script>
-<script src="domain/dial/view.js"></script>
-<script src="domain/dial/drag-drop.js"></script>
 
 <!-- INIT -->
 <script src="domain/ui/init.js"></script>

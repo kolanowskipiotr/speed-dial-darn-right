@@ -56,6 +56,9 @@ initSizePresets();
 // Delay search init to avoid focus contention
 setTimeout(initSearch, 100);
 
+// Initialize Sync Config
+initSyncConfig();
+
 const _hdr = document.querySelector('header');
 const _updateHeaderHeight = () =>
     document.documentElement.style.setProperty('--header-height', _hdr.offsetHeight + 'px');

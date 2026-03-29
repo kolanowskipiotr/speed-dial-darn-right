@@ -1,0 +1,70 @@
+<!-- MODAL: Google Drive Sync Settings -->
+<div class="modal-backdrop" id="syncModal">
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-title">Google Drive Sync</div>
+        
+        <div class="form-group" id="gdriveAuthSection">
+            <label class="form-label">Google Account</label>
+            <div id="gdriveUser" style="margin-bottom: 10px; font-size: 13px; display: none;">
+                Logged in as: <span id="gdriveEmail" style="font-weight: 600;"></span>
+            </div>
+            <button class="btn-primary" id="gdriveLoginBtn" onclick="loginGDrive()">
+                <span style="margin-right: 8px;">🔑</span> Log in with Google
+            </button>
+            <button class="btn-secondary" id="gdriveLogoutBtn" onclick="logoutGDrive()" style="display: none;">
+                Log out
+            </button>
+        </div>
+
+        <div id="syncConfigSection" style="display: none; border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px;">
+            <div class="form-group">
+                <label class="form-label">Backup Folder</label>
+                <div style="display: flex; gap: 8px;">
+                    <select class="form-input" id="gdriveFolderSelect" style="flex: 1;">
+                        <option value="">Loading folders...</option>
+                    </select>
+                    <button class="btn-icon" title="Refresh folders" onclick="fetchGDriveFolders()">🔄</button>
+                </div>
+                <div style="font-size: 11px; color: var(--text-dimmer); margin-top: 4px;">
+                    Select or create a folder for backups.
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+                    Daily Auto-Backup
+                    <div class="edit-toggle" id="autoSyncToggle" onclick="toggleAutoSync()">
+                        <div class="toggle-track">
+                            <div class="toggle-thumb"></div>
+                        </div>
+                    </div>
+                </label>
+                <div style="font-size: 11px; color: var(--text-dimmer);">
+                    Automatically sync changes once a day in the background.
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Available Backups</label>
+                <div id="gdriveBackupList" class="notes-trash-list" style="max-height: 200px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2);">
+                    <div style="padding: 20px; text-align: center; color: var(--text-dimmer);">
+                        Login to see backups
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                    <button class="btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="fetchGDriveBackups()">
+                        Refresh Backups
+                    </button>
+                    <span id="syncStatus" style="font-size: 11px; color: var(--text-dimmer);"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('syncModal')">Close</button>
+            <button class="btn-primary" id="manualSyncBtn" style="display: none;" onclick="triggerManualSync()">
+                Backup Now
+            </button>
+        </div>
+    </div>
+</div>
