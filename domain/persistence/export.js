@@ -57,6 +57,11 @@ async function getExportObject() {
         _config: {
             theme: localStorage.getItem('speedDial_theme') || 'dark-yellow',
             logoAnim: logoAnimEnabled,
+            syncConfig: {
+                autoSync: typeof gdriveSyncEnabled !== 'undefined' ? gdriveSyncEnabled : false,
+                showModalOnDisconnect: typeof showModalOnDisconnect !== 'undefined' ? showModalOnDisconnect : true,
+                folderId: typeof currentFolderId !== 'undefined' ? currentFolderId : null,
+            }
         },
         _images: images,
         _exportMeta: {
@@ -184,6 +189,27 @@ async function _doImport(imported) {
         logoAnimEnabled = config.logoAnim;
         localStorage.setItem('logoAnim', logoAnimEnabled);
         if (typeof updateAnimToggleUI === 'function') updateAnimToggleUI();
+    }
+
+    if (config.syncConfig) {
+        const settings = JSON.parse(localStorage.getItem('speedDial_syncSettings') || '{}');
+        if (config.syncConfig.autoSync !== undefined) {
+            settings.autoSync = config.syncConfig.autoSync;
+            if (typeof gdriveSyncEnabled !== 'undefined') gdriveSyncEnabled = settings.autoSync;
+        }
+        if (config.syncConfig.showModalOnDisconnect !== undefined) {
+            settings.showModalOnDisconnect = config.syncConfig.showModalOnDisconnect;
+            if (typeof showModalOnDisconnect !== 'undefined') showModalOnDisconnect = settings.showModalOnDisconnect;
+        }
+        if (config.syncConfig.folderId !== undefined) {
+            settings.folderId = config.syncConfig.folderId;
+            if (typeof currentFolderId !== 'undefined') currentFolderId = settings.folderId;
+        }
+        localStorage.setItem('speedDial_syncSettings', JSON.stringify(settings));
+        
+        // Refresh UI if functions are available
+        if (typeof updateAutoSyncToggleUI === 'function') updateAutoSyncToggleUI();
+        if (typeof updateShowModalOnDisconnectToggleUI === 'function') updateShowModalOnDisconnectToggleUI();
     }
 
     saveData();

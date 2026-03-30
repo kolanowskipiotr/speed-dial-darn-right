@@ -76,6 +76,17 @@
                 </div>
 
                 <div class="form-group">
+                    <label class="form-label form-label-row" style="cursor: pointer;">
+                        Manage on Disconnect
+                        <div class="edit-toggle" id="showModalOnDisconnectToggle" onclick="toggleShowModalOnDisconnect()">
+                            <div class="toggle-track">
+                                <div class="toggle-thumb"></div>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label form-label-row">
                         Available Backups
                         <button class="btn-secondary" style="font-size: 11px; padding: 2px 8px;" onclick="fetchGDriveBackups()">Refresh</button>

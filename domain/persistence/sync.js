@@ -48,6 +48,7 @@ let googleUser = null;
 let currentAccessToken = null;
 let currentFolderId = null;
 let gdriveSyncEnabled = false;
+let showModalOnDisconnect = true; // Default to true as requested
 let lastAutoSync = null;
 
 // --- DOM Elements ---
@@ -60,6 +61,7 @@ const gdriveLogoutBtn = document.getElementById('gdriveLogoutBtn');
 const syncConfigSection = document.getElementById('syncConfigSection');
 const folderSelect = document.getElementById('gdriveFolderSelect');
 const autoSyncToggle = document.getElementById('autoSyncToggle');
+const showModalOnDisconnectToggle = document.getElementById('showModalOnDisconnectToggle');
 const gdriveBackupList = document.getElementById('gdriveBackupList');
 const manualSyncBtn = document.getElementById('manualSyncBtn');
 const syncStatusSpan = document.getElementById('syncStatus');
@@ -78,6 +80,7 @@ function loadSyncSettings() {
     currentAccessToken = settings.token || null;
     currentFolderId = settings.folderId || null;
     gdriveSyncEnabled = settings.autoSync || false;
+    showModalOnDisconnect = (settings.showModalOnDisconnect !== undefined) ? settings.showModalOnDisconnect : true;
     lastAutoSync = settings.lastAutoSync || null;
 
     if (googleUser) {
@@ -88,6 +91,7 @@ function loadSyncSettings() {
         }
     }
     updateAutoSyncToggleUI();
+    updateShowModalOnDisconnectToggleUI();
 }
 
 function saveSyncSettings() {
@@ -96,6 +100,7 @@ function saveSyncSettings() {
         token: currentAccessToken,
         folderId: currentFolderId,
         autoSync: gdriveSyncEnabled,
+        showModalOnDisconnect: showModalOnDisconnect,
         lastAutoSync: lastAutoSync
     }));
 }
@@ -120,7 +125,10 @@ function openDataModal() {
 
 function updateAuthUI() {
     if (!gdriveAuthSection || !gdriveUserDiv || !gdriveLoginBtn || !gdriveLogoutBtn) return;
-    if (googleUser) {
+
+    const gisLoaded = typeof google !== 'undefined';
+    
+    if (googleUser && currentAccessToken) {
         gdriveLoginBtn.style.display = 'none';
         gdriveLogoutBtn.style.display = '';
         gdriveUserDiv.style.display = '';
@@ -129,6 +137,17 @@ function updateAuthUI() {
         gdriveLoginBtn.style.display = '';
         gdriveLogoutBtn.style.display = 'none';
         gdriveUserDiv.style.display = 'none';
+        
+        // If GIS not loaded, disable button and show reason
+        if (!gisLoaded) {
+            gdriveLoginBtn.disabled = true;
+            gdriveLoginBtn.innerHTML = `${ICONS.warn || '⚠️'} Google Login Unavailable (Offline)`;
+            gdriveLoginBtn.title = 'The Google login script could not be loaded. Please check your internet connection.';
+        } else {
+            gdriveLoginBtn.disabled = false;
+            gdriveLoginBtn.innerHTML = '<span style="margin-right: 8px;">🔑</span> Log in with Google';
+            gdriveLoginBtn.title = '';
+        }
     }
 }
 
@@ -141,6 +160,39 @@ function updateSyncConfigUI() {
 function updateAutoSyncToggleUI() {
     if (!autoSyncToggle) return;
     autoSyncToggle.classList.toggle('active', gdriveSyncEnabled);
+}
+
+function updateShowModalOnDisconnectToggleUI() {
+    if (!showModalOnDisconnectToggle) return;
+    showModalOnDisconnectToggle.classList.toggle('active', showModalOnDisconnect);
+}
+
+// Centralized error handling for sync operations
+function handleSyncError(e, customMsg) {
+    console.error('Sync error:', e);
+    const isAuthError = e.message && (e.message.includes('401') || e.message.includes('Invalid Credentials') || e.message.includes('Session expired'));
+    const isNetworkError = e.message && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError'));
+    const gisLoaded = typeof google !== 'undefined';
+
+    if (isAuthError) {
+        currentAccessToken = null;
+        saveSyncSettings();
+        updateAuthUI();
+        updateSyncConfigUI();
+        // Safe to open modal here: token is cleared so openDataModal won't re-trigger fetches
+        if (showModalOnDisconnect && gisLoaded) {
+            openDataModal();
+        }
+        showToast(`${ICONS.warn} Google session expired. Please log in again.`);
+        return true; // handled
+    }
+
+    if (customMsg) showToast(`${ICONS.error} ${customMsg}`);
+    else if (isNetworkError) showToast(`${ICONS.error} Network error. Could not connect to Google.`);
+
+    updateAuthUI();
+
+    return false; // not an auth error
 }
 
 // --- Google Auth ---
@@ -240,17 +292,13 @@ async function fetchGDriveFolders(force = false) {
             saveSyncSettings();
         }
         folderSelect.dataset.foldersLoaded = 'true';
-        } catch (e) {
-        console.error('Failed to fetch GDrive folders:', e);
-        if (e.message.includes('Invalid Credentials')) {
-            logoutGDrive();
-            showToast(`${ICONS.error} Your Google login expired. Please log in again.`);
-        } else {
+    } catch (e) {
+        if (!handleSyncError(e)) {
             folderSelect.innerHTML = '<option value="">Error loading folders</option>';
             showToast(`${ICONS.error} Could not load Google Drive folders.`);
         }
-        }
-        }
+    }
+}
 
 async function onFolderSelected(selectElement) {
     currentFolderId = selectElement.value;
@@ -276,15 +324,11 @@ async function fetchGDriveBackups() {
         renderBackupList(backups);
         syncStatusSpan.textContent = `${backups.length} backup(s) found.`;
     } catch (e) {
-        console.error('Failed to fetch GDrive backups:', e);
-        if (e.message && e.message.includes('Invalid Credentials')) {
-            currentAccessToken = null;
-            saveSyncSettings();
-            gdriveBackupList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dimmer);">Session expired — please log in again.</div>';
-            showToast(`${ICONS.warn} Google session expired. Please log in again.`);
-        } else {
+        if (!handleSyncError(e)) {
             gdriveBackupList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--danger);">Error loading backups</div>';
             syncStatusSpan.textContent = 'Error loading backups.';
+        } else {
+            gdriveBackupList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dimmer);">Session expired — please log in again.</div>';
         }
     }
 }
@@ -363,12 +407,15 @@ async function triggerManualSync() {
             showToast(`${ICONS.ok} Backup complete!`);
             setTimeout(fetchGDriveBackups, 1500); // brief delay for GDrive to index the new file
         } else {
-            syncStatusSpan.textContent = `Backup failed: ${res.status}`;
-            console.warn('[sync] Manual backup failed:', res.status);
+            const errorText = `Backup failed: ${res.status}`;
+            if (!handleSyncError({ message: errorText }, errorText)) {
+                syncStatusSpan.textContent = errorText;
+            }
         }
     } catch (e) {
-        console.error('[sync] Manual backup error:', e);
-        syncStatusSpan.textContent = 'Backup error. Check console.';
+        if (!handleSyncError(e, 'Backup error. Check console.')) {
+            syncStatusSpan.textContent = 'Backup error. Check console.';
+        }
     } finally {
         manualSyncBtn.disabled = false;
     }
@@ -379,6 +426,13 @@ function toggleAutoSync() {
     updateAutoSyncToggleUI();
     saveSyncSettings();
     syncStatusSpan.textContent = gdriveSyncEnabled ? 'Auto-backup enabled.' : 'Auto-backup disabled.';
+}
+
+function toggleShowModalOnDisconnect() {
+    showModalOnDisconnect = !showModalOnDisconnect;
+    updateShowModalOnDisconnectToggleUI();
+    saveSyncSettings();
+    syncStatusSpan.textContent = showModalOnDisconnect ? 'Modal on disconnect enabled.' : 'Modal on disconnect disabled.';
 }
 
 async function checkAutoSync() {
@@ -404,12 +458,15 @@ async function checkAutoSync() {
             if (res.ok) {
                 syncStatusSpan.textContent = 'Auto-backup successful.';
             } else {
-                syncStatusSpan.textContent = `Auto-backup failed: ${res.status}`;
-                console.warn('[sync] Auto-backup failed:', res.status);
+                const errorText = `Auto-backup failed: ${res.status}`;
+                if (!handleSyncError({ message: errorText }, errorText)) {
+                    syncStatusSpan.textContent = errorText;
+                }
             }
         } catch (e) {
-            console.error('[sync] Auto-backup error:', e);
-            syncStatusSpan.textContent = 'Auto-backup error.';
+            if (!handleSyncError(e)) {
+                syncStatusSpan.textContent = 'Auto-backup error.';
+            }
         }
     } else {
         // Auto-sync not due yet

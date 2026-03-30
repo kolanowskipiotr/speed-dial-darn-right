@@ -34,8 +34,24 @@ localStorage key: `speedDial_v2`
 }
 ```
 
+## Sync Settings
+
+localStorage key: `speedDial_syncSettings`
+
+```js
+{
+  user: { email: string },      // Google user info (email)
+  token: string | null,         // Google OAuth2 access token; null if disconnected/expired
+  folderId: string | null,      // Google Drive folder ID for backups
+  autoSync: boolean,            // Daily auto-backup enabled? (default: false)
+  showModalOnDisconnect: boolean, // Show Manage Data popup when account disconnected? (default: true)
+  lastAutoSync: number | null,   // Timestamp (ms) of last successful auto-backup
+}
+```
+
 ## Persistence
 - `saveData()` → `localStorage.setItem('speedDial_v2', JSON.stringify(data))`
+- `saveSyncSettings()` → `localStorage.setItem('speedDial_syncSettings', JSON.stringify({ ... }))`
 - `loadData()` — migrates old `{ groups }` format automatically (no tabs wrapper); also ensures `data.tabs[0].isHome = true` if no tab has the flag yet
 - `getActiveTab()` → returns current tab object from `data.tabs`
 
