@@ -1,3 +1,14 @@
+# ─── STAGE 1: Build & Download Dependencies ───────────────────────
+FROM node:20-alpine AS build-deps
+
+WORKDIR /build
+COPY scripts/package.json scripts/bundle.mjs ./
+
+# Install dependencies and run the bundling script
+RUN npm install \
+    && node bundle.mjs
+
+# ─── STAGE 2: Final Nginx Image ──────────────────────────────────
 FROM nginx:1.27-alpine
 
 # Remove default nginx config
@@ -7,13 +18,15 @@ RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/speed-dial.conf
 
 # Copy the app
-COPY index.html /usr/share/nginx/html/index.html
-COPY favicon.ico icon.png icon.svg /usr/share/nginx/html/
-COPY domain /usr/share/nginx/html/domain/
+WORKDIR /usr/share/nginx/html
+COPY index.html ./
+COPY favicon.ico icon.png icon.svg ./
+COPY domain ./domain/
+
+# Copy the vendored dependencies from the build stage
+COPY --from=build-deps /vendor ./vendor/
 
 # Create directories for future persistent storage.
-# These will be overridden by the volumes defined in docker-compose,
-# but we create them here so the image works standalone too.
 RUN mkdir -p /data /uploads \
     && chown -R nginx:nginx /data /uploads \
     && chmod 755 /data /uploads

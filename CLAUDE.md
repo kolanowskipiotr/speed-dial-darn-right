@@ -8,7 +8,8 @@ If the user proposes a solution and a better alternative exists, say so before i
 
 ## Key rules
 
-- No build step — file changes in the mounted Docker volume are live immediately.
+- No build step for app code — file changes in the mounted Docker volume are live immediately.
+- External dependencies are vendored — They are downloaded and bundled during the Docker build process (into the `/vendor/` directory) to enable offline usage. This is managed by `scripts/bundle.mjs` and an Import Map in `index.html`.
 - Domain-Driven Design (DDD) — All features are organized in `domain/`.
 - All CRUD follows: mutate `data` → `saveData()` → `render()`.
 - `saveData()` automatically triggers an async background sync to Google Drive via the `uploader` service.

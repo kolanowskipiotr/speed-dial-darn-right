@@ -15,3 +15,6 @@
 *.iml
 uploader/node_modules/
 uploader/package-lock.json
+vendor/
+scripts/node_modules/
+scripts/package-lock.json

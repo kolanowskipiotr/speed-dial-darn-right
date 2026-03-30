@@ -57,6 +57,26 @@
 - `speed-dial` wrapper script installed to `$(brew --prefix)/bin/` — proxies all args to `docker compose -f …/docker-compose.yml`
 - For stable releases: uncomment the `url`/`sha256`/`version` lines in the formula and fill in after `brew fetch --build-from-source`
 
+## Dockerfile (Multi-stage Build)
+The `speed-dial` image uses a multi-stage build to vendor external dependencies for offline support:
+
+1. **Stage 1: build-deps** (node:20-alpine)
+   - Copies `scripts/package.json` and `scripts/bundle.mjs`.
+   - Runs `npm install` and `node bundle.mjs`.
+   - Downloads/bundles dependencies into a `/vendor/` directory.
+   - Bundles **CodeMirror** using `esbuild` and downloads **marked.js**, **split.js**, and **Google Fonts**.
+   - Strips `sourceMappingURL` comments to avoid browser console errors.
+
+2. **Stage 2: Final Image** (nginx:1.27-alpine)
+   - Copies the app source (`index.html`, `domain/`, etc.).
+   - Copies the `/vendor/` directory from the build stage.
+   - Configures Nginx to serve the app and vendor assets.
+
+## Import Map (index.html)
+An Import Map in `index.html` redirects `https://esm.sh/` imports to local bundled files in `/vendor/`, ensuring all CodeMirror packages work without an internet connection.
+
+> **Note**: While the core app works offline, features like Google Drive sync still require an active internet connection as they depend on external Google APIs.
+
 ## Dockerfile static assets
 - Copies `favicon.ico`, `icon.png`, `icon.svg` in addition to `index.html`, `css/`, `js/`
 

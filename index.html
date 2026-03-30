@@ -22,8 +22,37 @@
     <link rel="stylesheet" href="domain/note/styles.css">
     <link rel="stylesheet" href="domain/persistence/styles.css">
 
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/split.js/dist/split.min.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "@codemirror/view": "/vendor/@codemirror-view.js",
+            "@codemirror/state": "/vendor/@codemirror-state.js",
+            "@codemirror/commands": "/vendor/@codemirror-commands.js",
+            "@codemirror/language": "/vendor/@codemirror-language.js",
+            "@codemirror/search": "/vendor/@codemirror-search.js",
+            "@codemirror/lang-markdown": "/vendor/@codemirror-lang-markdown.js",
+            "@codemirror/lang-json": "/vendor/@codemirror-lang-json.js",
+            "@codemirror/lang-xml": "/vendor/@codemirror-lang-xml.js",
+            "@codemirror/lang-html": "/vendor/@codemirror-lang-html.js",
+            "@codemirror/lang-javascript": "/vendor/@codemirror-lang-javascript.js",
+            "@codemirror/theme-one-dark": "/vendor/@codemirror-theme-one-dark.js",
+            "https://esm.sh/@codemirror/view@6": "/vendor/@codemirror-view.js",
+            "https://esm.sh/@codemirror/state@6": "/vendor/@codemirror-state.js",
+            "https://esm.sh/@codemirror/commands@6": "/vendor/@codemirror-commands.js",
+            "https://esm.sh/@codemirror/search@6": "/vendor/@codemirror-search.js",
+            "https://esm.sh/@codemirror/lang-markdown@6": "/vendor/@codemirror-lang-markdown.js",
+            "https://esm.sh/@codemirror/lang-json@6": "/vendor/@codemirror-lang-json.js",
+            "https://esm.sh/@codemirror/lang-xml@6": "/vendor/@codemirror-lang-xml.js",
+            "https://esm.sh/@codemirror/lang-html@6": "/vendor/@codemirror-lang-html.js",
+            "https://esm.sh/@codemirror/lang-javascript@6": "/vendor/@codemirror-lang-javascript.js",
+            "https://esm.sh/@codemirror/theme-one-dark@6": "/vendor/@codemirror-theme-one-dark.js",
+            "https://esm.sh/@codemirror/language@6": "/vendor/@codemirror-language.js"
+        }
+    }
+    </script>
+
+    <script src="vendor/marked.min.js"></script>
+    <script src="vendor/split.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer onload="if(typeof updateAuthUI === 'function') updateAuthUI()"></script>
 </head>
 <body>
