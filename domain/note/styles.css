@@ -88,6 +88,7 @@
     flex-wrap: nowrap;
     overflow-x: auto;
     flex: 1;
+    min-width: 0; /* allow flexbox to shrink below tab content width so pinned buttons stay visible */
     scrollbar-width: none;
     position: relative; /* Ensure child offsetLeft is relative to this container */
 }
@@ -169,6 +170,30 @@
     padding: 1px 4px;
     width: 100px;
     outline: none;
+}
+
+/* ── Add-tab button (after scroll area, before trash) ───────── */
+.notes-add-tab-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--text-dimmer);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    align-self: stretch;
+    transition: background 0.1s, color 0.1s;
+}
+
+.notes-add-tab-btn:hover {
+    background: var(--surface2);
+    color: var(--accent);
 }
 
 /* ── Trash button (anchored to the right) ──────────────────── */

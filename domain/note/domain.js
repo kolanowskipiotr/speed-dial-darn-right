@@ -167,12 +167,6 @@ function renderNotesPanel(container) {
     sep.className = 'notes-header-sep';
     headerActions.appendChild(sep);
 
-    const addBtn = document.createElement('button');
-    addBtn.className = 'btn-icon notes-add-btn';
-    addBtn.title = 'Add new note';
-    addBtn.textContent = '＋';
-    addBtn.onclick = () => addNote();
-
     const infoBtn = document.createElement('button');
     infoBtn.className = 'btn-icon notes-info-btn';
     infoBtn.title = 'Keyboard shortcuts';
@@ -198,7 +192,6 @@ function renderNotesPanel(container) {
     fsBtn.textContent = notesFullScreen ? '⛶' : '⤢';
     fsBtn.onclick = () => toggleNotesFullScreen();
 
-    headerActions.appendChild(addBtn);
     headerActions.appendChild(infoBtn);
     headerActions.appendChild(fsBtn);
     header.appendChild(title);
@@ -213,6 +206,13 @@ function renderNotesPanel(container) {
     scrollArea.className = 'notes-tabs-scroll-area';
     _buildNotesTabs(scrollArea);
     tabsBar.appendChild(scrollArea);
+
+    const addTabBtn = document.createElement('button');
+    addTabBtn.className = 'notes-add-tab-btn';
+    addTabBtn.title = 'New note';
+    addTabBtn.textContent = '+';
+    addTabBtn.onclick = () => addNote();
+    tabsBar.appendChild(addTabBtn);
 
     // Ensure active tab is visible
     requestAnimationFrame(() => {
@@ -735,9 +735,9 @@ function renameNote(noteId, newName) {
     note.name = trimmed || note.name;
     note.updatedAt = new Date().toISOString();
     saveData();
-    // Partial re-render: tabs bar only
-    const tabsBar = document.querySelector('.notes-tabs-bar');
-    if (tabsBar) _buildNotesTabs(tabsBar);
+    // Partial re-render: tabs scroll area only (leaves + and trash buttons intact)
+    const scrollArea = document.querySelector('.notes-tabs-scroll-area');
+    if (scrollArea) _buildNotesTabs(scrollArea);
 }
 
 function setNoteLanguage(lang) {
