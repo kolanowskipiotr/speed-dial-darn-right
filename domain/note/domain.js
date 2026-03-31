@@ -7,6 +7,7 @@ let _notesDragId = null;         // id of tab being dragged for reorder
 let _pendingNoteFocusId = null;  // note to make active after undo restores it
 let _notesTrashOpen = false;     // whether the trash panel is visible
 let _notesTrashPreviewId = null; // id of trash note currently previewed
+let _mermaidRenderToken = 0;     // incremented each render to discard stale async results
 
 // ─── HELPERS ─────────────────────────────────────────────────────
 
@@ -130,6 +131,7 @@ function renderNotesPanel(container) {
     const languages = [
         { id: 'text',       label: 'txt' },
         { id: 'markdown',   label: 'md' },
+        { id: 'mermaid',    label: 'mmd' },
         { id: 'json',       label: 'json' },
         { id: 'xml',        label: 'xml' },
         { id: 'javascript', label: 'js' },
@@ -274,7 +276,7 @@ function renderNotesPanel(container) {
     cmHost.className = 'notes-cm-host';
     splitHost.appendChild(cmHost);
 
-    if (note.language === 'markdown') {
+    if (note.language === 'markdown' || note.language === 'mermaid') {
         const preview = document.createElement('div');
         preview.className = 'notes-preview';
         splitHost.appendChild(preview);
@@ -292,8 +294,8 @@ function renderNotesPanel(container) {
             _notesSearchHighlight = null;
             requestAnimationFrame(() => NotesCM.focusAndHighlight(q));
         }
-        if (note.language === 'markdown') {
-            _initMarkdownSplit();
+        if (note.language === 'markdown' || note.language === 'mermaid') {
+            _initPreviewSplit();
         }
     }
 
@@ -311,7 +313,7 @@ function renderNotesPanel(container) {
                     _notesSearchHighlight = null;
                     requestAnimationFrame(() => NotesCM.focusAndHighlight(q));
                 }
-                if (n.language === 'markdown') _initMarkdownSplit();
+                if (n.language === 'markdown' || n.language === 'mermaid') _initPreviewSplit();
             }
         }, { once: true });
     }
@@ -397,15 +399,63 @@ function _buildNotesTabs(tabsBar) {
     });
 }
 
-// ─── MARKDOWN SPLIT ──────────────────────────────────────────────
+// ─── MERMAID HELPERS ─────────────────────────────────────────────
 
-function _initMarkdownSplit() {
+async function _renderMermaidPreview(code, el) {
+    const token = ++_mermaidRenderToken;
+    if (!window.mermaid || !code.trim()) {
+        el.innerHTML = '<span class="notes-mermaid-empty">Start typing a diagram\u2026</span>';
+        return;
+    }
+    try {
+        mermaid.initialize({ startOnLoad: false, suppressErrorRendering: true, theme: _isAppDark() ? 'dark' : 'default' });
+        const id = 'mmd-' + Date.now().toString(36);
+        const { svg } = await mermaid.render(id, code);
+        if (token !== _mermaidRenderToken) return;
+        el.innerHTML = svg;
+    } catch (e) {
+        if (token !== _mermaidRenderToken) return;
+        const msg = (e.message || 'Diagram error').replace(/</g, '&lt;');
+        el.innerHTML = `<pre class="notes-mermaid-error">${msg}</pre>`;
+    }
+}
+
+async function _applyMermaidInMarkdown(previewEl) {
+    if (!window.mermaid) return;
+    const codeEls = previewEl.querySelectorAll('pre > code.language-mermaid');
+    if (!codeEls.length) return;
+    mermaid.initialize({ startOnLoad: false, suppressErrorRendering: true, theme: _isAppDark() ? 'dark' : 'default' });
+    for (const code of codeEls) {
+        const pre = code.parentElement;
+        try {
+            const id = 'mmd-' + Date.now().toString(36) + Math.random().toString(36).slice(2);
+            const { svg } = await mermaid.render(id, code.textContent);
+            const div = document.createElement('div');
+            div.className = 'mermaid-diagram';
+            div.innerHTML = svg;
+            pre.replaceWith(div);
+        } catch (e) {
+            // leave the code block as-is on parse error
+        }
+    }
+}
+
+// ─── PREVIEW SPLIT ───────────────────────────────────────────────
+
+function _initPreviewSplit() {
     const cmHost  = document.querySelector('.notes-cm-host');
     const preview = document.querySelector('.notes-preview');
     if (!cmHost || !preview || typeof Split === 'undefined') return;
     _notesPreviewEl = preview;
     const note = findNote(activeNoteId);
-    if (note) preview.innerHTML = marked.parse(note.content || '');
+    if (note) {
+        if (note.language === 'markdown') {
+            preview.innerHTML = marked.parse(note.content || '');
+            _applyMermaidInMarkdown(preview);
+        } else if (note.language === 'mermaid') {
+            _renderMermaidPreview(note.content || '', preview);
+        }
+    }
     _notesSplitInstance = Split([cmHost, preview], {
         sizes:     [50, 50],
         minSize:   [120, 120],
@@ -743,6 +793,9 @@ window._notesCMDocChange = function(content) {
     saveData();
     if (note.language === 'markdown' && _notesPreviewEl) {
         _notesPreviewEl.innerHTML = marked.parse(content);
+        _applyMermaidInMarkdown(_notesPreviewEl);
+    } else if (note.language === 'mermaid' && _notesPreviewEl) {
+        _renderMermaidPreview(content, _notesPreviewEl);
     }
     const newIds = new Set(extractUploadIds(content));
     const removed = oldIds.filter(id => !newIds.has(id));
@@ -772,6 +825,7 @@ window._notesUploadImage = async function(file) {
         saveData();
         if (note.language === 'markdown' && _notesPreviewEl) {
             _notesPreviewEl.innerHTML = marked.parse(note.content);
+            _applyMermaidInMarkdown(_notesPreviewEl);
         }
     }
 };

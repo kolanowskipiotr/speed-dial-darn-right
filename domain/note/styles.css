@@ -387,6 +387,39 @@
     margin-bottom: 2px;
 }
 
+/* ── Mermaid diagrams ────────────────────────────────────────── */
+.notes-preview svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.notes-preview .mermaid-diagram,
+.notes-preview > svg {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+}
+
+.notes-mermaid-empty {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 13px;
+    padding: 16px;
+    display: block;
+}
+
+.notes-mermaid-error {
+    color: var(--error, #e53e3e);
+    font-family: var(--mono-font, monospace);
+    font-size: 12px;
+    white-space: pre-wrap;
+    background: var(--surface2);
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    margin: 8px;
+}
+
 /* ── split.js gutter ─────────────────────────────────────────── */
 .gutter.gutter-horizontal {
     width: 5px;

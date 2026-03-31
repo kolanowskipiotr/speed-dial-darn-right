@@ -30,6 +30,7 @@ async function download(url, filename) {
 
 await download('https://cdn.jsdelivr.net/npm/marked/marked.min.js', 'marked.min.js');
 await download('https://cdn.jsdelivr.net/npm/split.js/dist/split.min.js', 'split.min.js');
+await download('https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js', 'mermaid.min.js');
 await download('https://accounts.google.com/gsi/client', 'gsi-client.js');
 
 // 2. Download Fonts (DM Sans and DM Mono)
