@@ -340,11 +340,18 @@ function renderBackupList(backups) {
         return;
     }
     backups.forEach(backup => {
+        const isFull = backup.name.includes('.full.');
+        const isDiff = backup.name.includes('.diff.');
+        const badge = isFull
+            ? `<span class="backup-type-badge backup-type-full">FULL</span>`
+            : isDiff
+                ? `<span class="backup-type-badge backup-type-diff">DIFF</span>`
+                : '';
         const div = document.createElement('div');
-        div.className = 'notes-trash-row'; // Reuse styling from trash list
+        div.className = 'notes-trash-row';
         div.innerHTML = `
             <div class="notes-trash-info">
-                <div class="notes-trash-name">${backup.name}</div>
+                <div class="notes-trash-name">${badge}${backup.name}</div>
                 <div class="notes-trash-date">${new Date(backup.createdTime).toLocaleString()}</div>
             </div>
             <div class="notes-trash-actions">
@@ -356,23 +363,32 @@ function renderBackupList(backups) {
 }
 
 async function restoreFromGDrive(fileId, fileName) {
+    const isDiff = fileName.includes('.diff.');
+    const confirmMsg = isDiff
+        ? 'This will download the base full backup, apply this diff on top, and replace your current configuration. Continue?'
+        : 'This will replace your current configuration with the selected backup. Continue?';
+
     showConfirm(
         `Restore from ${fileName}?`,
-        'This will replace your current configuration with the selected backup. Continue?',
+        confirmMsg,
         async () => {
             showToast(`${ICONS.loading} Restoring from ${fileName}...`);
             try {
                 const backupData = await fetchGDriveFile(fileId);
                 if (!backupData) throw new Error('Failed to fetch backup data.');
 
-                // _doImport expects the parsed JSON object
-                await _doImport(JSON.parse(backupData));
+                let parsed = JSON.parse(backupData);
 
-                // Update sync settings after successful restore
-                // This assumes the restored data might contain _config, but we might want to re-fetch folder selection
-                // For now, just mark as restored
+                if (parsed._type === 'diff') {
+                    const { fullBackupId, fullBackupName } = parsed._meta;
+                    showToast(`${ICONS.loading} Fetching base backup: ${fullBackupName}...`);
+                    const fullData = await fetchGDriveFile(fullBackupId);
+                    if (!fullData) throw new Error('Failed to fetch base full backup.');
+                    parsed = applyDiff(JSON.parse(fullData), parsed);
+                }
+
+                await _doImport(parsed);
                 showToast(`${ICONS.ok} Restored from ${fileName}`);
-
             } catch (e) {
                 console.error('Restore failed:', e);
                 showToast(`${ICONS.error} Restore failed. See console for details.`);
@@ -380,6 +396,17 @@ async function restoreFromGDrive(fileId, fileName) {
         },
         { btnLabel: 'Restore', danger: false }
     );
+}
+
+function applyDiff(fullData, diff) {
+    const result = { ...fullData };
+    if (diff.tabs !== undefined)       result.tabs = diff.tabs;
+    if (diff.todoLists !== undefined)  result.todoLists = diff.todoLists;
+    if (diff.notes !== undefined)      result.notes = diff.notes;
+    if (diff.notesTrash !== undefined) result.notesTrash = diff.notesTrash;
+    if (diff._config !== undefined)    result._config = diff._config;
+    if (diff._images !== undefined)    result._images = { ...fullData._images, ...diff._images };
+    return result;
 }
 
 async function triggerManualSync() {
@@ -436,7 +463,18 @@ function toggleShowModalOnDisconnect() {
 }
 
 async function checkAutoSync() {
-    if (!gdriveSyncEnabled || !googleUser || !currentAccessToken || !currentFolderId) return;
+    if (!gdriveSyncEnabled) return;
+
+    // Auto-sync enabled but session is gone — prompt re-login
+    if (!googleUser || !currentAccessToken) {
+        showToast(`${ICONS.warn} Auto-backup is on but you're not logged in to Google. Please log in again.`);
+        if (showModalOnDisconnect) {
+            openDataModal();
+        }
+        return;
+    }
+
+    if (!currentFolderId) return;
     const now = Date.now();
     const twentyFourHours = 24 * 60 * 60 * 1000;
     if (!lastAutoSync || (now - lastAutoSync) > twentyFourHours) {

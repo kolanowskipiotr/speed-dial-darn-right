@@ -1,8 +1,4 @@
 // ─── INIT ───────────────────────────────────────────────────────
-// Ensure Safari doesn't steal focus from address bar on new tab
-if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
-    document.activeElement.blur();
-}
 
 document.addEventListener('dragend', () => {
     clearDropIndicators();
@@ -53,7 +49,6 @@ setInterval(updateClock, 1000);
 initLogoAnimation();
 initSizePresets();
 
-// Delay search init to avoid focus contention
 setTimeout(initSearch, 100);
 
 // Initialize Sync Config

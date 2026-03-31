@@ -13,20 +13,24 @@ async function getLatestFullBackup(d, folderId) {
         q: `'${folderId}' in parents and name contains 'full' and trashed = false`,
         orderBy: 'createdTime desc',
         pageSize: 1,
-        fields: 'files(id, name)',
+        fields: 'files(id, name, createdTime)',
     });
 
     if (res.data.files.length === 0) return null;
 
-    const fileId = res.data.files[0].id;
-    const content = await d.files.get({ fileId, alt: 'media' });
-    return content.data;
+    const file = res.data.files[0];
+    const content = await d.files.get({ fileId: file.id, alt: 'media' });
+    return { id: file.id, name: file.name, createdTime: file.createdTime, data: content.data };
 }
 
-function calculateDiff(oldData, newData) {
+function calculateDiff(fullBackup, newData) {
+    const oldData = fullBackup.data;
     const diff = {
+        _type: 'diff',
         _meta: {
             diffAt: new Date().toISOString(),
+            fullBackupId: fullBackup.id,
+            fullBackupName: fullBackup.name,
             baseExportedAt: oldData._exportMeta?.exportedAt
         }
     };
@@ -46,7 +50,7 @@ function calculateDiff(oldData, newData) {
     if (JSON.stringify(oldData._config) !== JSON.stringify(newData._config)) {
         diff._config = newData._config;
     }
-    
+
     const newImages = {};
     for (const id in newData._images) {
         if (newData._images[id] !== oldData._images[id]) {
@@ -60,6 +64,8 @@ function calculateDiff(oldData, newData) {
     return diff;
 }
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
 async function performSync(data, token, folderId) {
     if (!token || !folderId) {
         console.warn('[sync] Missing token or folderId, skipping sync');
@@ -70,9 +76,9 @@ async function performSync(data, token, folderId) {
     try {
         const latestFull = await getLatestFullBackup(d, folderId);
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        
-        const syncCount = await countRecentSyncs(d, folderId);
-        const shouldDoFull = !latestFull || syncCount % 10 === 0;
+
+        const fullBackupAge = latestFull ? Date.now() - new Date(latestFull.createdTime).getTime() : Infinity;
+        const shouldDoFull = !latestFull || fullBackupAge >= SEVEN_DAYS_MS;
 
         if (shouldDoFull) {
             console.log('[sync] Performing full backup');
@@ -101,14 +107,6 @@ async function uploadToDrive(d, folderId, name, content) {
             body: content,
         },
     });
-}
-
-async function countRecentSyncs(d, folderId) {
-    const res = await d.files.list({
-        q: `'${folderId}' in parents and trashed = false`,
-        fields: 'files(id)',
-    });
-    return res.data.files.length;
 }
 
 async function cleanupOldBackups(d, folderId) {

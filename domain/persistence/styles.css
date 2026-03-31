@@ -56,6 +56,27 @@
     overflow-y: auto;
 }
 
+.backup-type-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.backup-type-full {
+    background: var(--accent);
+    color: var(--bg);
+}
+
+.backup-type-diff {
+    background: var(--surface3, var(--border));
+    color: var(--text-dimmer);
+}
+
 .sync-status {
     font-size: 11px;
     color: var(--text-dimmer);
