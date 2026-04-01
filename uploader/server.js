@@ -2,6 +2,7 @@ const http = require('http');
 const fs   = require('fs');
 const path = require('path');
 const { performSync, listGDriveFolders, listGDriveBackups, fetchGDriveFile, createGDriveFolder } = require('./sync');
+const { exchangeCode, getFreshToken } = require('./auth');
 
 const UPLOADS_DIR = '/uploads';
 const PORT = 3001;
@@ -12,6 +13,44 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 
 http.createServer(async (req, res) => {
+    // --- Auth: exchange code for tokens (no Authorization header needed) ---
+    if (req.url === '/api/sync/auth' && req.method === 'POST') {
+        const chunks = [];
+        req.on('data', chunk => chunks.push(chunk));
+        req.on('end', async () => {
+            try {
+                const { code } = JSON.parse(Buffer.concat(chunks).toString());
+                const result = await exchangeCode(code);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(result));
+            } catch (e) {
+                console.error('[auth] Code exchange failed:', e.message);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: e.message }));
+            }
+        });
+        return;
+    }
+
+    // --- Auth: silent token refresh using stored refresh token ---
+    if (req.url === '/api/sync/auth/token' && req.method === 'GET') {
+        try {
+            const tokens = await getFreshToken();
+            if (!tokens) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'no_session' }));
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(tokens));
+        } catch (e) {
+            console.error('[auth] Token refresh failed:', e.message);
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'refresh_failed' }));
+        }
+        return;
+    }
+
     // API: SYNC OPERATIONS (POST, GET)
     if (req.url.startsWith('/api/sync')) {
         const folderId = req.headers['x-gdrive-folder-id'];

@@ -75,3 +75,17 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 
 ### GDrive Sync (Unified Export)
 `domain/persistence/export.js` generates a standard JSON export object including all configuration and base64-encoded images. The `uploader` sidecar compares this with the latest full backup on GDrive to decide between an incremental (diff) or full upload.
+
+### GDrive Auth & Token Refresh (`domain/persistence/sync.js`)
+- Uses Google Identity Services (GIS) implicit flow — access tokens only, no refresh tokens.
+- `tokenExpiry` (ms timestamp) is stored in localStorage alongside the access token.
+- Uses **GIS Authorization Code flow** (`initCodeClient`, `ux_mode: 'popup'`). The one-time login popup sends an authorization code to the frontend, which POSTs it to `POST /api/sync/auth` on the uploader sidecar. The sidecar exchanges it (with the client secret) for an access token + refresh token, stores the refresh token in `/uploads/refresh_token.json`, and returns `{ access_token, expiry, email }`.
+- **Background token refresh** works via `GET /api/sync/auth/token` — a plain HTTP call to the sidecar, which uses the stored refresh token to get a fresh access token from Google. No popup, no user gesture needed. Called on every page load and scheduled ~5 minutes before expiry via `scheduleTokenRefresh()`.
+- `fetchFreshToken()` in `sync.js` calls the endpoint, updates `currentAccessToken`/`tokenExpiry` in memory + localStorage, reschedules the timer, and returns `true`/`false`.
+- Required env vars for the uploader sidecar: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. Set in `.env` and referenced in both `docker-compose.yml` and `docker-compose.override.yml`.
+- The refresh token is stored at `/uploads/refresh_token.json` (persistent Docker volume, not in localStorage).
+- Four LED indicator buttons (`.gdrive-indicators` cluster in the header, between search and edit toggle) show sync state at a glance: (1) GDrive connected, (2) token fresh, (3) daily auto-backup on, (4) manage-on-disconnect on. All four are driven by `updateSyncIndicators()` in `sync.js`, called from `updateAuthUI()`, `toggleAutoSync()`, `toggleShowModalOnDisconnect()`, and `loadSyncSettings()`. Clicking any dot opens the data modal.
+- Auth errors (401) clear **both** `googleUser` and `currentAccessToken` to keep state consistent. `updateSyncConfigUI()` gates on `googleUser && currentAccessToken` so the folder/backup section is always hidden when either is missing.
+- `loadSyncSettings()` does **not** call `fetchGDriveFolders`/`fetchGDriveBackups` — these run after token confirmation in `initGis()` callback to prevent showing data with a stale token.
+- `checkAutoSync()` is **not** called from `initSyncConfig()` — it is called only from within `initGis()` once the token is confirmed valid (or just refreshed). This prevents using a stale stored token.
+- `backupInProgress` flag is set to `true` during any backup fetch. A `beforeunload` listener (registered in `initSyncConfig`) blocks tab/window close while this is `true`.

@@ -7,6 +7,9 @@ services:
       context: uploader
     container_name: speed-dial-uploader
     restart: unless-stopped
+    environment:
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
     volumes:
       - speed_dial_uploads:/uploads
 

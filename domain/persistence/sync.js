@@ -46,10 +46,12 @@ async function createBackupFolder() {
 
 let googleUser = null;
 let currentAccessToken = null;
+let tokenExpiry = null; // timestamp (ms) when the current access token expires
 let currentFolderId = null;
 let gdriveSyncEnabled = false;
 let showModalOnDisconnect = true; // Default to true as requested
 let lastAutoSync = null;
+let backupInProgress = false; // true while a backup fetch is in-flight
 
 // --- DOM Elements ---
 const dataModal = document.getElementById('dataModal');
@@ -71,33 +73,41 @@ function initSyncConfig() {
     loadSyncSettings();
     updateAuthUI();
     updateSyncConfigUI();
-    checkAutoSync(); // Check on load if auto-sync is enabled
+    // checkAutoSync() is intentionally NOT called here — it runs after the token
+    // is confirmed valid inside initGis(), to avoid using a stale stored token.
+    // Refresh the indicator labels every minute so the countdown stays accurate.
+    setInterval(updateSyncIndicators, 60_000);
+    window.addEventListener('beforeunload', (e) => {
+        if (backupInProgress) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
 }
 
 function loadSyncSettings() {
     const settings = JSON.parse(localStorage.getItem('speedDial_syncSettings') || '{}');
     googleUser = settings.user || null;
     currentAccessToken = settings.token || null;
+    tokenExpiry = settings.tokenExpiry || null;
     currentFolderId = settings.folderId || null;
     gdriveSyncEnabled = settings.autoSync || false;
     showModalOnDisconnect = (settings.showModalOnDisconnect !== undefined) ? settings.showModalOnDisconnect : true;
     lastAutoSync = settings.lastAutoSync || null;
 
-    if (googleUser) {
-        updateAuthUI();
-        fetchGDriveFolders(true); // Always populate folder list when logged in
-        if (currentFolderId) {
-            fetchGDriveBackups(); // Only fetch backups if a folder is already selected
-        }
-    }
+    // Don't fetch folders/backups here — wait for the token to be confirmed
+    // valid inside initGis(). Fetching with a stale stored token causes
+    // the folder/backup list to appear while the login button is showing.
     updateAutoSyncToggleUI();
     updateShowModalOnDisconnectToggleUI();
+    updateSyncIndicators();
 }
 
 function saveSyncSettings() {
     localStorage.setItem('speedDial_syncSettings', JSON.stringify({
         user: googleUser,
         token: currentAccessToken,
+        tokenExpiry: tokenExpiry,
         folderId: currentFolderId,
         autoSync: gdriveSyncEnabled,
         showModalOnDisconnect: showModalOnDisconnect,
@@ -123,12 +133,47 @@ function openDataModal() {
     }
 }
 
+function _autoSyncLabel() {
+    if (!gdriveSyncEnabled) return 'Daily auto-backup: off';
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    const nextAt = lastAutoSync ? lastAutoSync + twentyFourHours : null;
+    const msLeft = nextAt ? nextAt - Date.now() : 0;
+    if (!nextAt || msLeft <= 0) return 'Daily auto-backup: on — due now';
+    const h = Math.floor(msLeft / 3_600_000);
+    const m = Math.floor((msLeft % 3_600_000) / 60_000);
+    const at = new Date(nextAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const remaining = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    return `Daily auto-backup: on — next in ${remaining} (at ${at})`;
+}
+
+function updateSyncIndicators() {
+    const isConnected  = !!(googleUser && currentAccessToken);
+    const tokenFresh   = !!(currentAccessToken && tokenExpiry && Date.now() < tokenExpiry);
+
+    const dots = {
+        gdriveIndicator:           { on: isConnected,          label: isConnected ? `Google Drive: ${googleUser.email}` : 'Google Drive: not connected' },
+        gdriveTokenIndicator:      { on: tokenFresh,           label: tokenFresh  ? `Token valid — expires ${new Date(tokenExpiry).toLocaleTimeString()}` : 'Token: no session' },
+        gdriveAutoSyncIndicator:   { on: gdriveSyncEnabled,    label: _autoSyncLabel() },
+        gdriveDisconnectIndicator: { on: showModalOnDisconnect, label: `Manage on disconnect: ${showModalOnDisconnect ? 'on' : 'off'}` },
+    };
+
+    for (const [id, { on, label }] of Object.entries(dots)) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        el.classList.toggle('connected', on);
+        el.dataset.label = label;
+    }
+}
+
 function updateAuthUI() {
     if (!gdriveAuthSection || !gdriveUserDiv || !gdriveLoginBtn || !gdriveLogoutBtn) return;
 
-    const gisLoaded = typeof google !== 'undefined';
-    
-    if (googleUser && currentAccessToken) {
+    const gisLoaded  = typeof google !== 'undefined';
+    const isConnected = !!(googleUser && currentAccessToken);
+
+    updateSyncIndicators();
+
+    if (isConnected) {
         gdriveLoginBtn.style.display = 'none';
         gdriveLogoutBtn.style.display = '';
         gdriveUserDiv.style.display = '';
@@ -137,7 +182,7 @@ function updateAuthUI() {
         gdriveLoginBtn.style.display = '';
         gdriveLogoutBtn.style.display = 'none';
         gdriveUserDiv.style.display = 'none';
-        
+
         // If GIS not loaded, disable button and show reason
         if (!gisLoaded) {
             gdriveLoginBtn.disabled = true;
@@ -153,8 +198,9 @@ function updateAuthUI() {
 
 function updateSyncConfigUI() {
     if (!syncConfigSection) return;
-    syncConfigSection.style.display = googleUser ? '' : 'none';
-    manualSyncBtn.style.display = googleUser ? '' : 'none';
+    const loggedIn = !!(googleUser && currentAccessToken);
+    syncConfigSection.style.display = loggedIn ? '' : 'none';
+    manualSyncBtn.style.display = loggedIn ? '' : 'none';
 }
 
 function updateAutoSyncToggleUI() {
@@ -175,7 +221,9 @@ function handleSyncError(e, customMsg) {
     const gisLoaded = typeof google !== 'undefined';
 
     if (isAuthError) {
+        googleUser = null;
         currentAccessToken = null;
+        tokenExpiry = null;
         saveSyncSettings();
         updateAuthUI();
         updateSyncConfigUI();
@@ -196,6 +244,10 @@ function handleSyncError(e, customMsg) {
 }
 
 // --- Google Auth ---
+// Uses GIS Authorization Code flow (initCodeClient). The authorization code is
+// sent to the uploader sidecar which exchanges it for tokens using the client
+// secret and stores the refresh token. Background refresh is then possible via
+// GET /api/sync/auth/token — a plain HTTP call, no popup required.
 let tokenClient;
 
 function initGis() {
@@ -203,34 +255,97 @@ function initGis() {
         console.warn('GIS script not loaded yet');
         return;
     }
-    tokenClient = google.accounts.oauth2.initTokenClient({
+
+    // Code client — used only for the one-time manual login popup
+    tokenClient = google.accounts.oauth2.initCodeClient({
         client_id: GAPI_CLIENT_ID,
         scope: SCOPES.join(' '),
+        ux_mode: 'popup',
         callback: async (resp) => {
-            if (resp.error !== undefined) {
+            if (resp.error) {
                 console.error('GIS Error:', resp);
                 showToast(`${ICONS.error} Login failed.`);
                 return;
             }
-            currentAccessToken = resp.access_token;
-            // Fetch user info to get email (optional, but good for UI)
             try {
-                const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { 'Authorization': `Bearer ${currentAccessToken}` }
+                // Send code to backend — it exchanges for tokens, stores refresh token
+                const result = await fetch(`${BACKUP_BASE_URL}/auth`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: resp.code }),
                 }).then(r => r.json());
-                googleUser = { email: userInfo.email };
-            } catch (e) {
-                googleUser = { email: 'Logged in' };
-            }
 
-            saveSyncSettings();
-            updateAuthUI();
-            updateSyncConfigUI();
-            await fetchGDriveFolders(true); // await so currentFolderId is set before fetching backups
-            if (currentFolderId) fetchGDriveBackups();
-            syncStatusSpan.textContent = 'Logged in successfully.';
+                currentAccessToken = result.access_token;
+                tokenExpiry = result.expiry;
+                googleUser = { email: result.email };
+                saveSyncSettings();
+                updateAuthUI();
+                updateSyncConfigUI();
+                updateSyncIndicators();
+                scheduleTokenRefresh();
+                await fetchGDriveFolders(true);
+                if (currentFolderId) fetchGDriveBackups();
+                syncStatusSpan.textContent = 'Logged in successfully.';
+                checkAutoSync();
+            } catch (e) {
+                console.error('[sync] Code exchange failed:', e);
+                showToast(`${ICONS.error} Login failed — see console.`);
+            }
         },
     });
+
+    if (googleUser) {
+        // On every page load: silently get a fresh token from the backend.
+        // The backend uses the stored refresh token — no popup needed.
+        fetchFreshToken().then(ok => {
+            if (ok) {
+                fetchGDriveFolders(true).then(() => { if (currentFolderId) fetchGDriveBackups(); });
+                checkAutoSync();
+            } else {
+                // Refresh token missing or expired — need a new login
+                googleUser = null;
+                currentAccessToken = null;
+                tokenExpiry = null;
+                saveSyncSettings();
+                updateAuthUI();
+                updateSyncConfigUI();
+                updateSyncIndicators();
+                if (gdriveSyncEnabled && showModalOnDisconnect) openDataModal();
+            }
+        });
+    } else {
+        updateAuthUI();
+    }
+}
+
+// Calls the backend to silently get a fresh access token using the stored
+// refresh token. Returns true on success, false if re-login is needed.
+async function fetchFreshToken() {
+    try {
+        const res = await fetch(`${BACKUP_BASE_URL}/auth/token`);
+        if (!res.ok) return false;
+        const { access_token, expiry } = await res.json();
+        currentAccessToken = access_token;
+        tokenExpiry = expiry;
+        saveSyncSettings();
+        updateSyncIndicators();
+        scheduleTokenRefresh();
+        console.log('[sync] Token refreshed from backend.');
+        return true;
+    } catch (e) {
+        console.error('[sync] fetchFreshToken failed:', e);
+        return false;
+    }
+}
+
+// Schedule a silent background refresh ~5 minutes before the token expires.
+// Safe to run from a timer — it's just an HTTP call, not a popup.
+function scheduleTokenRefresh() {
+    if (!tokenExpiry || !googleUser) return;
+    const delay = tokenExpiry - Date.now() - 5 * 60 * 1000;
+    if (delay > 0) {
+        setTimeout(() => { if (googleUser) fetchFreshToken(); }, delay);
+    }
 }
 
 async function loginGDrive() {
@@ -239,12 +354,13 @@ async function loginGDrive() {
         showToast(`${ICONS.error} Google login not available.`);
         return;
     }
-    tokenClient.requestAccessToken({ prompt: 'consent' });
+    tokenClient.requestCode();
 }
 
 function logoutGDrive() {
     googleUser = null;
     currentAccessToken = null;
+    tokenExpiry = null;
     currentFolderId = null;
     gdriveSyncEnabled = false; // Disable auto-sync on logout
     lastAutoSync = null;
@@ -415,6 +531,7 @@ async function triggerManualSync() {
         return;
     }
     manualSyncBtn.disabled = true;
+    backupInProgress = true;
     syncStatusSpan.textContent = 'Backing up...';
     try {
         const exportObj = await getExportObject(); // Reuse export logic
@@ -431,6 +548,7 @@ async function triggerManualSync() {
             syncStatusSpan.textContent = 'Backup successful!';
             lastAutoSync = Date.now(); // Update last sync time
             saveSyncSettings();
+            updateSyncIndicators();
             showToast(`${ICONS.ok} Backup complete!`);
             setTimeout(fetchGDriveBackups, 1500); // brief delay for GDrive to index the new file
         } else {
@@ -445,12 +563,14 @@ async function triggerManualSync() {
         }
     } finally {
         manualSyncBtn.disabled = false;
+        backupInProgress = false;
     }
 }
 
 function toggleAutoSync() {
     gdriveSyncEnabled = !gdriveSyncEnabled;
     updateAutoSyncToggleUI();
+    updateSyncIndicators();
     saveSyncSettings();
     syncStatusSpan.textContent = gdriveSyncEnabled ? 'Auto-backup enabled.' : 'Auto-backup disabled.';
 }
@@ -458,6 +578,7 @@ function toggleAutoSync() {
 function toggleShowModalOnDisconnect() {
     showModalOnDisconnect = !showModalOnDisconnect;
     updateShowModalOnDisconnectToggleUI();
+    updateSyncIndicators();
     saveSyncSettings();
     syncStatusSpan.textContent = showModalOnDisconnect ? 'Modal on disconnect enabled.' : 'Modal on disconnect disabled.';
 }
@@ -481,6 +602,8 @@ async function checkAutoSync() {
         console.log('[sync] Triggering automatic backup...');
         lastAutoSync = now; // Update timestamp immediately to prevent re-triggering
         saveSyncSettings();
+        updateSyncIndicators();
+        backupInProgress = true;
         syncStatusSpan.textContent = 'Automatic backup in progress...';
         try {
             const exportObj = await getExportObject(); // Reuse export logic
@@ -505,6 +628,8 @@ async function checkAutoSync() {
             if (!handleSyncError(e)) {
                 syncStatusSpan.textContent = 'Auto-backup error.';
             }
+        } finally {
+            backupInProgress = false;
         }
     } else {
         // Auto-sync not due yet

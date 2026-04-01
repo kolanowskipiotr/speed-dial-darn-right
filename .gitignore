@@ -13,6 +13,7 @@
 .DS_Store
 .claude/
 *.iml
+.env
 uploader/node_modules/
 uploader/package-lock.json
 vendor/

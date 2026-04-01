@@ -186,6 +186,75 @@ body.edit-mode .tab-size-control { display: flex; }
     border-color: var(--border-hover);
 }
 
+/* ── GDRIVE INDICATORS ───────────────────── */
+.gdrive-indicators {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.gdrive-indicator {
+    position: relative;
+    width: 20px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    padding: 0;
+    transition: background var(--transition);
+    flex-shrink: 0;
+}
+
+.gdrive-indicator:hover {
+    background: var(--surface2);
+}
+
+/* Dot */
+.gdrive-indicator::after {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--surface3);
+    box-shadow: none;
+    transition: background var(--transition), box-shadow var(--transition);
+}
+
+.gdrive-indicator.connected::after {
+    background: var(--success);
+    box-shadow: 0 0 5px var(--success);
+}
+
+/* Hover label */
+.gdrive-indicator::before {
+    content: attr(data-label);
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface3);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 300;
+}
+
+.gdrive-indicator:hover::before {
+    opacity: 1;
+}
+
 /* ── THEME SELECTOR ──────────────────────── */
 .theme-selector {
     display: none;

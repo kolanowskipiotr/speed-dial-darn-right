@@ -14,6 +14,12 @@
                        autocomplete="off">
                 <div class="search-dropdown" id="searchDropdown" style="display:none"></div>
             </div>
+            <div class="gdrive-indicators">
+                <button class="gdrive-indicator" id="gdriveIndicator"           onclick="openDataModal()" data-label="Google Drive: not connected" aria-label="Google Drive connection"></button>
+                <button class="gdrive-indicator" id="gdriveTokenIndicator"      onclick="openDataModal()" data-label="Token: no session"           aria-label="Token freshness"></button>
+                <button class="gdrive-indicator" id="gdriveAutoSyncIndicator"   onclick="openDataModal()" data-label="Daily auto-backup: off"      aria-label="Daily auto-backup status"></button>
+                <button class="gdrive-indicator" id="gdriveDisconnectIndicator" onclick="openDataModal()" data-label="Manage on disconnect: off"   aria-label="Manage on disconnect status"></button>
+            </div>
             <div class="edit-toggle" id="editToggle" onclick="toggleEditMode()">
                 <span class="edit-toggle-label" id="editLabel">Edit</span>
                 <div class="toggle-track">
