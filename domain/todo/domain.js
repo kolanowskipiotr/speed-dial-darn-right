@@ -49,6 +49,20 @@ function getFirstLine(content) {
         .trim();
 }
 
+function _getRawFirstLine(content) {
+    if (!content) return '';
+    return content.split('\n').find(l => l.trim()) || '';
+}
+
+function _replaceFirstLine(content, newLine) {
+    if (!content) return newLine;
+    const lines = content.split('\n');
+    const idx = lines.findIndex(l => l.trim());
+    if (idx === -1) return newLine;
+    lines[idx] = newLine;
+    return lines.join('\n');
+}
+
 function _getTodoContainer() {
     return document.querySelector('.home-col-todo');
 }
@@ -298,23 +312,50 @@ function _makeTodoItemRow(item, listId) {
     check.textContent = item.isDone ? ICONS.check : ICONS.uncheck;
     check.onclick = (e) => { e.stopPropagation(); toggleTodoDone(item.id); };
 
-    // First-line text
-    const textEl = document.createElement('span');
-    textEl.className = 'todo-item-first-line';
-    if (firstLine) {
-        textEl.textContent = firstLine;
-    } else if (hasImages) {
-        textEl.textContent = '(image)';
-        textEl.classList.add('todo-item-image-fallback');
+    // First-line: editable input when expanded, plain span when collapsed
+    let titleEl;
+    if (isExpanded) {
+        titleEl = document.createElement('input');
+        titleEl.type = 'text';
+        titleEl.className = 'todo-item-first-line todo-item-first-line-edit';
+        titleEl.value = _getRawFirstLine(item.content);
+        titleEl.placeholder = '(empty)';
+        titleEl.onclick = (e) => e.stopPropagation();
+        const _commitEdit = () => {
+            const newContent = _replaceFirstLine(item.content, titleEl.value.trim());
+            if (newContent !== item.content) saveTodoItem(item.id, newContent);
+        };
+        titleEl.onblur = _commitEdit;
+        titleEl.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                _commitEdit();
+                expandedItemId = null;
+                renderTodoPanel(_getTodoContainer());
+            } else if (e.key === 'Escape') {
+                e.stopPropagation();
+                expandedItemId = null;
+                renderTodoPanel(_getTodoContainer());
+            }
+        };
     } else {
-        textEl.textContent = '(empty)';
-        textEl.classList.add('todo-item-empty-fallback');
+        titleEl = document.createElement('span');
+        titleEl.className = 'todo-item-first-line';
+        if (firstLine) {
+            titleEl.textContent = firstLine;
+        } else if (hasImages) {
+            titleEl.textContent = '(image)';
+            titleEl.classList.add('todo-item-image-fallback');
+        } else {
+            titleEl.textContent = '(empty)';
+            titleEl.classList.add('todo-item-empty-fallback');
+        }
+        titleEl.onclick = (e) => {
+            e.stopPropagation();
+            expandedItemId = item.id;
+            renderTodoPanel(_getTodoContainer());
+        };
     }
-    textEl.onclick = (e) => {
-        e.stopPropagation();
-        expandedItemId = isExpanded ? null : item.id;
-        renderTodoPanel(_getTodoContainer());
-    };
 
     // Actions
     const actions = document.createElement('div');
@@ -329,7 +370,7 @@ function _makeTodoItemRow(item, listId) {
 
     row.appendChild(dragHandle);
     row.appendChild(check);
-    row.appendChild(textEl);
+    row.appendChild(titleEl);
     if (hasImages) {
         const badge = document.createElement('span');
         badge.className = 'todo-image-badge';
@@ -414,6 +455,13 @@ function _makeTodoItemRow(item, listId) {
         if (timestamps.children.length) inlineContent.appendChild(timestamps);
 
         row.appendChild(inlineContent);
+    }
+
+    if (isExpanded) {
+        setTimeout(() => {
+            const inp = row.querySelector('.todo-item-first-line-edit');
+            if (inp) inp.focus();
+        }, 0);
     }
 
     return row;

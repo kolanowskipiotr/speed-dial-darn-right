@@ -312,6 +312,24 @@
     text-overflow: clip;
 }
 
+.todo-item-first-line-edit {
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    outline: none;
+    font-family: inherit;
+    color: inherit;
+    padding: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    cursor: text;
+}
+
+.todo-item-first-line-edit:focus {
+    border-bottom-color: var(--accent);
+}
+
 .todo-item-image-fallback,
 .todo-item-empty-fallback {
     color: var(--text-dimmer);
