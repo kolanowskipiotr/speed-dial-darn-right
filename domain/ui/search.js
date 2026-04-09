@@ -47,6 +47,15 @@ function hideSearchResults() {
     if (dropdown) dropdown.style.display = 'none';
 }
 
+function tokenize(s) {
+    return (s.match(/\p{L}+|\p{N}+/gu) || []).map(t => t.toLowerCase());
+}
+
+function scoreResult(texts, tokens) {
+    const combined = texts.join(' ').toLowerCase();
+    return tokens.filter(t => combined.includes(t)).length;
+}
+
 function renderSearchResults() {
     const dropdown = document.getElementById('searchDropdown');
     if (!dropdown) return;
@@ -57,14 +66,19 @@ function renderSearchResults() {
         return;
     }
 
+    const tokens = tokenize(q);
+    if (!tokens.length) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
     // Collect all matching dials across all tabs
     const dialResults = [];
     data.tabs.forEach(tab => {
         tab.groups.forEach(group => {
             group.dials.forEach(dial => {
-                if (dialMatchesSearch(dial, q)) {
-                    dialResults.push({ type: 'dial', dial, group, tab });
-                }
+                const score = scoreResult([dial.name, dial.url || ''], tokens);
+                if (score > 0) dialResults.push({ type: 'dial', dial, group, tab, score });
             });
         });
     });
@@ -72,25 +86,23 @@ function renderSearchResults() {
     // Collect all matching todo lists and items
     const todoResults = [];
     (data.todoLists || []).forEach(list => {
-        if (list.name.toLowerCase().includes(q)) {
-            todoResults.push({ type: 'todoList', list });
-        }
+        const listScore = scoreResult([list.name], tokens);
+        if (listScore > 0) todoResults.push({ type: 'todoList', list, score: listScore });
         list.items.forEach(item => {
-            if (item.content.toLowerCase().includes(q)) {
-                todoResults.push({ type: 'todoItem', item, list });
-            }
+            const score = scoreResult([item.content], tokens);
+            if (score > 0) todoResults.push({ type: 'todoItem', item, list, score });
         });
     });
 
     // Collect matching notes
     const noteResults = [];
     (data.notes || []).forEach(note => {
-        if (note.name.toLowerCase().includes(q) || note.content.toLowerCase().includes(q)) {
-            noteResults.push({ type: 'note', note });
-        }
+        const score = scoreResult([note.name, note.content], tokens);
+        if (score > 0) noteResults.push({ type: 'note', note, score });
     });
 
-    const results = [...dialResults, ...todoResults, ...noteResults];
+    const results = [...dialResults, ...todoResults, ...noteResults]
+        .sort((a, b) => b.score - a.score);
 
     dropdown.innerHTML = '';
 
@@ -269,10 +281,6 @@ function focusSearchResult(index) {
     if (items[index]) items[index].focus();
 }
 
-function dialMatchesSearch(dial, query) {
-    return dial.name.toLowerCase().includes(query)
-        || (dial.url && dial.url.toLowerCase().includes(query));
-}
 
 function jumpToTodoList(list) {
     clearSearch();
