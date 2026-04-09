@@ -8,7 +8,6 @@ The application uses **nginx SSI** (`ssi on` in `nginx.conf`) to include domain-
 - `header.html` — Logo, clock, search, edit bar, and tab navigation.
 - `main.html` — The core content area (`#groupsContainer`) and global toast.
 - `modal-confirm.html` — Shared delete confirmation dialog.
-- `modal-import.html` — Configuration import UI (file pick or paste).
 
 ### Dials Domain (`domain/dial/`)
 - `modal-dial.html` — Add/Edit dial form including favicon, emoji, custom URL, and color pickers.
@@ -22,6 +21,9 @@ The application uses **nginx SSI** (`ssi on` in `nginx.conf`) to include domain-
 ### Notes Domain (`domain/note/`)
 - `modal-conflict.html` — 3-pane side-by-side merge UI for Google Keep sync conflicts.
 - `modal-import-keep.html` — List and import notes from Google Keep.
+
+### Persistence Domain (`domain/persistence/`)
+- `modal-data.html` — Unified Data Management modal (`#dataModal`). Two-column layout: left panel for Google Drive Sync (auth, folder select, auto-backup toggle, manage-on-disconnect toggle, backup list), right column stacked with Local File (export/import) and Google Keep Sync (sync-all button).
 
 ---
 

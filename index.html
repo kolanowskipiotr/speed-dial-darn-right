@@ -19,7 +19,9 @@
     <!-- FEATURE DOMAINS -->
     <link rel="stylesheet" href="domain/dial/styles.css">
     <link rel="stylesheet" href="domain/todo/styles.css">
+    <link rel="stylesheet" href="domain/todo/editor.css">
     <link rel="stylesheet" href="domain/note/styles.css">
+    <link rel="stylesheet" href="domain/note/keep-sync.css">
     <link rel="stylesheet" href="domain/persistence/styles.css">
 
     <script type="importmap">
@@ -82,6 +84,8 @@
 <script src="domain/core/utils.js"></script>
 <script src="domain/persistence/domain.js"></script>
 <script src="domain/persistence/sync.js"></script>
+<script src="domain/persistence/sync-auth.js"></script>
+<script src="domain/persistence/sync-backup.js"></script>
 <script src="domain/persistence/export.js"></script>
 
 <!-- UI DOMAIN SCRIPTS -->
@@ -91,16 +95,23 @@
 <script src="domain/ui/search.js"></script>
 
 <!-- FEATURE DOMAIN SCRIPTS: TODO -->
-<script src="domain/todo/domain.js"></script>
+<script src="domain/todo/helpers.js"></script>
+<script src="domain/todo/render.js"></script>
+<script src="domain/todo/crud.js"></script>
+<script src="domain/todo/editor.js"></script>
+<script src="domain/todo/drag.js"></script>
 <script src="domain/todo/codemirror.js" type="module"></script>
 
 <!-- FEATURE DOMAIN SCRIPTS: NOTES -->
-<script src="domain/note/domain.js"></script>
+<script src="domain/note/helpers.js"></script>
+<script src="domain/note/render.js"></script>
+<script src="domain/note/crud.js"></script>
 <script src="domain/note/keep-sync.js"></script>
 <script src="domain/note/codemirror.js" type="module"></script>
 
 <!-- FEATURE DOMAIN SCRIPTS: DIALS -->
 <script src="domain/dial/domain.js"></script>
+<script src="domain/dial/render-dials.js"></script>
 <script src="domain/dial/view.js"></script>
 <script src="domain/dial/drag-drop.js"></script>
 

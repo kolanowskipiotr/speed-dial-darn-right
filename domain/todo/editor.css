@@ -1,0 +1,336 @@
+/* ── ITEM EDITOR ─────────────────────────────── */
+.todo-edit-view {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.todo-edit-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.todo-edit-back {
+    font-size: 12px;
+    padding: 3px 8px;
+    flex-shrink: 0;
+}
+
+.todo-edit-timestamps {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11px;
+    color: var(--text-dimmer);
+    text-align: right;
+}
+
+/* Split editor: vertical by default (editor on top, preview below) */
+.todo-edit-split {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.todo-edit-cm-host {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Full-screen: horizontal split (editor left, preview right) */
+body.todo-fullscreen .todo-edit-split {
+    flex-direction: row;
+}
+
+/* Draggable divider */
+.todo-edit-divider {
+    flex-shrink: 0;
+    background: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--transition);
+    user-select: none;
+}
+.todo-edit-divider:hover,
+.todo-edit-divider.dragging {
+    background: var(--accent);
+}
+
+/* Vertical split (default): horizontal bar */
+.todo-edit-split .todo-edit-divider {
+    width: 100%;
+    height: 5px;
+    cursor: row-resize;
+}
+.todo-edit-split .todo-edit-divider::after {
+    content: '';
+    width: 28px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--text-dimmer);
+    opacity: 0.6;
+}
+
+/* Horizontal split (fullscreen): vertical bar */
+body.todo-fullscreen .todo-edit-split .todo-edit-divider {
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+}
+body.todo-fullscreen .todo-edit-split .todo-edit-divider::after {
+    width: 2px;
+    height: 28px;
+}
+
+/* Make CM6 fill the host — standard fixed-height pattern */
+.todo-edit-cm-host .cm-editor {
+    height: 100%;
+}
+
+.todo-edit-cm-host .cm-scroller {
+    overflow: auto;
+}
+
+.todo-edit-textarea {
+    flex: 1;
+    border: none;
+    border-right: 1px solid var(--border);
+    resize: none;
+    padding: 14px;
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.todo-edit-preview {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 16px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+    /* Reset todo-item-inline-content chrome when used in split editor */
+    border: none !important;
+    border-radius: 0 !important;
+    background: var(--surface) !important;
+    margin: 0 !important;
+}
+
+.todo-edit-preview h1,
+.todo-edit-preview h2,
+.todo-edit-preview h3 {
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+    margin-top: 16px;
+    margin-bottom: 8px;
+}
+
+.todo-edit-preview code {
+    font-family: var(--mono-font, monospace);
+    background: var(--surface2);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.todo-edit-preview pre {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    overflow-x: auto;
+}
+
+.todo-edit-preview pre code {
+    background: none;
+    padding: 0;
+}
+
+.todo-edit-preview blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 0;
+    padding-left: 12px;
+    color: var(--text-muted);
+}
+
+.todo-edit-preview a {
+    color: var(--accent);
+}
+
+.todo-edit-preview img {
+    max-width: 100%;
+    border-radius: 4px;
+}
+
+.todo-edit-preview table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.todo-edit-preview th,
+.todo-edit-preview td {
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+}
+
+.todo-edit-preview th {
+    background: var(--surface2);
+}
+
+/* ── MOVE LIST OPTION ─────────────────────────── */
+.todo-move-list-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text);
+    text-align: left;
+    transition: background var(--transition), border-color var(--transition);
+    font-family: inherit;
+}
+
+.todo-move-list-option:hover {
+    background: var(--surface2);
+    border-color: var(--accent);
+}
+
+/* ── DRAG & DROP ─────────────────────────────── */
+.todo-list-drag-handle {
+    color: var(--text-dimmer);
+    cursor: grab;
+    flex-shrink: 0;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    user-select: none;
+    transition: color var(--transition);
+}
+
+.todo-list-drag-handle:hover {
+    color: var(--text-dim);
+}
+
+.todo-list-drag-handle:active {
+    cursor: grabbing;
+}
+
+.todo-item-drag-handle {
+    color: var(--text-dimmer);
+    cursor: grab;
+    flex-shrink: 0;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    user-select: none;
+    transition: color var(--transition);
+}
+
+.todo-item-drag-handle:hover {
+    color: var(--text-dim);
+}
+
+.todo-item-drag-handle:active {
+    cursor: grabbing;
+}
+
+.todo-item.todo-dragging {
+    opacity: 0.35;
+}
+
+/* Drop position indicator on item rows */
+.todo-item.todo-drop-before {
+    box-shadow: inset 0 2px 0 0 var(--accent);
+}
+
+.todo-item.todo-drop-after {
+    box-shadow: inset 0 -2px 0 0 var(--accent);
+}
+
+/* Cross-list drop target: collapsed list header highlight */
+.todo-list-header.todo-list-drag-over {
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    outline: 2px dashed var(--accent);
+    outline-offset: -2px;
+}
+
+/* List reorder drop indicator */
+.todo-list.todo-list-drop-before {
+    box-shadow: inset 0 2px 0 0 var(--accent);
+}
+
+.todo-list.todo-list-drop-after {
+    box-shadow: inset 0 -2px 0 0 var(--accent);
+}
+
+.todo-list.todo-list-dragging {
+    opacity: 0.4;
+}
+
+/* ── FULL-SCREEN MODE ─────────────────────────── */
+body.todo-fullscreen main {
+    padding-bottom: 0 !important;
+}
+
+body.todo-fullscreen .home-layout-a {
+    height: calc(100vh - var(--header-height, 128px));
+    grid-template-areas: "todo";
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+}
+
+body.todo-fullscreen .home-col-notes,
+body.todo-fullscreen .home-dials-strip {
+    display: none !important;
+}
+
+body.todo-fullscreen .home-col-todo {
+    border-right: none;
+}
+
+/* ── RESPONSIVE ──────────────────────────────── */
+@media (max-width: 900px) {
+    .home-layout-a {
+        grid-template-areas: "dials todo" "notes notes";
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .home-col-todo {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .home-dials-strip {
+        flex-direction: column;
+        gap: 8px;
+        border-right: 1px solid var(--border);
+        border-bottom: none;
+        padding-right: 12px;
+    }
+}

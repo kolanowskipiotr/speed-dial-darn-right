@@ -19,10 +19,15 @@ Styles are organized into domains following the DDD structure.
 - `domain/dial/styles.css` — Dial cards, grids, and dial-specific animations.
 
 ### todo
-- `domain/todo/styles.css` — Todo lists, accordion items, and the item editor.
+- `domain/todo/styles.css` — Home layout grid, todo panel/header, accordion lists, items, inline content, done section, and add-input row.
+- `domain/todo/editor.css` — Item editor split view, draggable divider, CM6 host, preview pane, move-list modal, drag-and-drop indicators, fullscreen mode, and responsive overrides.
 
 ### notes
-- `domain/note/styles.css` — Note tabs bar, CodeMirror integration, and Trash panel.
+- `domain/note/styles.css` — Note tabs bar, header controls, CM6 host, markdown preview, Mermaid, split.js gutter, trash panel, and fullscreen mode.
+- `domain/note/keep-sync.css` — Keep sync dot, cloud toggle button, spinning animation, conflict modal 3-pane layout, and import modal list.
+
+### persistence
+- `domain/persistence/styles.css` — Data management modal layout (`.data-cols`, `.data-panel`, `.data-sep`), Google Drive sync section (`.gdrive-user-row`, `.gdrive-config-section`, `.gdrive-folder-row`, `.gdrive-backup-list`), backup type badges, and sync status row.
 
 ---
 

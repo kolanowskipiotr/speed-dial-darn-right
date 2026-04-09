@@ -1,0 +1,79 @@
+/* ── Keep sync ──────────────────────────────────────────────── */
+
+/* Sync indicator dot on note tab */
+.notes-tab-sync-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin: 0 2px;
+    vertical-align: middle;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+}
+.notes-tab-sync-dot.sync-dot--off      { background: var(--text-muted); opacity: 0.3; }
+.notes-tab-sync-dot.sync-dot--ok       { background: var(--accent); }
+.notes-tab-sync-dot.sync-dot--pending  { background: var(--warning, #e8a000); }
+.notes-tab-sync-dot.sync-dot--conflict { background: var(--danger, #d93025); cursor: pointer; }
+
+/* Cloud toggle button */
+.notes-tab-keep-btn {
+    opacity: 0.35;
+    font-size: 0.8em;
+    padding: 0 2px;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+.notes-tab:hover .notes-tab-keep-btn,
+.notes-tab-keep-btn.keep-active { opacity: 1; }
+.notes-tab-keep-btn.keep-active { color: var(--accent); }
+
+.notes-keep-spinning {
+    animation: notes-spin 1.5s linear infinite;
+    display: inline-block;
+}
+
+@keyframes notes-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Sync now + import buttons in header */
+.notes-keep-sync-btn  { color: var(--accent); }
+.notes-import-keep-btn { color: var(--accent); }
+
+/* Conflict modal 3-pane layout */
+#notes-conflict-modal .conflict-panes {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--space-sm);
+    height: 60vh;
+}
+#notes-conflict-modal .conflict-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+#notes-conflict-modal .conflict-pane label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+#notes-conflict-modal .conflict-panes textarea {
+    width: 100%;
+    flex: 1;
+    resize: none;
+    font-family: var(--font-mono, monospace);
+    font-size: 12px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
+}
+
+/* Import modal list */
+.notes-import-keep-list {
+    max-height: 400px;
+    overflow-y: auto;
+}

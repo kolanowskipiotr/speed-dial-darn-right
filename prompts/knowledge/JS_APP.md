@@ -13,17 +13,29 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 - `domain/persistence/domain.js` — Data loading, saving, and format migration.
 - `domain/persistence/export.js` — Unified export logic, import processing, and GDrive background sync.
 
+### persistence (sync)
+- `domain/persistence/sync.js` — Constants, state vars, DOM refs, `initSyncConfig`, settings CRUD, all UI updaters, `handleSyncError`, toggle functions.
+- `domain/persistence/sync-auth.js` — GIS init (`initGis`), `fetchFreshToken`, `scheduleTokenRefresh`, `loginGDrive`, `logoutGDrive`.
+- `domain/persistence/sync-backup.js` — Folder & backup management (`fetchGDriveFolders`, `onFolderSelected`, `fetchGDriveBackups`, `renderBackupList`, `restoreFromGDrive`), `applyDiff`, `triggerManualSync`, `checkAutoSync`, `createBackupFolder`, and backend API call helpers.
+
 ### dials
 - `domain/dial/domain.js` — CRUD logic for Tabs, Groups, and Dials.
-- `domain/dial/view.js` — Rendering pipeline for dials grids, tab bars, and the Home tab.
+- `domain/dial/render-dials.js` — `makeDialCard()` (full card builder for home and regular tabs) and `escHtml()`.
+- `domain/dial/view.js` — `renderTabs`, `renderHomeTab`, `render`, `updateClock`, `updateDialCount`, `updateTabSizeSlider`, `trackDialVisit`.
 - `domain/dial/drag-drop.js` — Drag and drop orchestration for dials and groups.
 
 ### todo
-- `domain/todo/domain.js` — CRUD and logic for Todo Lists and Todo Items.
+- `domain/todo/helpers.js` — Module state vars (`todoFullScreen`, `expandedItemId`, drag state) and shared helpers (`findTodoList`, `findTodoItem`, `extractUploadIds`, `getFirstLine`, etc.).
+- `domain/todo/render.js` — `renderTodoPanel`, `_renderTodoAccordion`, `_renderTodoItems`, `_makeTodoItemRow`.
+- `domain/todo/crud.js` — List CRUD (`openTodoListModal`, `saveTodoList`, `deleteTodoListFromModal`), item add (`addTodoItem`), item CRUD (`saveTodoItem`, `toggleTodoDone`, `deleteTodoItem`, `moveTodoItemToPosition`), and move-between-lists (`openTodoMoveModal`, `moveTodoItem`).
+- `domain/todo/editor.js` — Item editor (`openItemEditor`, `_renderItemEditor`, `closeItemEditor`), image paste/drop (`_handleTodoImagePaste`, `_uploadTodoImage`), fullscreen (`toggleTodoFullScreen`, `exitTodoFullScreen`).
+- `domain/todo/drag.js` — `_clearTodoDragIndicators`, `_reorderTodoItem`, `_reorderTodoList`.
 - `domain/todo/codemirror.js` — (Module) CodeMirror 6 bridge for todo item editing.
 
 ### notes
-- `domain/note/domain.js` — Logic for Note management, tabs, and Trash system.
+- `domain/note/helpers.js` — Module state vars (`_notesSplitInstance`, `_notesTrashOpen`, etc.) and shared helpers (`findNote`, `_findTrashNote`, `_noteExcerpt`, `_purgeOldTrash`, etc.).
+- `domain/note/render.js` — `renderNotesPanel`, `_buildNotesTabs`, mermaid helpers (`_renderMermaidPreview`, `_applyMermaidInMarkdown`), `_initPreviewSplit`.
+- `domain/note/crud.js` — Note CRUD (`openNoteTab`, `addNote`, `deleteNote`, `restoreNote`, `permanentlyDeleteNote`, `emptyTrash`), trash panel (`_buildTrashPanel`), rename/language/fullscreen, Keep modals (`_openConflictModal`, `_openImportKeepModal`), `startNoteTabRename`, and window callbacks (`_notesCMDocChange`, `_notesUploadImage`).
 - `domain/note/keep-sync.js` — Logic for Google Keep bidirectional synchronization.
   - **Atomic Sync Lock**: Uses `_keepSyncInFlight` (Set) to prevent concurrent push/pull operations for the same note.
   - **Metadata Handling**: Notes are identified in Keep via a first-line `speed-dial:{id}` header. This is stripped by `_decodeKeepBody()` before showing in the UI or conflict modal.
@@ -47,20 +59,30 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 2. `domain/core/themes.js`
 3. `domain/core/utils.js`
 4. `domain/persistence/domain.js`
-5. `domain/persistence/export.js`
-6. `domain/ui/emoji-synonyms.js`
-7. `domain/ui/pickers.js`
-8. `domain/ui/logo-animation.js`
-9. `domain/ui/search.js`
-10. `domain/todo/domain.js`
-11. `domain/todo/codemirror.js` (module)
-12. `domain/note/domain.js`
-13. `domain/note/keep-sync.js`
-14. `domain/note/codemirror.js` (module)
-15. `domain/dial/domain.js`
-15. `domain/dial/view.js`
-16. `domain/dial/drag-drop.js`
-17. `domain/ui/init.js`
+5. `domain/persistence/sync.js`
+6. `domain/persistence/sync-auth.js`
+7. `domain/persistence/sync-backup.js`
+8. `domain/persistence/export.js`
+9. `domain/ui/emoji-synonyms.js`
+10. `domain/ui/pickers.js`
+11. `domain/ui/logo-animation.js`
+12. `domain/ui/search.js`
+13. `domain/todo/helpers.js`
+14. `domain/todo/render.js`
+15. `domain/todo/crud.js`
+16. `domain/todo/editor.js`
+17. `domain/todo/drag.js`
+18. `domain/todo/codemirror.js` (module)
+19. `domain/note/helpers.js`
+20. `domain/note/render.js`
+21. `domain/note/crud.js`
+22. `domain/note/keep-sync.js`
+23. `domain/note/codemirror.js` (module)
+24. `domain/dial/domain.js`
+25. `domain/dial/render-dials.js`
+26. `domain/dial/view.js`
+27. `domain/dial/drag-drop.js`
+28. `domain/ui/init.js`
 
 ---
 
