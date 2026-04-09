@@ -5,7 +5,7 @@ const GAPI_CLIENT_ID = '130093064192-5odc4arfjdpj0370emlse0rvg3e84jiq.apps.googl
 const GAPI_API_KEY = 'YOUR_GOOGLE_API_KEY'; // Needed for some non-auth calls, if any
 const SCOPES = [
     'https://www.googleapis.com/auth/drive.file',
-    'https://www.googleapis.com/auth/userinfo.email'
+    'https://www.googleapis.com/auth/userinfo.email',
 ];
 const BACKUP_BASE_URL = '/api/sync'; // Base URL for backend sync API
 
@@ -48,6 +48,7 @@ let googleUser = null;
 let currentAccessToken = null;
 let tokenExpiry = null; // timestamp (ms) when the current access token expires
 let currentFolderId = null;
+let keepLabelId = null;
 let gdriveSyncEnabled = false;
 let showModalOnDisconnect = true; // Default to true as requested
 let lastAutoSync = null;
@@ -91,6 +92,7 @@ function loadSyncSettings() {
     currentAccessToken = settings.token || null;
     tokenExpiry = settings.tokenExpiry || null;
     currentFolderId = settings.folderId || null;
+    keepLabelId = settings.keepLabelId || null;
     gdriveSyncEnabled = settings.autoSync || false;
     showModalOnDisconnect = (settings.showModalOnDisconnect !== undefined) ? settings.showModalOnDisconnect : true;
     lastAutoSync = settings.lastAutoSync || null;
@@ -109,6 +111,7 @@ function saveSyncSettings() {
         token: currentAccessToken,
         tokenExpiry: tokenExpiry,
         folderId: currentFolderId,
+        keepLabelId: keepLabelId,
         autoSync: gdriveSyncEnabled,
         showModalOnDisconnect: showModalOnDisconnect,
         lastAutoSync: lastAutoSync
@@ -172,6 +175,16 @@ function updateAuthUI() {
     const isConnected = !!(googleUser && currentAccessToken);
 
     updateSyncIndicators();
+
+    // Toggle Keep global sync button
+    const keepSyncAllBtn = document.getElementById('keepSyncAllBtn');
+    if (keepSyncAllBtn) keepSyncAllBtn.style.display = isConnected ? '' : 'none';
+
+    // Refresh notes tabs if they exist (shows/hides Keep icons)
+    if (typeof _buildNotesTabs === 'function') {
+        const scrollArea = document.querySelector('.notes-tabs-scroll-area');
+        if (scrollArea) _buildNotesTabs(scrollArea);
+    }
 
     if (isConnected) {
         gdriveLoginBtn.style.display = 'none';

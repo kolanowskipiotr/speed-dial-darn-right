@@ -101,6 +101,24 @@
             </div>
         </div>
 
+        <div class="data-sep"></div>
+
+        <!-- Section: Google Keep Sync -->
+        <div class="data-section">
+            <div class="data-section-title">Google Keep Sync</div>
+            <div class="data-cols">
+                <div style="flex: 1;">
+                    <div style="font-size: 11px; color: var(--text-dimmer); margin-bottom: 10px;">
+                        Sync only notes that have the ☁ toggle enabled. Sync is bidirectional.
+                    </div>
+                    <button class="btn-primary" id="keepSyncAllBtn" style="width: 100%; display: none;" onclick="syncAllKeepNotes()">
+                        Sync All Keep Notes
+                    </button>
+                    <div id="keepSyncStatus" class="sync-status"></div>
+                </div>
+            </div>
+        </div>
+
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal('dataModal')">Close</button>
             <button class="btn-primary" id="manualSyncBtn" style="display: none;" onclick="triggerManualSync()">

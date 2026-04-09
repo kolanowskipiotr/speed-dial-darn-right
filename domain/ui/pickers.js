@@ -1,3 +1,85 @@
+// ─── FAVICON PICKER ─────────────────────────────────────────────
+function loadFaviconOptions(rawUrl) {
+    let url = rawUrl.trim();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+    const picker = document.getElementById('faviconPicker');
+    picker.innerHTML = '<div class="favicon-loading"><div class="spinner"></div><span>Loading icons…</span></div>';
+    selectedFaviconUrl = '';
+
+    const domain = getDomain(url);
+    const bare = domain.replace(/^www\./, '');
+
+    const candidates = [...new Set([
+        `https://icons.duckduckgo.com/ip3/${domain}.ico`,
+        `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+        `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
+        `https://${domain}/favicon.ico`,
+        `https://${domain}/favicon.png`,
+        `https://${domain}/apple-touch-icon.png`,
+        `https://${bare}/favicon.ico`,
+    ])];
+
+    const found = [];
+    let pending = candidates.length;
+
+    const done = () => {
+        pending--;
+        if (pending === 0) renderFaviconTiles(found, picker);
+    };
+
+    candidates.forEach(src => {
+        const img = new Image();
+        let settled = false;
+        const settle = (ok) => {
+            if (settled) return; settled = true;
+            clearTimeout(timer);
+            if (ok && !found.includes(src)) found.push(src);
+            done();
+        };
+        img.onload = () => settle(true);
+        img.onerror = () => settle(false);
+        const timer = setTimeout(() => settle(false), 4000);
+        img.src = src;
+    });
+}
+
+function renderFaviconTiles(found, picker) {
+    picker.innerHTML = '';
+
+    if (!found.length) {
+        picker.innerHTML = '<span class="favicon-hint">No icons found — try Emoji or Custom URL</span>';
+        return;
+    }
+
+    found.forEach((src, i) => {
+        const tile = document.createElement('div');
+        tile.className = 'favicon-tile' + (i === 0 ? ' selected' : '');
+        if (i === 0) selectedFaviconUrl = src;
+
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = '';
+
+        const check = document.createElement('div');
+        check.className = 'favicon-check';
+        check.textContent = '✓';
+
+        tile.appendChild(img);
+        tile.appendChild(check);
+        tile.title = src;
+
+        tile.addEventListener('click', () => {
+            picker.querySelectorAll('.favicon-tile').forEach(t => t.classList.remove('selected'));
+            tile.classList.add('selected');
+            selectedFaviconUrl = src;
+        });
+
+        picker.appendChild(tile);
+    });
+}
+
 // ─── EMOJI PICKER ───────────────────────────────────────────────
 let _emojiPickerCallback = null;
 let _emojiPickerType = null; // 'dial' | 'group' | 'tab' | 'todoList'

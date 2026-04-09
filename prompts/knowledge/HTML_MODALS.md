@@ -19,21 +19,21 @@ The application uses **nginx SSI** (`ssi on` in `nginx.conf`) to include domain-
 - `modal-list.html` — Add/Edit todo list.
 - `modal-move.html` — Move todo item to another list.
 
+### Notes Domain (`domain/note/`)
+- `modal-conflict.html` — 3-pane side-by-side merge UI for Google Keep sync conflicts.
+- `modal-import-keep.html` — List and import notes from Google Keep.
+
 ---
 
 ## Load Pattern (index.html)
 ```html
-<!--#include virtual="/domain/ui/header.html" -->
-<!--#include virtual="/domain/ui/main.html" -->
-<!--#include virtual="/domain/ui/modal-confirm.html" -->
-<!--#include virtual="/domain/ui/modal-import.html" -->
-
+...
 <!-- FEATURE DOMAIN PARTIALS -->
-<!--#include virtual="/domain/dial/modal-dial.html" -->
-<!--#include virtual="/domain/dial/modal-tab.html" -->
-<!--#include virtual="/domain/dial/modal-group.html" -->
-<!--#include virtual="/domain/todo/modal-list.html" -->
+...
 <!--#include virtual="/domain/todo/modal-move.html" -->
+<!--#include virtual="/domain/note/modal-conflict.html" -->
+<!--#include virtual="/domain/note/modal-import-keep.html" -->
+<!--#include virtual="/domain/persistence/modal-data.html" -->
 ```
 
 ---

@@ -32,6 +32,11 @@ const ICONS = {
     info:        'ℹ️',
     sweep:       '🧹',
     preview:     '👁',
+    keepSyncOff: '☁',
+    keepSyncOn:  '☁',
+    keepSyncing: '↻',
+    keepConflict: '⚠',
+    keepImport:  '⊕',
 };
 
 const EMOJI_CATEGORIES = [

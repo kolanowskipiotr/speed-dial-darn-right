@@ -167,6 +167,30 @@ function renderNotesPanel(container) {
     sep.className = 'notes-header-sep';
     headerActions.appendChild(sep);
 
+    if (googleUser && currentAccessToken) {
+        if (note.keepSync) {
+            const isSyncing = window._keepSyncInFlight?.has(note.id);
+            const syncNowBtn = document.createElement('button');
+            syncNowBtn.className = 'btn-icon notes-keep-sync-btn';
+            if (isSyncing) syncNowBtn.classList.add('notes-keep-spinning');
+            syncNowBtn.title = 'Sync now with Google Keep';
+            syncNowBtn.textContent = ICONS.keepSyncing;
+            syncNowBtn.onclick = () => syncNoteToKeep(note);
+            headerActions.appendChild(syncNowBtn);
+        }
+
+        const importKeepBtn = document.createElement('button');
+        importKeepBtn.className = 'btn-icon notes-import-keep-btn';
+        importKeepBtn.title = 'Import note from Google Keep';
+        importKeepBtn.textContent = ICONS.keepImport;
+        importKeepBtn.onclick = () => _openImportKeepModal();
+        headerActions.appendChild(importKeepBtn);
+
+        const sep2 = document.createElement('span');
+        sep2.className = 'notes-header-sep';
+        headerActions.appendChild(sep2);
+    }
+
     const infoBtn = document.createElement('button');
     infoBtn.className = 'btn-icon notes-info-btn';
     infoBtn.title = 'Keyboard shortcuts';
@@ -322,6 +346,8 @@ function renderNotesPanel(container) {
 // ── Partial tabs re-render ────────────────────────────────────────
 
 function _buildNotesTabs(tabsBar) {
+    if (!tabsBar) tabsBar = document.querySelector('.notes-tabs-scroll-area');
+    if (!tabsBar) return;
     tabsBar.innerHTML = '';
     _getNotesSortedByOrder().forEach(note => {
         const tab = document.createElement('div');
@@ -333,6 +359,37 @@ function _buildNotesTabs(tabsBar) {
         nameSpan.className = 'notes-tab-name';
         nameSpan.textContent = note.name;
 
+        const dot = document.createElement('span');
+        dot.className = 'notes-tab-sync-dot';
+        const isSyncing = window._keepSyncInFlight?.has(note.id);
+
+        if (!note.keepSync) {
+            dot.classList.add('sync-dot--off');
+        } else if (note.keepConflict) {
+            dot.classList.add('sync-dot--conflict');
+            dot.title = 'Sync conflict! Click to resolve.';
+            dot.onclick = (e) => { e.stopPropagation(); _openConflictModal(note.id); };
+        } else if (isSyncing) {
+            dot.classList.add('sync-dot--pending');
+            dot.textContent = ICONS.loading;
+            dot.title = 'Syncing...';
+        } else if (note.keepLocalDirty) {
+            dot.classList.add('sync-dot--pending');
+            dot.title = 'Sync pending...';
+        } else {
+            dot.classList.add('sync-dot--ok');
+            dot.title = 'In sync with Google Keep';
+        }
+        if (!googleUser || !currentAccessToken) dot.style.display = 'none';
+
+        const keepBtn = document.createElement('button');
+        keepBtn.className = 'btn-icon notes-tab-keep-btn' + (note.keepSync ? ' keep-active' : '');
+        keepBtn.textContent = isSyncing ? ICONS.keepSyncing : (note.keepSync ? ICONS.keepSyncOn : ICONS.keepSyncOff);
+        keepBtn.title = note.keepSync ? 'Disable Google Keep sync' : 'Enable Google Keep sync';
+        if (isSyncing) keepBtn.classList.add('notes-keep-spinning');
+        keepBtn.onclick = (e) => { e.stopPropagation(); toggleNoteKeepSync(note.id); };
+        if (!googleUser || !currentAccessToken) keepBtn.style.display = 'none';
+
         const closeBtn = document.createElement('button');
         closeBtn.className = 'notes-tab-close';
         closeBtn.textContent = '×';
@@ -340,6 +397,8 @@ function _buildNotesTabs(tabsBar) {
         closeBtn.addEventListener('click', e => { e.stopPropagation(); deleteNote(note.id); });
 
         tab.appendChild(nameSpan);
+        tab.appendChild(dot);
+        tab.appendChild(keepBtn);
         tab.appendChild(closeBtn);
 
         // Click to open tab
@@ -483,19 +542,24 @@ function openNoteTab(noteId) {
     if (container) renderNotesPanel(container);
 }
 
-function addNote() {
+function addNote(newName) {
     _notesTrashOpen = false;
     const sorted = _getNotesSortedByOrder();
     const maxOrder = sorted.length ? sorted[sorted.length - 1].order : -1;
     const now = new Date().toISOString();
     const newNote = {
         id:        uid(),
-        name:      'New Note',
+        name:      newName || 'New Note',
         content:   '',
         language:  'markdown',
         order:     maxOrder + 1,
         createdAt: now,
         updatedAt: now,
+        keepSync:  false,
+        keepNoteId: null,
+        keepLastSyncedAt: null,
+        keepLocalDirty: false,
+        keepConflict: false,
     };
     data.notes.push(newNote);
     activeNoteId = newNote.id;
@@ -516,6 +580,8 @@ function deleteNote(noteId) {
         note.content = NotesCM.getValue();
         note.updatedAt = new Date().toISOString();
     }
+
+    if (note.keepSync && note.keepNoteId) removeNoteFromKeep(note);   // fire-and-forget
 
     // Move to trash with deletion timestamp
     if (!data.notesTrash) data.notesTrash = [];
@@ -735,6 +801,7 @@ function renameNote(noteId, newName) {
     note.name = trimmed || note.name;
     note.updatedAt = new Date().toISOString();
     saveData();
+    if (note.keepSync && !note.keepConflict) debounceKeepSync(note);
     // Partial re-render: tabs scroll area only (leaves + and trash buttons intact)
     const scrollArea = document.querySelector('.notes-tabs-scroll-area');
     if (scrollArea) _buildNotesTabs(scrollArea);
@@ -759,6 +826,102 @@ function toggleNotesFullScreen() {
     document.body.classList.toggle('notes-fullscreen', notesFullScreen);
     const btn = document.querySelector('.notes-fullscreen-btn');
     if (btn) btn.textContent = notesFullScreen ? '⛶' : '⤢';
+}
+
+async function _openConflictModal(noteId) {
+    const note = findNote(noteId);
+    if (!note || !note.keepNoteId) return;
+
+    const modal = document.getElementById('notes-conflict-modal');
+    if (!modal) return;
+
+    const localArea = modal.querySelector('.conflict-local');
+    const mergeArea = modal.querySelector('.conflict-merge');
+    const keepArea  = modal.querySelector('.conflict-keep');
+    const saveBtn   = modal.querySelector('.conflict-save-btn');
+
+    localArea.value = note.content;
+    mergeArea.value = note.content;
+    keepArea.value  = 'Loading from Google Keep...';
+    saveBtn.disabled = true;
+
+    openModal('notes-conflict-modal');
+
+    try {
+        const keepNote = await _keepFetch(`/${note.keepNoteId}`);
+        if (!keepNote || keepNote.status === 404) {
+            keepArea.value = 'Note not found in Google Keep.';
+            return;
+        }
+        const keepContent = _decodeKeepBody(keepNote.body?.text?.text || '');
+        keepArea.value = keepContent;
+        saveBtn.disabled = false;
+        
+        saveBtn.onclick = async () => {
+            await resolveKeepConflict(noteId, mergeArea.value);
+            closeModal('notes-conflict-modal');
+        };
+    } catch (e) {
+        keepArea.value = 'Error loading note from Google Keep.';
+        console.error(e);
+    }
+}
+
+async function _openImportKeepModal() {
+    const modal = document.getElementById('notes-import-keep-modal');
+    if (!modal) return;
+
+    const listContainer = modal.querySelector('.notes-import-keep-list');
+    listContainer.innerHTML = '<div style="padding: 20px; text-align: center;">Loading notes from Google Keep...</div>';
+
+    openModal('notes-import-keep-modal');
+
+    const notes = await listKeepNotes();
+    listContainer.innerHTML = '';
+
+    if (!notes.length) {
+        listContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dimmer);">No notes found in Google Keep</div>';
+        return;
+    }
+
+    notes.forEach(keepNote => {
+        const row = document.createElement('div');
+        row.className = 'notes-trash-row';
+
+        const info = document.createElement('div');
+        info.className = 'notes-trash-info';
+
+        const name = document.createElement('span');
+        name.className = 'notes-trash-name';
+        name.textContent = keepNote.title || '(No title)';
+
+        const isChecklist = !keepNote.body?.text;
+        const content = keepNote.body?.text?.text || '';
+        const preview = document.createElement('span');
+        preview.className = 'notes-trash-preview';
+        preview.textContent = isChecklist ? '(checklist — not importable)' : (_decodeKeepBody(content).slice(0, 80) + '...');
+
+        info.appendChild(name);
+        info.appendChild(preview);
+
+        const actions = document.createElement('div');
+        actions.className = 'notes-trash-actions';
+
+        const importBtn = document.createElement('button');
+        importBtn.className = 'btn-icon notes-import-btn';
+        importBtn.title = 'Import';
+        importBtn.textContent = ICONS.keepImport;
+        importBtn.disabled = isChecklist;
+        importBtn.onclick = async () => {
+            await importNoteFromKeep(keepNote);
+            closeModal('notes-import-keep-modal');
+        };
+
+        actions.appendChild(importBtn);
+        row.appendChild(info);
+        row.appendChild(actions);
+        listContainer.appendChild(row);
+    });
 }
 
 function startNoteTabRename(noteId) {
@@ -791,6 +954,7 @@ window._notesCMDocChange = function(content) {
     note.content = content;
     note.updatedAt = new Date().toISOString();
     saveData();
+    if (note.keepSync && !note.keepConflict) debounceKeepSync(note);
     if (note.language === 'markdown' && _notesPreviewEl) {
         _notesPreviewEl.innerHTML = marked.parse(content);
         _applyMermaidInMarkdown(_notesPreviewEl);

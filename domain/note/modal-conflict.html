@@ -1,0 +1,24 @@
+<div class="modal-backdrop" id="notes-conflict-modal">
+    <div class="modal" style="max-width: 90%; width: 1200px;">
+        <div class="modal-title">Sync Conflict</div>
+        <p style="margin-bottom: var(--space-md); font-size: 14px; color: var(--text-dim);">Both local and Google Keep versions have changed. Merge them below.</p>
+        <div class="conflict-panes">
+            <div class="conflict-pane">
+                <label>Local Version (Read-only)</label>
+                <textarea class="conflict-local" readonly></textarea>
+            </div>
+            <div class="conflict-pane">
+                <label>Merged Result (Editable)</label>
+                <textarea class="conflict-merge"></textarea>
+            </div>
+            <div class="conflict-pane">
+                <label>Google Keep Version (Read-only)</label>
+                <textarea class="conflict-keep" readonly></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('notes-conflict-modal')">Cancel</button>
+            <button class="btn-primary conflict-save-btn">Save & Sync</button>
+        </div>
+    </div>
+</div>

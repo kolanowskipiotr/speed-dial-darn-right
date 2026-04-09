@@ -63,3 +63,11 @@ The notes tabs bar now uses a flex layout with a separate scroll area to keep th
 
 ### Fullscreen Modes
 Fullscreen modes for Todo and Notes are toggled via classes on `body` (`.todo-fullscreen`, `.notes-fullscreen`). These classes override the grid layout in `layout.css` to give the active domain 100% of the viewport.
+
+### Google Keep Sync UI
+
+- **Sync Dot** (`.notes-tab-sync-dot`): Small indicator on note tabs. Uses status colors: `--text-muted` (off), `--accent` (in sync), `--warning` (pending/syncing), `--danger` (conflict).
+- **Cloud Toggle** (`.notes-tab-keep-btn`): Icon button on note tabs. Active state (`.keep-active`) uses `--accent`.
+- **Syncing Animation** (`.notes-keep-spinning`): 1.5s linear rotation applied to the Keep icon during active sync operations.
+- **Conflict Modal** (`#notes-conflict-modal`): A 3-pane side-by-side grid layout (`.conflict-panes`) for merging Local, Merge result, and Keep versions.
+

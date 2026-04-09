@@ -24,6 +24,11 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 
 ### notes
 - `domain/note/domain.js` — Logic for Note management, tabs, and Trash system.
+- `domain/note/keep-sync.js` — Logic for Google Keep bidirectional synchronization.
+  - **Atomic Sync Lock**: Uses `_keepSyncInFlight` (Set) to prevent concurrent push/pull operations for the same note.
+  - **Metadata Handling**: Notes are identified in Keep via a first-line `speed-dial:{id}` header. This is stripped by `_decodeKeepBody()` before showing in the UI or conflict modal.
+  - **API Wrapper**: `_keepFetch()` centralizes Keep API calls, handling authentication errors (401/403) via the unified `handleSyncError()` in `sync.js`.
+  - **Conflict Resolution**: Detected during polling if `keepLocalDirty` is true and Keep `updateTime` has changed. Resolved via a 3-pane merge modal.
 - `domain/note/codemirror.js` — (Module) CodeMirror 6 bridge for note editing.
 - Mermaid.js is vendored at `vendor/mermaid.min.js` and initialized with `startOnLoad: false` in `index.html`. Mermaid diagrams render in two contexts: (1) `language === 'mermaid'` notes show a full live split-pane preview; (2) fenced `mermaid` code blocks inside markdown notes are replaced with rendered SVGs via `_applyMermaidInMarkdown()`. The `_renderMermaidPreview()` async helper uses a render token to discard stale results. `_initPreviewSplit()` supersedes the former `_initMarkdownSplit()` and handles both `markdown` and `mermaid` note types.
 
@@ -50,8 +55,9 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 10. `domain/todo/domain.js`
 11. `domain/todo/codemirror.js` (module)
 12. `domain/note/domain.js`
-13. `domain/note/codemirror.js` (module)
-14. `domain/dial/domain.js`
+13. `domain/note/keep-sync.js`
+14. `domain/note/codemirror.js` (module)
+15. `domain/dial/domain.js`
 15. `domain/dial/view.js`
 16. `domain/dial/drag-drop.js`
 17. `domain/ui/init.js`
