@@ -19,6 +19,10 @@ function initSearch() {
             e.preventDefault();
             focusSearchResult(0);
         }
+        if (e.key === 'Enter') {
+            const q = searchQuery.trim();
+            if (q) window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(q);
+        }
     });
 
     // Close results when clicking outside the search wrap
@@ -27,6 +31,8 @@ function initSearch() {
             hideSearchResults();
         }
     });
+
+    input.focus();
 }
 
 function clearSearch() {
