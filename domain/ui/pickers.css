@@ -139,7 +139,7 @@
     background: var(--surface2);
     border: 1px solid var(--border-hover);
     border-radius: var(--radius-sm);
-    height: 300px;
+    height: 350px;
     margin-top: 8px;
     overflow: hidden;
 }
@@ -211,17 +211,20 @@
 }
 
 .emoji-opt {
-    font-size: 20px;
+    font-size: 28px;
     cursor: pointer;
     padding: 5px;
     border-radius: 6px;
     transition: background var(--transition);
     line-height: 1;
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: none;
+    border: none;
+    color: inherit;
 }
 
 .emoji-opt:hover { background: var(--surface3); }

@@ -129,7 +129,7 @@ function renderEmojiPicker(type, filter = '') {
     picker.appendChild(searchWrap);
 
     const categoriesWrap = document.createElement('div');
-    categoriesWrap.className = 'emoji-categories-wrap';
+    categoriesWrap.className = 'emoji-scroll-area';
     picker.appendChild(categoriesWrap);
 
     function renderCategories(query) {
@@ -140,9 +140,9 @@ function renderEmojiPicker(type, filter = '') {
 
             const catEl = document.createElement('div');
             catEl.className = 'emoji-category';
-            
+
             const title = document.createElement('div');
-            title.className = 'emoji-category-title';
+            title.className = 'emoji-category-label';
             title.textContent = cat.label;
             catEl.appendChild(title);
 
@@ -150,7 +150,7 @@ function renderEmojiPicker(type, filter = '') {
             grid.className = 'emoji-grid';
             matched.forEach(emoji => {
                 const btn = document.createElement('button');
-                btn.className = 'emoji-item';
+                btn.className = 'emoji-opt';
                 btn.textContent = emoji;
                 btn.title = emojiName(emoji);
                 btn.onclick = () => selectEmoji(type, emoji);

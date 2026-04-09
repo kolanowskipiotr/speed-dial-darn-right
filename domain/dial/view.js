@@ -388,7 +388,8 @@ function render() {
 }
 
 function makeDialCard(dial, groupId, gi, di, opts = {}) {
-    const card = document.createElement('div');
+    const card = document.createElement('a');
+    if (dial.url) card.href = dial.url;
     card.dataset.id = dial.id;
     card.dataset.groupId = groupId;
 
@@ -572,16 +573,25 @@ function makeDialCard(dial, groupId, gi, di, opts = {}) {
         });
     }
 
-    // Click to open
+    // Click to open — let the browser handle navigation natively via <a href>
     card.addEventListener('click', e => {
-        if (editMode) return;
-        if (e.target.closest('.dial-edit-overlay') || e.target.closest('.dial-drag-handle-overlay')) return;
-        trackDialVisit(dial.id);
-        if (e.metaKey || e.ctrlKey) {
-            window.open(dial.url, '_blank');
-        } else {
-            window.location.href = dial.url;
+        if (editMode || e.target.closest('.dial-edit-overlay') || e.target.closest('.dial-drag-handle-overlay')) {
+            e.preventDefault();
+            return;
         }
+        trackDialVisit(dial.id);
+        // Left-click → current tab (native anchor behavior)
+        // Cmd/Ctrl+click → new tab (native browser behavior)
+    });
+
+    // Middle-click — let browser open in background tab natively (do not preventDefault)
+    card.addEventListener('auxclick', e => {
+        if (e.button !== 1) return;
+        if (editMode || e.target.closest('.dial-edit-overlay') || e.target.closest('.dial-drag-handle-overlay')) {
+            e.preventDefault();
+            return;
+        }
+        trackDialVisit(dial.id);
     });
 
     return card;
