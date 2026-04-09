@@ -189,6 +189,22 @@ body.edit-mode .tab-size-control { display: flex; }
 /* ── GDRIVE INDICATORS ───────────────────── */
 .gdrive-indicators {
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+}
+
+.gdrive-state-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 8px;
+    color: var(--text-dimmer);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+.gdrive-dots-row {
+    display: flex;
     align-items: center;
     gap: 0;
 }
@@ -196,10 +212,12 @@ body.edit-mode .tab-size-control { display: flex; }
 .gdrive-indicator {
     position: relative;
     width: 20px;
-    height: 28px;
+    height: 18px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 2px;
     background: none;
     border: none;
     border-radius: var(--radius-sm);
@@ -214,19 +232,29 @@ body.edit-mode .tab-size-control { display: flex; }
 }
 
 /* Dot */
-.gdrive-indicator::after {
-    content: '';
+.gdrive-dot {
     width: 7px;
     height: 7px;
     border-radius: 50%;
     background: var(--surface3);
     box-shadow: none;
     transition: background var(--transition), box-shadow var(--transition);
+    flex-shrink: 0;
 }
 
-.gdrive-indicator.connected::after {
+.gdrive-indicator.connected .gdrive-dot {
     background: var(--success);
     box-shadow: 0 0 5px var(--success);
+}
+
+/* Abbreviation label */
+.gdrive-abbr {
+    font-family: 'DM Mono', monospace;
+    font-size: 7px;
+    color: var(--text-dimmer);
+    letter-spacing: 0;
+    line-height: 1;
+    pointer-events: none;
 }
 
 /* Hover label */

@@ -15,10 +15,13 @@
                 <div class="search-dropdown" id="searchDropdown" style="display:none"></div>
             </div>
             <div class="gdrive-indicators">
-                <button class="gdrive-indicator" id="gdriveIndicator"           onclick="openDataModal()" data-label="Google Drive: not connected" aria-label="Google Drive connection"></button>
-                <button class="gdrive-indicator" id="gdriveTokenIndicator"      onclick="openDataModal()" data-label="Token: no session"           aria-label="Token freshness"></button>
-                <button class="gdrive-indicator" id="gdriveAutoSyncIndicator"   onclick="openDataModal()" data-label="Daily auto-backup: off"      aria-label="Daily auto-backup status"></button>
-                <button class="gdrive-indicator" id="gdriveDisconnectIndicator" onclick="openDataModal()" data-label="Manage on disconnect: off"   aria-label="Manage on disconnect status"></button>
+                <span class="gdrive-state-label">State</span>
+                <div class="gdrive-dots-row">
+                    <button class="gdrive-indicator" id="gdriveIndicator"           onclick="openDataModal()" data-label="Google Drive: not connected" aria-label="Google Drive connection"><span class="gdrive-dot"></span><span class="gdrive-abbr">GD</span></button>
+                    <button class="gdrive-indicator" id="gdriveTokenIndicator"      onclick="openDataModal()" data-label="Token: no session"           aria-label="Token freshness"><span class="gdrive-dot"></span><span class="gdrive-abbr">TV</span></button>
+                    <button class="gdrive-indicator" id="gdriveAutoSyncIndicator"   onclick="openDataModal()" data-label="Daily auto-backup: off"      aria-label="Daily auto-backup status"><span class="gdrive-dot"></span><span class="gdrive-abbr">DB</span></button>
+                    <button class="gdrive-indicator" id="gdriveDisconnectIndicator" onclick="openDataModal()" data-label="Manage on disconnect: off"   aria-label="Manage on disconnect status"><span class="gdrive-dot"></span><span class="gdrive-abbr">MD</span></button>
+                </div>
             </div>
             <div class="edit-toggle" id="editToggle" onclick="toggleEditMode()">
                 <span class="edit-toggle-label" id="editLabel">Edit</span>
