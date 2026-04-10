@@ -9,6 +9,7 @@ Styles are organized into domains following the DDD structure.
 - `domain/core/base.css` — CSS reset and base body styles.
 - `domain/core/layout.css` — Main layout grid and shared containers.
 - `domain/core/animations.css` — Shared animations and transitions.
+- `domain/core/style.css` — **Deprecated stub only** (5-line comment pointing to the split files above). Do not add styles here.
 
 ### ui
 - `domain/ui/header.css` — Header layout, clock, search, and edit mode bar.

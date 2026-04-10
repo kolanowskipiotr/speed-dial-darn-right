@@ -5,7 +5,7 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 ## Domain Map
 
 ### core
-- `domain/core/state.js` — Single source of truth for emojis, icons, and mutable global state.
+- `domain/core/state.js` — Single source of truth for emojis, icons, and **all** mutable global state. Includes dial/tab vars (`activeTabId`, `editMode`, `editingDialId`, …), todo vars (`activeTodoListId`, `editingTodoListId`, `editingTodoItemId`), and note vars (`activeNoteId`, `notesFullScreen`, `_notesSearchHighlight`). Domain-level `helpers.js` files declare only their own module-private state.
 - `domain/core/themes.js` — Theme definitions, loading, and application logic.
 - `domain/core/utils.js` — Shared utility functions (UID, image resizing, uploads, toasts, confirms).
 
@@ -25,8 +25,8 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 - `domain/dial/drag-drop.js` — Drag and drop orchestration for dials and groups.
 
 ### todo
-- `domain/todo/helpers.js` — Module state vars (`todoFullScreen`, `expandedItemId`, drag state) and shared helpers (`findTodoList`, `findTodoItem`, `extractUploadIds`, `getFirstLine`, etc.).
-- `domain/todo/render.js` — `renderTodoPanel`, `_renderTodoAccordion`, `_renderTodoItems`, `_makeTodoItemRow`.
+- `domain/todo/helpers.js` — Module state vars (`todoFullScreen`, `expandedItemId`, drag state) and shared helpers (`findTodoList`, `findTodoItem`, `extractUploadIds`, `getFirstLine`, `_getRawFirstLine`, `_replaceFirstLine`, `_getTodoContainer`).
+- `domain/todo/render.js` — `renderTodoPanel`, `_renderTodoAccordion`, `_renderTodoItems`, `_makeTodoItemRow`. When a todo item is expanded (`expandedItemId === item.id`), the first-line span is replaced with a `<input class="todo-item-first-line-edit">` showing the raw (unstripped) first line. Blur saves silently; Enter saves + collapses; Escape discards + collapses. Auto-focus fires via `setTimeout` after row is inserted.
 - `domain/todo/crud.js` — List CRUD (`openTodoListModal`, `saveTodoList`, `deleteTodoListFromModal`), item add (`addTodoItem`), item CRUD (`saveTodoItem`, `toggleTodoDone`, `deleteTodoItem`, `moveTodoItemToPosition`), and move-between-lists (`openTodoMoveModal`, `moveTodoItem`).
 - `domain/todo/editor.js` — Item editor (`openItemEditor`, `_renderItemEditor`, `closeItemEditor`), image paste/drop (`_handleTodoImagePaste`, `_uploadTodoImage`), fullscreen (`toggleTodoFullScreen`, `exitTodoFullScreen`).
 - `domain/todo/drag.js` — `_clearTodoDragIndicators`, `_reorderTodoItem`, `_reorderTodoList`.
