@@ -30,11 +30,11 @@ function addNote(newName) {
         order:     maxOrder + 1,
         createdAt: now,
         updatedAt: now,
-        keepSync:  false,
-        keepNoteId: null,
-        keepLastSyncedAt: null,
-        keepLocalDirty: false,
-        keepConflict: false,
+        taskSync: false,
+        taskIds: [],
+        taskLastSyncedAt: null,
+        taskLocalDirty: false,
+        taskConflict: false,
     };
     data.notes.push(newNote);
     activeNoteId = newNote.id;
@@ -56,7 +56,7 @@ function deleteNote(noteId) {
         note.updatedAt = new Date().toISOString();
     }
 
-    if (note.keepSync && note.keepNoteId) removeNoteFromKeep(note);   // fire-and-forget
+    if (note.taskSync && note.taskIds?.length) removeNoteFromTasks(note); // fire-and-forget
 
     // Move to trash with deletion timestamp
     if (!data.notesTrash) data.notesTrash = [];
@@ -67,7 +67,20 @@ function deleteNote(noteId) {
     // If all notes were deleted, create a fresh default note
     if (!data.notes.length) {
         const now = new Date().toISOString();
-        data.notes = [{ id: uid(), name: 'Note 1', content: '', language: 'markdown', order: 0, createdAt: now, updatedAt: now }];
+        data.notes = [{
+            id: uid(),
+            name: 'Note 1',
+            content: '',
+            language: 'markdown',
+            order: 0,
+            createdAt: now,
+            updatedAt: now,
+            taskSync: false,
+            taskIds: [],
+            taskLastSyncedAt: null,
+            taskLocalDirty: false,
+            taskConflict: false,
+        }];
     }
 
     // Update activeNoteId if needed
@@ -276,7 +289,7 @@ function renameNote(noteId, newName) {
     note.name = trimmed || note.name;
     note.updatedAt = new Date().toISOString();
     saveData();
-    if (note.keepSync && !note.keepConflict) debounceKeepSync(note);
+    if (note.taskSync && !note.taskConflict) debounceTasksSync(note);
     // Partial re-render: tabs scroll area only (leaves + and trash buttons intact)
     const scrollArea = document.querySelector('.notes-tabs-scroll-area');
     if (scrollArea) _buildNotesTabs(scrollArea);
@@ -303,63 +316,188 @@ function toggleNotesFullScreen() {
     if (btn) btn.textContent = notesFullScreen ? '⛶' : '⤢';
 }
 
+function _splitConflictLines(text) {
+    return String(text || '').replace(/\r\n/g, '\n').split('\n');
+}
+
+function _computeChangedLineSet(aText, bText) {
+    const a = _splitConflictLines(aText);
+    const b = _splitConflictLines(bText);
+    const maxLen = Math.max(a.length, b.length);
+    const changed = new Set();
+    for (let i = 0; i < maxLen; i += 1) {
+        if ((a[i] || '') !== (b[i] || '')) changed.add(i + 1);
+    }
+    return changed;
+}
+
+function _unionLineSets(a, b) {
+    const out = new Set(a);
+    b.forEach(line => out.add(line));
+    return out;
+}
+
+function _buildConflictLineGradients(textarea, lineSet, color) {
+    if (!textarea || !lineSet?.size) return 'none';
+    const style = getComputedStyle(textarea);
+    const lineHeight = parseFloat(style.lineHeight) || 18;
+    const padTop = parseFloat(style.paddingTop) || 8;
+
+    return [...lineSet]
+        .sort((a, b) => a - b)
+        .map(lineNum => {
+            const top = padTop + (lineNum - 1) * lineHeight;
+            const bottom = top + lineHeight;
+            return `linear-gradient(to bottom, transparent ${top}px, ${color} ${top}px, ${color} ${bottom}px, transparent ${bottom}px)`;
+        })
+        .join(',');
+}
+
+function _replaceConflictLine(text, lineNum, nextLine) {
+    const lines = _splitConflictLines(text);
+    while (lines.length < lineNum) lines.push('');
+    lines[lineNum - 1] = nextLine || '';
+    return lines.join('\n');
+}
+
+function _renderConflictLineActions(localArea, mergeArea, remoteArea, lineSet) {
+    const modal = document.getElementById('notes-conflict-modal');
+    if (!modal) return;
+
+    const leftInner  = modal.querySelector('#conflictGutterLeft .conflict-gutter-inner');
+    const rightInner = modal.querySelector('#conflictGutterRight .conflict-gutter-inner');
+    if (!leftInner || !rightInner) return;
+
+    leftInner.innerHTML  = '';
+    rightInner.innerHTML = '';
+    if (!lineSet?.size) return;
+
+    const localLines  = _splitConflictLines(localArea.value  || '');
+    const remoteLines = _splitConflictLines(remoteArea.value || '');
+
+    const style     = getComputedStyle(mergeArea);
+    const lineHeight = parseFloat(style.lineHeight) || 18;
+    const padTop     = parseFloat(style.paddingTop)  || 8;
+    const scrollTop  = mergeArea.scrollTop;
+
+    // Offset from gutter-inner top to first text line inside the adjacent textarea.
+    // The gutter has no label — its inner starts at the same Y as the pane top,
+    // so we need to skip past the label+gap height.
+    const mergePane = mergeArea.closest('.conflict-pane') || mergeArea.parentElement;
+    const labelEl   = mergePane?.querySelector('label');
+    const labelOffset = labelEl ? (labelEl.offsetHeight + 4) : 0; // 4px = flex gap
+
+    [...lineSet].sort((a, b) => a - b).forEach(lineNum => {
+        const top = labelOffset + padTop + (lineNum - 1) * lineHeight - scrollTop + (lineHeight - 16) / 2;
+
+        // >> button in LEFT gutter  →  copies local line into merge
+        const leftBtn = document.createElement('button');
+        leftBtn.type  = 'button';
+        leftBtn.className = 'conflict-gutter-btn';
+        leftBtn.title     = `Use line ${lineNum} from local (left)`;
+        leftBtn.textContent = '»';
+        leftBtn.style.top   = `${top}px`;
+        leftBtn.onclick = (e) => {
+            e.stopPropagation();
+            mergeArea.value = _replaceConflictLine(mergeArea.value || '', lineNum, localLines[lineNum - 1] || '');
+            _refreshConflictLineHighlights(localArea, mergeArea, remoteArea);
+        };
+        leftInner.appendChild(leftBtn);
+
+        // << button in RIGHT gutter  →  copies remote line into merge
+        const rightBtn = document.createElement('button');
+        rightBtn.type  = 'button';
+        rightBtn.className = 'conflict-gutter-btn';
+        rightBtn.title     = `Use line ${lineNum} from Google Tasks (right)`;
+        rightBtn.textContent = '«';
+        rightBtn.style.top   = `${top}px`;
+        rightBtn.onclick = (e) => {
+            e.stopPropagation();
+            mergeArea.value = _replaceConflictLine(mergeArea.value || '', lineNum, remoteLines[lineNum - 1] || '');
+            _refreshConflictLineHighlights(localArea, mergeArea, remoteArea);
+        };
+        rightInner.appendChild(rightBtn);
+    });
+}
+
+function _refreshConflictLineHighlights(localArea, mergeArea, remoteArea) {
+    if (!localArea || !mergeArea || !remoteArea) return;
+
+    const localText = localArea.value || '';
+    const remoteText = remoteArea.value || '';
+    const mergeText = mergeArea.value || '';
+
+    const changedLocalRemote = _computeChangedLineSet(localText, remoteText);
+    const mergeVsLocal = _computeChangedLineSet(mergeText, localText);
+    const mergeVsRemote = _computeChangedLineSet(mergeText, remoteText);
+    const changedMerge = _unionLineSets(mergeVsLocal, mergeVsRemote);
+
+    localArea.style.setProperty('--conflict-line-gradients', _buildConflictLineGradients(localArea, changedLocalRemote, 'var(--surface3)'));
+    remoteArea.style.setProperty('--conflict-line-gradients', _buildConflictLineGradients(remoteArea, changedLocalRemote, 'var(--surface3)'));
+    mergeArea.style.setProperty('--conflict-line-gradients', _buildConflictLineGradients(mergeArea, changedMerge, 'var(--accent2)'));
+    _renderConflictLineActions(localArea, mergeArea, remoteArea, changedMerge);
+}
+
 async function _openConflictModal(noteId) {
     const note = findNote(noteId);
-    if (!note || !note.keepNoteId) return;
+    if (!note || !note.taskIds?.length) return;
 
     const modal = document.getElementById('notes-conflict-modal');
     if (!modal) return;
 
     const localArea = modal.querySelector('.conflict-local');
     const mergeArea = modal.querySelector('.conflict-merge');
-    const keepArea  = modal.querySelector('.conflict-keep');
+    const remoteArea = modal.querySelector('.conflict-remote');
     const saveBtn   = modal.querySelector('.conflict-save-btn');
 
     localArea.value = note.content;
     mergeArea.value = note.content;
-    keepArea.value  = 'Loading from Google Keep...';
+    remoteArea.value = 'Loading from Google Tasks...';
+    _refreshConflictLineHighlights(localArea, mergeArea, remoteArea);
+    mergeArea.oninput = () => _refreshConflictLineHighlights(localArea, mergeArea, remoteArea);
+    mergeArea.onscroll = () => _refreshConflictLineHighlights(localArea, mergeArea, remoteArea);
     saveBtn.disabled = true;
 
     openModal('notes-conflict-modal');
 
     try {
-        const keepNote = await _keepFetch(`/${note.keepNoteId}`);
-        if (!keepNote || keepNote.status === 404) {
-            keepArea.value = 'Note not found in Google Keep.';
+        const tasksContent = await _fetchTasksNoteContentForConflict(note);
+        if (tasksContent === null) {
+            remoteArea.value = 'Note not found in Google Tasks.';
             return;
         }
-        const keepContent = _decodeKeepBody(keepNote.body?.text?.text || '');
-        keepArea.value = keepContent;
+        remoteArea.value = tasksContent;
+        _refreshConflictLineHighlights(localArea, mergeArea, remoteArea);
         saveBtn.disabled = false;
 
         saveBtn.onclick = async () => {
-            await resolveKeepConflict(noteId, mergeArea.value);
+            await resolveTaskConflict(noteId, mergeArea.value);
             closeModal('notes-conflict-modal');
         };
     } catch (e) {
-        keepArea.value = 'Error loading note from Google Keep.';
+        remoteArea.value = 'Error loading note from Google Tasks.';
         console.error(e);
     }
 }
 
-async function _openImportKeepModal() {
-    const modal = document.getElementById('notes-import-keep-modal');
+async function _openImportTasksModal() {
+    const modal = document.getElementById('notes-import-tasks-modal');
     if (!modal) return;
 
-    const listContainer = modal.querySelector('.notes-import-keep-list');
-    listContainer.innerHTML = '<div style="padding: 20px; text-align: center;">Loading notes from Google Keep...</div>';
+    const listContainer = modal.querySelector('.notes-import-tasks-list');
+    listContainer.innerHTML = '<div style="padding: 20px; text-align: center;">Loading notes from Google Tasks...</div>';
 
-    openModal('notes-import-keep-modal');
+    openModal('notes-import-tasks-modal');
 
-    const notes = await listKeepNotes();
+    const notes = await listTasksNotes();
     listContainer.innerHTML = '';
 
     if (!notes.length) {
-        listContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dimmer);">No notes found in Google Keep</div>';
+        listContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dimmer);">No notes found in Google Tasks</div>';
         return;
     }
 
-    notes.forEach(keepNote => {
+    notes.forEach(noteGroup => {
         const row = document.createElement('div');
         row.className = 'notes-trash-row';
 
@@ -368,13 +506,13 @@ async function _openImportKeepModal() {
 
         const name = document.createElement('span');
         name.className = 'notes-trash-name';
-        name.textContent = keepNote.title || '(No title)';
+        name.textContent = noteGroup.name || '(No title)';
 
-        const isChecklist = !keepNote.body?.text;
-        const content = keepNote.body?.text?.text || '';
         const preview = document.createElement('span');
         preview.className = 'notes-trash-preview';
-        preview.textContent = isChecklist ? '(checklist — not importable)' : (_decodeKeepBody(content).slice(0, 80) + '...');
+        const totalParts = noteGroup.parts?.length || 0;
+        const firstPreview = noteGroup.parts?.[0]?.preview || '';
+        preview.textContent = `${totalParts} part${totalParts === 1 ? '' : 's'}${firstPreview ? ` · ${firstPreview}` : ''}`;
 
         info.appendChild(name);
         info.appendChild(preview);
@@ -385,11 +523,10 @@ async function _openImportKeepModal() {
         const importBtn = document.createElement('button');
         importBtn.className = 'btn-icon notes-import-btn';
         importBtn.title = 'Import';
-        importBtn.textContent = ICONS.keepImport;
-        importBtn.disabled = isChecklist;
+        importBtn.textContent = ICONS.taskImport;
         importBtn.onclick = async () => {
-            await importNoteFromKeep(keepNote);
-            closeModal('notes-import-keep-modal');
+            await importNoteFromTasks(noteGroup);
+            closeModal('notes-import-tasks-modal');
         };
 
         actions.appendChild(importBtn);
@@ -429,7 +566,7 @@ window._notesCMDocChange = function(content) {
     note.content = content;
     note.updatedAt = new Date().toISOString();
     saveData();
-    if (note.keepSync && !note.keepConflict) debounceKeepSync(note);
+    if (note.taskSync && !note.taskConflict) debounceTasksSync(note);
     if (note.language === 'markdown' && _notesPreviewEl) {
         _notesPreviewEl.innerHTML = marked.parse(content);
         _applyMermaidInMarkdown(_notesPreviewEl);

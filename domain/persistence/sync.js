@@ -7,9 +7,7 @@ const GAPI_API_KEY = 'YOUR_GOOGLE_API_KEY'; // Needed for some non-auth calls, i
 const SCOPES = [
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/userinfo.email',
-    // NOTE: 'https://www.googleapis.com/auth/keep' is a Google Workspace-restricted scope.
-    // It cannot be added to OAuth consent screen for personal Gmail accounts.
-    // Google Keep sync is therefore not available via the standard OAuth flow.
+    'https://www.googleapis.com/auth/tasks',
 ];
 const BACKUP_BASE_URL = '/api/sync'; // Base URL for backend sync API
 
@@ -17,7 +15,7 @@ let googleUser = null;
 let currentAccessToken = null;
 let tokenExpiry = null; // timestamp (ms) when the current access token expires
 let currentFolderId = null;
-let keepLabelId = null;
+let tasksNotesListId = null;
 let gdriveSyncEnabled = false;
 let showModalOnDisconnect = true; // Default to true as requested
 let lastAutoSync = null;
@@ -38,10 +36,12 @@ const showModalOnDisconnectToggle = document.getElementById('showModalOnDisconne
 const gdriveBackupList = document.getElementById('gdriveBackupList');
 const manualSyncBtn = document.getElementById('manualSyncBtn');
 const syncStatusSpan = document.getElementById('syncStatus');
+const tasksSyncHintIcon = document.getElementById('tasksSyncHintIcon');
 
 // --- Initialization ---
 function initSyncConfig() {
     loadSyncSettings();
+    if (tasksSyncHintIcon) tasksSyncHintIcon.textContent = ICONS.taskSyncOn;
     updateAuthUI();
     updateSyncConfigUI();
     // checkAutoSync() is intentionally NOT called here — it runs after the token
@@ -62,7 +62,7 @@ function loadSyncSettings() {
     currentAccessToken = settings.token || null;
     tokenExpiry = settings.tokenExpiry || null;
     currentFolderId = settings.folderId || null;
-    keepLabelId = settings.keepLabelId || null;
+    tasksNotesListId = settings.tasksNotesListId || null;
     gdriveSyncEnabled = settings.autoSync || false;
     showModalOnDisconnect = (settings.showModalOnDisconnect !== undefined) ? settings.showModalOnDisconnect : true;
     lastAutoSync = settings.lastAutoSync || null;
@@ -82,7 +82,7 @@ function saveSyncSettings() {
         token: currentAccessToken,
         tokenExpiry: tokenExpiry,
         folderId: currentFolderId,
-        keepLabelId: keepLabelId,
+        tasksNotesListId: tasksNotesListId,
         autoSync: gdriveSyncEnabled,
         showModalOnDisconnect: showModalOnDisconnect,
         lastAutoSync: lastAutoSync,
@@ -124,18 +124,29 @@ function _autoSyncLabel() {
 function updateSyncIndicators() {
     const isConnected  = !!(googleUser && currentAccessToken);
     const tokenFresh   = !!(currentAccessToken && tokenExpiry && Date.now() < tokenExpiry);
+    const notes = (typeof data !== 'undefined' && Array.isArray(data.notes)) ? data.notes : [];
+    const notesSyncOn = notes.some(n => n.taskSync);
+    const notesSyncConflict = notes.some(n => n.taskSync && n.taskConflict);
+    const notesSyncMode = notesSyncConflict ? 'conflict' : (notesSyncOn ? 'on' : 'off');
 
     const dots = {
-        gdriveIndicator:           { on: isConnected,          label: isConnected ? `Google Drive: ${googleUser.email}` : 'Google Drive: not connected' },
-        gdriveTokenIndicator:      { on: tokenFresh,           label: tokenFresh  ? `Token valid — expires ${new Date(tokenExpiry).toLocaleTimeString()}` : 'Token: no session' },
-        gdriveAutoSyncIndicator:   { on: gdriveSyncEnabled,    label: _autoSyncLabel() },
-        gdriveDisconnectIndicator: { on: showModalOnDisconnect, label: `Manage on disconnect: ${showModalOnDisconnect ? 'on' : 'off'}` },
+        gdriveIndicator:           { mode: isConnected ? 'on' : 'off', label: isConnected ? `Google Drive: ${googleUser.email}` : 'Google Drive: not connected' },
+        gdriveTokenIndicator:      { mode: tokenFresh ? 'on' : 'off', label: tokenFresh  ? `Token valid — expires ${new Date(tokenExpiry).toLocaleTimeString()}` : 'Token: no session' },
+        gdriveAutoSyncIndicator:   { mode: gdriveSyncEnabled ? 'on' : 'off', label: _autoSyncLabel() },
+        gdriveDisconnectIndicator: { mode: showModalOnDisconnect ? 'on' : 'off', label: `Manage on disconnect: ${showModalOnDisconnect ? 'on' : 'off'}` },
+        gdriveNotesSyncIndicator:  {
+            mode: notesSyncMode,
+            label: notesSyncConflict
+                ? 'Notes Tasks sync: conflict (merge required)'
+                : (notesSyncOn ? 'Notes Tasks sync: on' : 'Notes Tasks sync: off'),
+        },
     };
 
-    for (const [id, { on, label }] of Object.entries(dots)) {
+    for (const [id, { mode, label }] of Object.entries(dots)) {
         const el = document.getElementById(id);
         if (!el) continue;
-        el.classList.toggle('connected', on);
+        el.classList.toggle('connected', mode === 'on');
+        el.classList.toggle('conflict', mode === 'conflict');
         el.dataset.label = label;
     }
 }
@@ -148,11 +159,11 @@ function updateAuthUI() {
 
     updateSyncIndicators();
 
-    // Toggle Keep global sync button
-    const keepSyncAllBtn = document.getElementById('keepSyncAllBtn');
-    if (keepSyncAllBtn) keepSyncAllBtn.style.display = isConnected ? '' : 'none';
+    // Toggle Tasks global sync button
+    const tasksSyncAllBtn = document.getElementById('tasksSyncAllBtn');
+    if (tasksSyncAllBtn) tasksSyncAllBtn.style.display = isConnected ? '' : 'none';
 
-    // Refresh notes tabs if they exist (shows/hides Keep icons)
+    // Refresh notes tabs if they exist (shows/hides Tasks icons)
     if (typeof _buildNotesTabs === 'function') {
         const scrollArea = document.querySelector('.notes-tabs-scroll-area');
         if (scrollArea) _buildNotesTabs(scrollArea);
@@ -202,7 +213,11 @@ function updateShowModalOnDisconnectToggleUI() {
 function handleSyncError(e, customMsg) {
     console.error('Sync error:', e);
     const isAuthError = e.message && (e.message.includes('401') || e.message.includes('Invalid Credentials') || e.message.includes('Session expired'));
-    const isNetworkError = e.message && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError'));
+    const isNetworkError = e.message && (
+        e.message.includes('Failed to fetch') ||
+        e.message.includes('NetworkError') ||
+        e.message.includes('Load failed')
+    );
     const gisLoaded = typeof google !== 'undefined';
 
     if (isAuthError) {

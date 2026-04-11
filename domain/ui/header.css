@@ -247,6 +247,11 @@ body.edit-mode .tab-size-control { display: flex; }
     box-shadow: 0 0 5px var(--success);
 }
 
+.gdrive-indicator.conflict .gdrive-dot {
+    background: var(--danger);
+    box-shadow: 0 0 5px var(--danger);
+}
+
 /* Abbreviation label */
 .gdrive-abbr {
     font-family: 'DM Mono', monospace;

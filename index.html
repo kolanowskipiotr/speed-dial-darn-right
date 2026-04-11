@@ -4,24 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Speed Dial Darn Right</title>
-    
+
     <!-- CORE DOMAIN -->
     <link rel="stylesheet" href="domain/core/tokens.css">
     <link rel="stylesheet" href="domain/core/base.css">
     <link rel="stylesheet" href="domain/core/layout.css">
     <link rel="stylesheet" href="domain/core/animations.css">
-    
+
     <!-- UI DOMAIN -->
     <link rel="stylesheet" href="domain/ui/header.css">
     <link rel="stylesheet" href="domain/ui/modals.css">
     <link rel="stylesheet" href="domain/ui/pickers.css">
-    
+
     <!-- FEATURE DOMAINS -->
     <link rel="stylesheet" href="domain/dial/styles.css">
     <link rel="stylesheet" href="domain/todo/styles.css">
     <link rel="stylesheet" href="domain/todo/editor.css">
     <link rel="stylesheet" href="domain/note/styles.css">
-    <link rel="stylesheet" href="domain/note/keep-sync.css">
+    <link rel="stylesheet" href="domain/note/tasks-sync.css">
     <link rel="stylesheet" href="domain/persistence/styles.css">
 
     <script type="importmap">
@@ -73,7 +73,7 @@
 <!--#include virtual="/domain/todo/modal-list.html" -->
 <!--#include virtual="/domain/todo/modal-move.html" -->
 <!--#include virtual="/domain/note/modal-conflict.html" -->
-<!--#include virtual="/domain/note/modal-import-keep.html" -->
+<!--#include virtual="/domain/note/modal-import-tasks.html" -->
 <!--#include virtual="/domain/persistence/modal-data.html" -->
 
 <div id="dial-url-tooltip"></div>
@@ -106,7 +106,7 @@
 <script src="domain/note/helpers.js"></script>
 <script src="domain/note/render.js"></script>
 <script src="domain/note/crud.js"></script>
-<script src="domain/note/keep-sync.js"></script>
+<script src="domain/note/tasks-sync.js"></script>
 <script src="domain/note/codemirror.js" type="module"></script>
 
 <!-- FEATURE DOMAIN SCRIPTS: DIALS -->

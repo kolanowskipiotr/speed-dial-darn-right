@@ -38,6 +38,11 @@ function initGis() {
                 updateSyncConfigUI();
                 updateSyncIndicators();
                 scheduleTokenRefresh();
+                // Re-render notes panel so sync/import buttons appear immediately.
+                const notesContainer = _getNotesContainer?.();
+                if (notesContainer && typeof renderNotesPanel === 'function') {
+                    renderNotesPanel(notesContainer);
+                }
                 await fetchGDriveFolders(true);
                 if (currentFolderId) fetchGDriveBackups();
                 syncStatusSpan.textContent = 'Logged in successfully.';
@@ -56,6 +61,12 @@ function initGis() {
             if (ok) {
                 fetchGDriveFolders(true).then(() => { if (currentFolderId) fetchGDriveBackups(); });
                 checkAutoSync();
+                // Re-render notes panel so sync/import buttons appear now that we have a token.
+                const notesContainer = _getNotesContainer?.();
+                if (notesContainer && typeof renderNotesPanel === 'function') {
+                    renderNotesPanel(notesContainer);
+                }
+                if (typeof pollAllTaskNotes === 'function') pollAllTaskNotes();
             } else {
                 // Refresh token missing or expired — need a new login
                 googleUser = null;

@@ -32,11 +32,11 @@ const ICONS = {
     info:        'ℹ️',
     sweep:       '🧹',
     preview:     '👁',
-    keepSyncOff: '☁',
-    keepSyncOn:  '☁',
-    keepSyncing: '↻',
-    keepConflict: '⚠',
-    keepImport:  '⊕',
+    taskSyncOff: '☁',
+    taskSyncOn:  '☁',
+    taskSyncing: '↻',
+    taskConflict:'⚠',
+    taskImport:  '⊕',
 };
 
 const EMOJI_CATEGORIES = [

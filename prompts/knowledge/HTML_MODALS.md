@@ -19,11 +19,11 @@ The application uses **nginx SSI** (`ssi on` in `nginx.conf`) to include domain-
 - `modal-move.html` — Move todo item to another list.
 
 ### Notes Domain (`domain/note/`)
-- `modal-conflict.html` — 3-pane side-by-side merge UI for Google Keep sync conflicts.
-- `modal-import-keep.html` — List and import notes from Google Keep.
+- `modal-conflict.html` — 3-pane side-by-side merge UI for Google Tasks sync conflicts.
+- `modal-import-tasks.html` — List and import notes from Google Tasks.
 
 ### Persistence Domain (`domain/persistence/`)
-- `modal-data.html` — Unified Data Management modal (`#dataModal`). Two-column layout: left panel for Google Drive Sync (auth, folder select, auto-backup toggle, manage-on-disconnect toggle, backup list), right column stacked with Local File (export/import) and Google Keep Sync (sync-all button).
+- `modal-data.html` — Unified Data Management modal (`#dataModal`). Two-column layout: left panel for Google Drive Sync (auth, folder select, auto-backup toggle, manage-on-disconnect toggle, backup list), right column stacked with Local File (export/import) and Google Tasks Sync (sync-all button).
 
 ---
 
@@ -34,7 +34,7 @@ The application uses **nginx SSI** (`ssi on` in `nginx.conf`) to include domain-
 ...
 <!--#include virtual="/domain/todo/modal-move.html" -->
 <!--#include virtual="/domain/note/modal-conflict.html" -->
-<!--#include virtual="/domain/note/modal-import-keep.html" -->
+<!--#include virtual="/domain/note/modal-import-tasks.html" -->
 <!--#include virtual="/domain/persistence/modal-data.html" -->
 ```
 

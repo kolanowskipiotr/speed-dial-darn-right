@@ -1,5 +1,4 @@
 const http = require('http');
-const https = require('https');
 const fs   = require('fs');
 const path = require('path');
 const { performSync, listGDriveFolders, listGDriveBackups, fetchGDriveFile, createGDriveFolder } = require('./sync');
@@ -153,39 +152,6 @@ http.createServer(async (req, res) => {
             }
             return;
         }
-        return;
-    }
-
-    // API: KEEP PROXY (Forwards to keep.googleapis.com)
-    if (req.url.startsWith('/api/keep')) {
-        const token = req.headers['authorization']?.split(' ')[1] || req.headers['x-access-token'];
-        if (!token) {
-            res.writeHead(401);
-            res.end('Unauthorized: No token provided');
-            return;
-        }
-
-        const keepPath = req.url.replace('/api/keep', '');
-        const targetUrl = `https://keep.googleapis.com/v1${keepPath}`;
-
-        const proxyReq = https.request(targetUrl, {
-            method: req.method,
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        }, (proxyRes) => {
-            res.writeHead(proxyRes.statusCode, proxyRes.headers);
-            proxyRes.pipe(res);
-        });
-
-        proxyReq.on('error', (e) => {
-            console.error('[keep-proxy] Request failed:', e.message);
-            res.writeHead(500);
-            res.end('Proxy Error');
-        });
-
-        req.pipe(proxyReq);
         return;
     }
 

@@ -3,7 +3,7 @@
     <div class="modal" style="max-width: 780px; height: 720px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;">
         <div class="modal-title" style="flex-shrink: 0;">Data Management</div>
 
-        <!-- Main layout: Google Drive (left, large) | Local File + Keep Sync (right, stacked) -->
+        <!-- Main layout: Google Drive (left, large) | Local File + Tasks Sync (right, stacked) -->
         <div class="data-cols" style="align-items: stretch; flex: 1; min-height: 0;">
 
             <!-- Left: Google Drive Sync (full height, backup list fills space) -->
@@ -76,7 +76,7 @@
                 </div>
             </div>
 
-            <!-- Right column: Local File (top) + Google Keep Sync (bottom) -->
+            <!-- Right column: Local File (top) + Google Tasks Sync (bottom) -->
             <div style="flex: 2; min-height: 0; display: flex; flex-direction: column; gap: 15px;">
 
                 <!-- Local File -->
@@ -110,16 +110,18 @@
                     </details>
                 </div>
 
-                <!-- Google Keep Sync -->
+                <!-- Google Tasks Sync -->
                 <div class="data-panel" style="flex: none;">
-                    <div class="data-section-title">Google Keep Sync</div>
+                    <div class="data-section-title">Google Tasks Sync</div>
                     <div style="font-size: 11px; color: var(--text-dimmer); margin-bottom: 10px;">
-                        Sync only notes that have the ☁ toggle enabled. Sync is bidirectional.
+                        Sync only notes that have the <span class="data-tasks-icon" id="tasksSyncHintIcon" aria-hidden="true"></span> toggle enabled. <br>
+                        Sync is bidirectional. <br>
+                        Only notes that are in "<span class="data-tasks-list-name"><i>SDDR - Notes</i></span>" list can be synced.
                     </div>
-                    <button class="btn-primary" id="keepSyncAllBtn" style="width: 100%; display: none;" onclick="syncAllKeepNotes()">
-                        Sync All Keep Notes
+                    <button class="btn-primary" id="tasksSyncAllBtn" style="width: 100%; display: none;" onclick="syncAllTaskNotes()">
+                        Sync all notes Now
                     </button>
-                    <div id="keepSyncStatus" class="sync-status"></div>
+                    <div id="tasksSyncStatus" class="sync-status"></div>
                 </div>
 
             </div>

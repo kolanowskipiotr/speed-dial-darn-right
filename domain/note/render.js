@@ -20,7 +20,20 @@ function renderNotesPanel(container) {
     // Ensure we have at least one note (guard against corrupt state)
     if (!data.notes || !data.notes.length) {
         const now = new Date().toISOString();
-        data.notes = [{ id: uid(), name: 'Note 1', content: '', language: 'markdown', order: 0, createdAt: now, updatedAt: now }];
+        data.notes = [{
+            id: uid(),
+            name: 'Note 1',
+            content: '',
+            language: 'markdown',
+            order: 0,
+            createdAt: now,
+            updatedAt: now,
+            taskSync: false,
+            taskIds: [],
+            taskLastSyncedAt: null,
+            taskLocalDirty: false,
+            taskConflict: false,
+        }];
         saveData();
     }
 
@@ -91,23 +104,23 @@ function renderNotesPanel(container) {
     headerActions.appendChild(sep);
 
     if (googleUser && currentAccessToken) {
-        if (note.keepSync) {
-            const isSyncing = window._keepSyncInFlight?.has(note.id);
-            const syncNowBtn = document.createElement('button');
-            syncNowBtn.className = 'btn-icon notes-keep-sync-btn';
-            if (isSyncing) syncNowBtn.classList.add('notes-keep-spinning');
-            syncNowBtn.title = 'Sync now with Google Keep';
-            syncNowBtn.textContent = ICONS.keepSyncing;
-            syncNowBtn.onclick = () => syncNoteToKeep(note);
-            headerActions.appendChild(syncNowBtn);
-        }
+        // Sync ALL notes that have sync enabled — always visible when logged in
+        const anySyncing = (data.notes || []).some(n => n.taskSync && window._tasksSyncInFlight?.has(n.id));
+        const syncNowBtn = document.createElement('button');
+        syncNowBtn.className = 'btn-icon notes-tasks-sync-btn';
+        if (anySyncing) syncNowBtn.classList.add('notes-sync-spinning');
+        syncNowBtn.title = 'Refresh sync for all notes';
+        syncNowBtn.textContent = ICONS.taskSyncing;
+        syncNowBtn.onclick = () => syncAllTaskNotes();
+        headerActions.appendChild(syncNowBtn);
 
-        const importKeepBtn = document.createElement('button');
-        importKeepBtn.className = 'btn-icon notes-import-keep-btn';
-        importKeepBtn.title = 'Import note from Google Keep';
-        importKeepBtn.textContent = ICONS.keepImport;
-        importKeepBtn.onclick = () => _openImportKeepModal();
-        headerActions.appendChild(importKeepBtn);
+        // Import from Tasks — always visible when logged in
+        const importTasksBtn = document.createElement('button');
+        importTasksBtn.className = 'btn-icon notes-import-tasks-btn';
+        importTasksBtn.title = 'Import note from Google Tasks';
+        importTasksBtn.textContent = ICONS.taskImport;
+        importTasksBtn.onclick = () => _openImportTasksModal();
+        headerActions.appendChild(importTasksBtn);
 
         const sep2 = document.createElement('span');
         sep2.className = 'notes-header-sep';
@@ -284,34 +297,28 @@ function _buildNotesTabs(tabsBar) {
 
         const dot = document.createElement('span');
         dot.className = 'notes-tab-sync-dot';
-        const isSyncing = window._keepSyncInFlight?.has(note.id);
+        const isSyncing = window._tasksSyncInFlight?.has(note.id);
 
-        if (!note.keepSync) {
+        if (!note.taskSync) {
             dot.classList.add('sync-dot--off');
-        } else if (note.keepConflict) {
+            dot.title = 'Google Tasks sync disabled';
+        } else if (note.taskConflict) {
             dot.classList.add('sync-dot--conflict');
             dot.title = 'Sync conflict! Click to resolve.';
             dot.onclick = (e) => { e.stopPropagation(); _openConflictModal(note.id); };
-        } else if (isSyncing) {
-            dot.classList.add('sync-dot--pending');
-            dot.textContent = ICONS.loading;
-            dot.title = 'Syncing...';
-        } else if (note.keepLocalDirty) {
-            dot.classList.add('sync-dot--pending');
-            dot.title = 'Sync pending...';
         } else {
             dot.classList.add('sync-dot--ok');
-            dot.title = 'In sync with Google Keep';
+            dot.title = isSyncing ? 'Syncing...' : (note.taskLocalDirty ? 'Sync pending...' : 'Google Tasks sync enabled');
         }
         if (!googleUser || !currentAccessToken) dot.style.display = 'none';
 
-        const keepBtn = document.createElement('button');
-        keepBtn.className = 'btn-icon notes-tab-keep-btn' + (note.keepSync ? ' keep-active' : '');
-        keepBtn.textContent = isSyncing ? ICONS.keepSyncing : (note.keepSync ? ICONS.keepSyncOn : ICONS.keepSyncOff);
-        keepBtn.title = note.keepSync ? 'Disable Google Keep sync' : 'Enable Google Keep sync';
-        if (isSyncing) keepBtn.classList.add('notes-keep-spinning');
-        keepBtn.onclick = (e) => { e.stopPropagation(); toggleNoteKeepSync(note.id); };
-        if (!googleUser || !currentAccessToken) keepBtn.style.display = 'none';
+        const tasksBtn = document.createElement('button');
+        tasksBtn.className = 'btn-icon notes-tab-tasks-btn' + (note.taskSync ? ' tasks-active' : '');
+        tasksBtn.textContent = isSyncing ? ICONS.taskSyncing : (note.taskSync ? ICONS.taskSyncOn : ICONS.taskSyncOff);
+        tasksBtn.title = note.taskSync ? 'Disable Google Tasks sync' : 'Enable Google Tasks sync';
+        if (isSyncing) tasksBtn.classList.add('notes-sync-spinning');
+        tasksBtn.onclick = (e) => { e.stopPropagation(); toggleNoteTasksSync(note.id); };
+        if (!googleUser || !currentAccessToken) tasksBtn.style.display = 'none';
 
         const closeBtn = document.createElement('button');
         closeBtn.className = 'notes-tab-close';
@@ -321,7 +328,7 @@ function _buildNotesTabs(tabsBar) {
 
         tab.appendChild(nameSpan);
         tab.appendChild(dot);
-        tab.appendChild(keepBtn);
+        tab.appendChild(tasksBtn);
         tab.appendChild(closeBtn);
 
         // Click to open tab

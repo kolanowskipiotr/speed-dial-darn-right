@@ -37,11 +37,55 @@ function loadData() {
     }
 
     // Ensure notes exists — create default note on first run
-    if (!data.notes) {
+    if (!Array.isArray(data.notes)) {
         const now = new Date().toISOString();
-        data.notes = [{ id: uid(), name: 'Note 1', content: '', language: 'markdown', order: 0, createdAt: now, updatedAt: now }];
+        data.notes = [{
+            id: uid(),
+            name: 'Note 1',
+            content: '',
+            language: 'markdown',
+            order: 0,
+            createdAt: now,
+            updatedAt: now,
+            taskSync: false,
+            taskIds: [],
+            taskLastSyncedAt: null,
+            taskLocalDirty: false,
+            taskConflict: false,
+        }];
         saveData();
     }
+    if (!data.notes.length) {
+        const now = new Date().toISOString();
+        data.notes.push({
+            id: uid(),
+            name: 'Note 1',
+            content: '',
+            language: 'markdown',
+            order: 0,
+            createdAt: now,
+            updatedAt: now,
+            taskSync: false,
+            taskIds: [],
+            taskLastSyncedAt: null,
+            taskLocalDirty: false,
+            taskConflict: false,
+        });
+        saveData();
+    }
+
+    // Backfill Tasks sync fields for existing notes.
+    let notesTouched = false;
+    data.notes.forEach((note, idx) => {
+        if (typeof note.taskSync !== 'boolean') { note.taskSync = false; notesTouched = true; }
+        if (!Array.isArray(note.taskIds)) { note.taskIds = []; notesTouched = true; }
+        if (typeof note.taskLastSyncedAt === 'undefined') { note.taskLastSyncedAt = null; notesTouched = true; }
+        if (typeof note.taskLocalDirty !== 'boolean') { note.taskLocalDirty = false; notesTouched = true; }
+        if (typeof note.taskConflict !== 'boolean') { note.taskConflict = false; notesTouched = true; }
+        if (typeof note.order !== 'number') { note.order = idx; notesTouched = true; }
+    });
+    if (notesTouched) saveData();
+
     activeNoteId = [...data.notes].sort((a, b) => a.order - b.order)[0].id;
 
     // Ensure notesTrash exists

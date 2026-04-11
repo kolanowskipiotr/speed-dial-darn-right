@@ -1,19 +1,25 @@
 <div class="modal-backdrop" id="notes-conflict-modal">
     <div class="modal" style="max-width: 90%; width: 1200px;">
         <div class="modal-title">Sync Conflict</div>
-        <p style="margin-bottom: var(--space-md); font-size: 14px; color: var(--text-dim);">Both local and Google Keep versions have changed. Merge them below.</p>
+        <p style="margin-bottom: var(--space-md); font-size: 14px; color: var(--text-dim);">Both local and Google Tasks versions have changed. Merge them below.</p>
         <div class="conflict-panes">
             <div class="conflict-pane">
                 <label>Local Version (Read-only)</label>
                 <textarea class="conflict-local" readonly></textarea>
             </div>
+            <div class="conflict-gutter" id="conflictGutterLeft">
+                <div class="conflict-gutter-inner"></div>
+            </div>
             <div class="conflict-pane">
                 <label>Merged Result (Editable)</label>
                 <textarea class="conflict-merge"></textarea>
             </div>
+            <div class="conflict-gutter" id="conflictGutterRight">
+                <div class="conflict-gutter-inner"></div>
+            </div>
             <div class="conflict-pane">
-                <label>Google Keep Version (Read-only)</label>
-                <textarea class="conflict-keep" readonly></textarea>
+                <label>Google Tasks Version (Read-only)</label>
+                <textarea class="conflict-remote" readonly></textarea>
             </div>
         </div>
         <div class="modal-actions">

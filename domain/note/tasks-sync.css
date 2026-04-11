@@ -1,0 +1,128 @@
+/* ── Tasks sync ─────────────────────────────────────────────── */
+
+/* Sync indicator dot on note tab */
+.notes-tab-sync-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin: 0 2px;
+    vertical-align: middle;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+}
+.notes-tab-sync-dot.sync-dot--off      { background: var(--text-dim); opacity: 0.45; }
+.notes-tab-sync-dot.sync-dot--ok       { background: var(--success); }
+.notes-tab-sync-dot.sync-dot--pending  { background: var(--success); }
+.notes-tab-sync-dot.sync-dot--conflict { background: var(--danger); cursor: pointer; }
+
+/* Tasks toggle button */
+.notes-tab-tasks-btn {
+    opacity: 0.35;
+    font-size: 0.8em;
+    padding: 0 2px;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+    color: var(--text-dim);
+}
+.notes-tab:hover .notes-tab-tasks-btn,
+.notes-tab-tasks-btn.tasks-active { opacity: 1; }
+.notes-tab-tasks-btn.tasks-active { color: var(--accent); }
+
+.notes-sync-spinning {
+    animation: notes-spin 1.5s linear infinite;
+    display: inline-block;
+}
+
+@keyframes notes-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Sync now + import buttons in header */
+.notes-tasks-sync-btn  { color: var(--accent); }
+.notes-import-tasks-btn { color: var(--accent); }
+
+/* ── Conflict modal: 5-column grid ─────────────────────────────── */
+/* local | >>gutter | merge | <<gutter | remote                     */
+#notes-conflict-modal .conflict-panes {
+    display: grid;
+    grid-template-columns: 1fr 26px 1fr 26px 1fr;
+    gap: 0 4px;
+    height: 60vh;
+}
+#notes-conflict-modal .conflict-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+#notes-conflict-modal .conflict-pane label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+/* No line-wrapping — visual line nums must match data line nums */
+#notes-conflict-modal .conflict-panes textarea {
+    width: 100%;
+    flex: 1;
+    resize: none;
+    font-family: var(--font-mono, monospace);
+    font-size: 12px;
+    line-height: 18px;
+    white-space: pre;
+    overflow-x: auto;
+    background: var(--surface);
+    background-image: var(--conflict-line-gradients, none);
+    background-attachment: local;
+    background-repeat: no-repeat;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+/* Gutter column */
+#notes-conflict-modal .conflict-gutter {
+    display: flex;
+    flex-direction: column;
+}
+#notes-conflict-modal .conflict-gutter-inner {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Per-line action button inside gutter */
+#notes-conflict-modal .conflict-gutter-btn {
+    position: absolute;
+    left: 0;
+    width: 24px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-dim);
+    border-radius: 3px;
+    font-family: var(--font-mono, monospace);
+    font-size: 11px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+#notes-conflict-modal .conflict-gutter-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, var(--surface2));
+}
+
+/* Import modal list */
+.notes-import-tasks-list {
+    max-height: 400px;
+    overflow-y: auto;
+}

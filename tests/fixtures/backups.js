@@ -71,11 +71,11 @@ const fullBackupFixture = {
             order: 1,
             createdAt: '2026-04-01T09:00:00.000Z',
             updatedAt: '2026-04-01T09:00:00.000Z',
-            keepSync: false,
-            keepNoteId: null,
-            keepLastSyncedAt: null,
-            keepLocalDirty: false,
-            keepConflict: false
+            taskSync: false,
+            taskIds: [],
+            taskLastSyncedAt: null,
+            taskLocalDirty: false,
+            taskConflict: false
         }
     ],
     notesTrash: [],
@@ -135,11 +135,11 @@ const diffFormat2 = {
                 order: 1,
                 createdAt: '2026-04-01T09:00:00.000Z',
                 updatedAt: '2026-04-11T11:00:00.000Z',
-                keepSync: false,
-                keepNoteId: null,
-                keepLastSyncedAt: null,
-                keepLocalDirty: false,
-                keepConflict: false
+                taskSync: false,
+                taskIds: [],
+                taskLastSyncedAt: null,
+                taskLocalDirty: false,
+                taskConflict: false
             }
         ],
         delete: []

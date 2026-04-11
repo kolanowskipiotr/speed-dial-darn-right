@@ -44,7 +44,7 @@ localStorage key: `speedDial_syncSettings`
   token: string | null,         // Google OAuth2 access token; null if disconnected/expired
   tokenExpiry: number | null,   // Timestamp (ms) of access token expiry
   folderId: string | null,      // Google Drive folder ID for backups
-  keepLabelId: string | null,   // Google Keep label ID ("labels/abc123")
+  tasksNotesListId: string | null, // Google Tasks list ID ("SDDR - Notes")
   autoSync: boolean,            // Daily auto-backup enabled? (default: false)
   showModalOnDisconnect: boolean, // Show Manage Data popup when account disconnected? (default: true)
   lastAutoSync: number | null,   // Timestamp (ms) of last successful auto-backup
@@ -110,17 +110,17 @@ notes: [
         order: number,            // sorted ascending; drag-to-reorder
         createdAt: string,        // ISO 8601
         updatedAt: string,        // ISO 8601
-        // Keep Sync (opt-in)
-        keepSync: boolean,        // true if note should sync to Google Keep
-        keepNoteId: string | null, // Keep note ID ("notes/abc123")
-        keepLastSyncedAt: string | null, // ISO timestamp of last successful Keep push/pull
-        keepLocalDirty: boolean,  // true if edited locally after last sync
-        keepConflict: boolean,    // true if both sides edited since last sync
+        // Tasks Sync (opt-in)
+        taskSync: boolean,        // true if note should sync to Google Tasks
+        taskIds: string[],        // one or more Tasks IDs (chunked notes)
+        taskLastSyncedAt: string | null, // ISO timestamp of last successful Tasks push/pull
+        taskLocalDirty: boolean,  // true if edited locally after last sync
+        taskConflict: boolean,    // true if both sides edited since last sync
     }
 ]
 ```
 
-**Migration:** `loadData()` ensures `data.notes` exists; creates a default note if empty. `addNote()` initializes all fields including `keep*` metadata.
+**Migration:** `loadData()` ensures `data.notes` exists; creates a default note if empty and backfills `task*` fields for older notes.
 
 **Trash:** `data.notesTrash` stores deleted notes with `deletedAt: string` timestamp. Purged automatically after 30 days.
 

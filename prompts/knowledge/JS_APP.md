@@ -35,13 +35,13 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 ### notes
 - `domain/note/helpers.js` — Module state vars (`_notesSplitInstance`, `_notesTrashOpen`, etc.) and shared helpers (`findNote`, `_findTrashNote`, `_noteExcerpt`, `_purgeOldTrash`, etc.).
 - `domain/note/render.js` — `renderNotesPanel`, `_buildNotesTabs`, mermaid helpers (`_renderMermaidPreview`, `_applyMermaidInMarkdown`), `_initPreviewSplit`.
-- `domain/note/crud.js` — Note CRUD (`openNoteTab`, `addNote`, `deleteNote`, `restoreNote`, `permanentlyDeleteNote`, `emptyTrash`), trash panel (`_buildTrashPanel`), rename/language/fullscreen, Keep modals (`_openConflictModal`, `_openImportKeepModal`), `startNoteTabRename`, and window callbacks (`_notesCMDocChange`, `_notesUploadImage`).
-- `domain/note/keep-sync.js` — Logic for Google Keep bidirectional synchronization.
-  - **Atomic Sync Lock**: Uses `_keepSyncInFlight` (Set) to prevent concurrent push/pull operations for the same note.
-  - **Metadata Handling**: Notes are identified in Keep via a first-line `speed-dial:{id}` header. This is stripped by `_decodeKeepBody()` before showing in the UI or conflict modal.
-  - **API Wrapper**: `_keepFetch()` centralizes Keep API calls, handling authentication errors (401/403) via the unified `handleSyncError()` in `sync.js`. Sends both `Authorization: Bearer` and `X-Access-Token` headers for proxy compatibility.
-  - **Conflict Resolution**: Detected during polling if `keepLocalDirty` is true and Keep `updateTime` has changed. Resolved via a 3-pane merge modal.
-  - **⚠️ KNOWN LIMITATION (confirmed 2026-04-11)**: The `https://www.googleapis.com/auth/keep` OAuth scope is a **Google Workspace-restricted scope**. It cannot be added to the OAuth consent screen for personal Gmail accounts (Google rejects it as "invalid" in GCP console). Keep sync is therefore **non-functional** for personal accounts. The scope is commented out in `sync.js`. The Keep sync UI code remains in place for potential future use (e.g., if Google opens access or a service account approach is implemented).
+- `domain/note/crud.js` — Note CRUD (`openNoteTab`, `addNote`, `deleteNote`, `restoreNote`, `permanentlyDeleteNote`, `emptyTrash`), trash panel (`_buildTrashPanel`), rename/language/fullscreen, Tasks modals (`_openConflictModal`, `_openImportTasksModal`), `startNoteTabRename`, and window callbacks (`_notesCMDocChange`, `_notesUploadImage`).
+- `domain/note/tasks-sync.js` — Logic for Google Tasks bidirectional synchronization.
+  - **Atomic Sync Lock**: Uses `_tasksSyncInFlight` (Set) to prevent concurrent push/pull operations for the same note.
+  - **List Namespace**: Uses dedicated list `SDDR - Notes` and persists its ID in `tasksNotesListId` (`speedDial_syncSettings`).
+  - **Chunking**: Splits long note content to 8000-char task parts and reassembles by part number from title (`[SDDR] name (part x/y)`).
+  - **Update Strategy**: Tasks API has no update endpoint, so note updates are delete-all-parts then create-new-parts.
+  - **Conflict Resolution**: Detected when remote updated timestamp changes while `taskLocalDirty === true`; resolved via 3-pane merge modal.
 - `domain/note/codemirror.js` — (Module) CodeMirror 6 bridge for note editing.
 - Mermaid.js is vendored at `vendor/mermaid.min.js` and initialized with `startOnLoad: false` in `index.html`. Mermaid diagrams render in two contexts: (1) `language === 'mermaid'` notes show a full live split-pane preview; (2) fenced `mermaid` code blocks inside markdown notes are replaced with rendered SVGs via `_applyMermaidInMarkdown()`. The `_renderMermaidPreview()` async helper uses a render token to discard stale results. `_initPreviewSplit()` supersedes the former `_initMarkdownSplit()` and handles both `markdown` and `mermaid` note types.
 
@@ -77,7 +77,7 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 19. `domain/note/helpers.js`
 20. `domain/note/render.js`
 21. `domain/note/crud.js`
-22. `domain/note/keep-sync.js`
+22. `domain/note/tasks-sync.js`
 23. `domain/note/codemirror.js` (module)
 24. `domain/dial/domain.js`
 25. `domain/dial/render-dials.js`
