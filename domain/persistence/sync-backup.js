@@ -173,12 +173,51 @@ async function restoreFromGDrive(fileId, fileName) {
 
 function applyDiff(fullData, diff) {
     const result = { ...fullData };
-    if (diff.tabs !== undefined)       result.tabs = diff.tabs;
-    if (diff.todoLists !== undefined)  result.todoLists = diff.todoLists;
-    if (diff.notes !== undefined)      result.notes = diff.notes;
-    if (diff.notesTrash !== undefined) result.notesTrash = diff.notesTrash;
-    if (diff._config !== undefined)    result._config = diff._config;
-    if (diff._images !== undefined)    result._images = { ...fullData._images, ...diff._images };
+    const isNewFormat = diff._meta?.diffFormat === 2
+        || Object.keys(diff).some(k => k.endsWith('_patch'));
+
+    if (isNewFormat) {
+        // Format 2: item-level patches
+        if (diff.tabs_patch)       result.tabs       = applyArrayPatch(fullData.tabs       || [], diff.tabs_patch);
+        if (diff.todoLists_patch)  result.todoLists  = applyArrayPatch(fullData.todoLists  || [], diff.todoLists_patch);
+        if (diff.notes_patch)      result.notes      = applyArrayPatch(fullData.notes      || [], diff.notes_patch);
+        if (diff.notesTrash_patch) result.notesTrash = applyArrayPatch(fullData.notesTrash || [], diff.notesTrash_patch);
+    } else {
+        // Format 1 (stary): section-level overwrite — zachowane dla backupów historycznych
+        if (diff.tabs !== undefined)       result.tabs = diff.tabs;
+        if (diff.todoLists !== undefined)  result.todoLists = diff.todoLists;
+        if (diff.notes !== undefined)      result.notes = diff.notes;
+        if (diff.notesTrash !== undefined) result.notesTrash = diff.notesTrash;
+    }
+
+    // Wspólne dla obu formatów
+    if (diff._config !== undefined)  result._config = diff._config;
+    if (diff._images !== undefined)  result._images = { ...fullData._images, ...diff._images };
+
+    return result;
+}
+
+/**
+ * Aplikuje patch {upsert, delete} na tablicę obiektów identyfikowanych przez `id`.
+ * - Zachowuje kolejność: elementy bazowe (niezmienione lub zaktualizowane) na swoich miejscach
+ * - Usunięte (wg id) są odfiltrowywane
+ * - Nowe (wg id nieobecne w baseArr) dołączane na końcu
+ */
+function applyArrayPatch(baseArr, patch) {
+    const upsertMap = new Map((patch.upsert || []).map(item => [item.id, item]));
+    const deleteSet = new Set(patch.delete || []);
+
+    // Przefiltruj usunięte, zaktualizuj zmienione — zachowaj kolejność
+    const result = baseArr
+        .filter(item => !deleteSet.has(item.id))
+        .map(item => upsertMap.has(item.id) ? upsertMap.get(item.id) : item);
+
+    // Dodaj nowe elementy (id nieobecne w baseArr)
+    const existingIds = new Set(baseArr.map(item => item.id));
+    for (const item of (patch.upsert || [])) {
+        if (!existingIds.has(item.id)) result.push(item);
+    }
+
     return result;
 }
 
@@ -187,6 +226,16 @@ async function triggerManualSync() {
         showToast(`${ICONS.warn} Please log in and select a folder first.`);
         return;
     }
+
+    // Rate-limit: max jeden ręczny backup na 24h
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    if (lastManualSync && (Date.now() - lastManualSync) < twentyFourHours) {
+        const nextAt = new Date(lastManualSync + twentyFourHours)
+            .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        showToast(`${ICONS.warn} Manual backup cooldown active. Next available at ${nextAt}.`);
+        return;
+    }
+
     manualSyncBtn.disabled = true;
     backupInProgress = true;
     syncStatusSpan.textContent = 'Backing up...';
@@ -203,7 +252,7 @@ async function triggerManualSync() {
         });
         if (res.ok) {
             syncStatusSpan.textContent = 'Backup successful!';
-            lastAutoSync = Date.now(); // Update last sync time
+            lastManualSync = Date.now(); // FIX: używa lastManualSync, NIE lastAutoSync
             saveSyncSettings();
             updateSyncIndicators();
             showToast(`${ICONS.ok} Backup complete!`);

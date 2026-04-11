@@ -139,3 +139,4 @@ If no existing file fits, create a new one and add it to the table below.
 | `prompts/knowledge/HTML_MODALS.md` | Modifying modals or form inputs |
 | `prompts/knowledge/DOCKER.md` | Deployment, nginx config, uploader sidecar, volumes |
 | `prompts/knowledge/PATTERNS.md` | Before implementing any new feature — conventions and checklist |
+| `prompts/knowledge/TESTING_GUIDE.md` | Running tests, test structure, troubleshooting test failures |

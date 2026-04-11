@@ -18,6 +18,7 @@ let keepLabelId = null;
 let gdriveSyncEnabled = false;
 let showModalOnDisconnect = true; // Default to true as requested
 let lastAutoSync = null;
+let lastManualSync = null;  // timestamp (ms) ostatniego ręcznego backupu
 let backupInProgress = false; // true while a backup fetch is in-flight
 
 // --- DOM Elements ---
@@ -62,6 +63,7 @@ function loadSyncSettings() {
     gdriveSyncEnabled = settings.autoSync || false;
     showModalOnDisconnect = (settings.showModalOnDisconnect !== undefined) ? settings.showModalOnDisconnect : true;
     lastAutoSync = settings.lastAutoSync || null;
+    lastManualSync = settings.lastManualSync || null;
 
     // Don't fetch folders/backups here — wait for the token to be confirmed
     // valid inside initGis(). Fetching with a stale stored token causes
@@ -80,7 +82,8 @@ function saveSyncSettings() {
         keepLabelId: keepLabelId,
         autoSync: gdriveSyncEnabled,
         showModalOnDisconnect: showModalOnDisconnect,
-        lastAutoSync: lastAutoSync
+        lastAutoSync: lastAutoSync,
+        lastManualSync: lastManualSync
     }));
 }
 

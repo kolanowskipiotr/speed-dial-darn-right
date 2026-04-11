@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Uploader sidecar for Speed Dial Darn Right",
   "main": "server.js",
+  "scripts": {
+    "test": "node --test ../tests/uploader/sync/*.test.js ../tests/domain/persistence/sync-backup/*.test.js"
+  },
   "dependencies": {
     "googleapis": "^126.0.0",
     "google-auth-library": "^9.0.0"

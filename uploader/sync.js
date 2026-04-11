@@ -23,6 +23,31 @@ async function getLatestFullBackup(d, folderId) {
     return { id: file.id, name: file.name, createdTime: file.createdTime, data: content.data };
 }
 
+/**
+ * Buduje patch dla tablicy obiektów identyfikowanych przez pole `id`.
+ * - upsert: obiekty nowe lub zmienione (wg JSON.stringify)
+ * - delete: id obiektów obecnych w oldArr, brakujących w newArr
+ */
+function buildArrayPatch(oldArr = [], newArr = []) {
+    const oldMap = new Map(oldArr.map(item => [item.id, item]));
+    const newMap = new Map(newArr.map(item => [item.id, item]));
+
+    const upsert = [];
+    for (const [id, newItem] of newMap) {
+        const oldItem = oldMap.get(id);
+        if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
+            upsert.push(newItem);
+        }
+    }
+
+    const deleted = [];
+    for (const id of oldMap.keys()) {
+        if (!newMap.has(id)) deleted.push(id);
+    }
+
+    return { upsert, delete: deleted };
+}
+
 function calculateDiff(fullBackup, newData) {
     const oldData = fullBackup.data;
     const diff = {
@@ -31,26 +56,36 @@ function calculateDiff(fullBackup, newData) {
             diffAt: new Date().toISOString(),
             fullBackupId: fullBackup.id,
             fullBackupName: fullBackup.name,
-            baseExportedAt: oldData._exportMeta?.exportedAt
+            baseExportedAt: oldData._exportMeta?.exportedAt,
+            diffFormat: 2
         }
     };
 
-    if (JSON.stringify(oldData.tabs) !== JSON.stringify(newData.tabs)) {
-        diff.tabs = newData.tabs;
+    const tabsPatch = buildArrayPatch(oldData.tabs, newData.tabs);
+    if (tabsPatch.upsert.length > 0 || tabsPatch.delete.length > 0) {
+        diff.tabs_patch = tabsPatch;
     }
-    if (JSON.stringify(oldData.todoLists) !== JSON.stringify(newData.todoLists)) {
-        diff.todoLists = newData.todoLists;
+
+    const todoListsPatch = buildArrayPatch(oldData.todoLists, newData.todoLists);
+    if (todoListsPatch.upsert.length > 0 || todoListsPatch.delete.length > 0) {
+        diff.todoLists_patch = todoListsPatch;
     }
-    if (JSON.stringify(oldData.notes) !== JSON.stringify(newData.notes)) {
-        diff.notes = newData.notes;
+
+    const notesPatch = buildArrayPatch(oldData.notes, newData.notes);
+    if (notesPatch.upsert.length > 0 || notesPatch.delete.length > 0) {
+        diff.notes_patch = notesPatch;
     }
-    if (JSON.stringify(oldData.notesTrash) !== JSON.stringify(newData.notesTrash)) {
-        diff.notesTrash = newData.notesTrash;
+
+    const notesTrashPatch = buildArrayPatch(oldData.notesTrash, newData.notesTrash);
+    if (notesTrashPatch.upsert.length > 0 || notesTrashPatch.delete.length > 0) {
+        diff.notesTrash_patch = notesTrashPatch;
     }
+
     if (JSON.stringify(oldData._config) !== JSON.stringify(newData._config)) {
         diff._config = newData._config;
     }
 
+    // _images: tylko nowe/zmienione obrazy (logika bez zmian)
     const newImages = {};
     for (const id in newData._images) {
         if (newData._images[id] !== oldData._images[id]) {
@@ -163,4 +198,12 @@ async function createGDriveFolder(token, name) {
     return res.data;
 }
 
-module.exports = { performSync, listGDriveFolders, listGDriveBackups, fetchGDriveFile, createGDriveFolder };
+module.exports = {
+    performSync,
+    listGDriveFolders,
+    listGDriveBackups,
+    fetchGDriveFile,
+    createGDriveFolder,
+    // Test exports
+    __test__: { buildArrayPatch, calculateDiff }
+};

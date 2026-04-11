@@ -48,6 +48,7 @@ localStorage key: `speedDial_syncSettings`
   autoSync: boolean,            // Daily auto-backup enabled? (default: false)
   showModalOnDisconnect: boolean, // Show Manage Data popup when account disconnected? (default: true)
   lastAutoSync: number | null,   // Timestamp (ms) of last successful auto-backup
+  lastManualSync: number | null, // Timestamp (ms) of last successful manual backup (rate-limited to 24h cooldown)
 }
 ```
 
