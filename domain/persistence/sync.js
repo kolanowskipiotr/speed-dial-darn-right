@@ -7,6 +7,9 @@ const GAPI_API_KEY = 'YOUR_GOOGLE_API_KEY'; // Needed for some non-auth calls, i
 const SCOPES = [
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/userinfo.email',
+    // NOTE: 'https://www.googleapis.com/auth/keep' is a Google Workspace-restricted scope.
+    // It cannot be added to OAuth consent screen for personal Gmail accounts.
+    // Google Keep sync is therefore not available via the standard OAuth flow.
 ];
 const BACKUP_BASE_URL = '/api/sync'; // Base URL for backend sync API
 

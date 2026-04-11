@@ -109,7 +109,7 @@ async function loginGDrive() {
         showToast(`${ICONS.error} Google login not available.`);
         return;
     }
-    tokenClient.requestCode();
+    tokenClient.requestCode({ prompt: 'consent' });
 }
 
 function logoutGDrive() {

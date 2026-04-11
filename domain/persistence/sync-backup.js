@@ -14,7 +14,8 @@ async function createBackupFolder() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentAccessToken}`
+                'Authorization': `Bearer ${currentAccessToken}`,
+                'X-Access-Token': currentAccessToken,
             },
             body: JSON.stringify({ name: folderName })
         });
@@ -246,6 +247,7 @@ async function triggerManualSync() {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${currentAccessToken}`, // Pass token for backend auth
+                'X-Access-Token': currentAccessToken,
                 'X-GDrive-Folder-Id': currentFolderId // Pass folder ID for backend
             },
             body: JSON.stringify(exportObj)
@@ -302,6 +304,7 @@ async function checkAutoSync() {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${currentAccessToken}`,
+                    'X-Access-Token': currentAccessToken,
                     'X-GDrive-Folder-Id': currentFolderId
                 },
                 body: JSON.stringify(exportObj)
@@ -331,7 +334,10 @@ async function checkAutoSync() {
 
 async function listGDriveFolders(accessToken) {
     const res = await fetch(`${BACKUP_BASE_URL}/folders`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'X-Access-Token': accessToken,
+        }
     });
     if (res.status === 401) throw new Error('Invalid Credentials');
     if (!res.ok) throw new Error('Failed to fetch folders');
@@ -340,7 +346,10 @@ async function listGDriveFolders(accessToken) {
 
 async function listGDriveBackups(accessToken, folderId) {
     const res = await fetch(`${BACKUP_BASE_URL}/list?folderId=${folderId}`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'X-Access-Token': accessToken,
+        }
     });
     if (res.status === 401) throw new Error('Invalid Credentials');
     if (!res.ok) throw new Error('Failed to fetch backups');
@@ -349,7 +358,10 @@ async function listGDriveBackups(accessToken, folderId) {
 
 async function fetchGDriveFile(fileId) {
     const res = await fetch(`${BACKUP_BASE_URL}/fetch?fileId=${fileId}`, {
-        headers: { 'Authorization': `Bearer ${currentAccessToken}` }
+        headers: {
+            'Authorization': `Bearer ${currentAccessToken}`,
+            'X-Access-Token': currentAccessToken,
+        }
     });
     if (!res.ok) throw new Error('Failed to fetch file');
     const data = await res.json();

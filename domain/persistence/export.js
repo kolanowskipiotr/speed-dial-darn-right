@@ -3,7 +3,7 @@
 async function getExportObject() {
     const images = {};
     let imageErrors = 0;
-    
+
     // Helper to fetch and convert image to base64
     async function _includeImage(id, path) {
         if (images[id]) return;
@@ -31,7 +31,7 @@ async function getExportObject() {
             }
         }
     }
-    
+
     // Also collect images referenced in todo item content
     for (const list of (data.todoLists || [])) {
         for (const item of (list.items || [])) {
@@ -42,7 +42,7 @@ async function getExportObject() {
             }
         }
     }
-    
+
     // Also collect images referenced in notes content (active + trash)
     for (const note of [...(data.notes || []), ...(data.notesTrash || [])]) {
         const uploadIds = (note.content || '').match(/\/uploads\/([\w.\-]+)/g) || [];
@@ -82,7 +82,7 @@ async function exportData() {
         a.href = URL.createObjectURL(blob);
         a.download = `speed-dial-export-${new Date().toISOString().split('T')[0]}.json`;
         a.click();
-        
+
         const imgCount = Object.keys(exportObj._images).length;
         if (exportObj._exportMeta.imageErrors) {
             showToast(`${ICONS.warn} Exported — ${exportObj._exportMeta.imageErrors} image(s) failed`);
@@ -102,15 +102,47 @@ async function triggerSync() {
     if (_syncTimer) clearTimeout(_syncTimer);
     _syncTimer = setTimeout(async () => {
         try {
+            // Background sync runs only for an authenticated session.
+            if (!googleUser || !currentAccessToken) {
+                return;
+            }
+
             const exportObj = await getExportObject();
-            const res = await fetch('/api/sync', {
+            const syncHeaders = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAccessToken}`,
+                'X-Access-Token': currentAccessToken,
+            };
+            if (typeof currentFolderId !== 'undefined' && currentFolderId) {
+                syncHeaders['X-GDrive-Folder-Id'] = currentFolderId;
+            }
+
+            let res = await fetch('/api/sync', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: syncHeaders,
                 body: JSON.stringify(exportObj)
             });
+
+            // Token might expire between autosaves; try one silent refresh + retry.
+            if (res.status === 401 && typeof fetchFreshToken === 'function') {
+                const refreshed = await fetchFreshToken();
+                if (refreshed && currentAccessToken) {
+                    syncHeaders['Authorization'] = `Bearer ${currentAccessToken}`;
+                    syncHeaders['X-Access-Token'] = currentAccessToken;
+                    res = await fetch('/api/sync', {
+                        method: 'POST',
+                        headers: syncHeaders,
+                        body: JSON.stringify(exportObj)
+                    });
+                }
+            }
+
             if (res.ok) {
                 console.log('[sync] successful');
             } else {
+                if (res.status === 401 && typeof handleSyncError === 'function') {
+                    handleSyncError(new Error('401'));
+                }
                 console.warn('[sync] failed:', res.status);
             }
         } catch (e) {
@@ -206,7 +238,7 @@ async function _doImport(imported) {
             if (typeof currentFolderId !== 'undefined') currentFolderId = settings.folderId;
         }
         localStorage.setItem('speedDial_syncSettings', JSON.stringify(settings));
-        
+
         // Refresh UI if functions are available
         if (typeof updateAutoSyncToggleUI === 'function') updateAutoSyncToggleUI();
         if (typeof updateShowModalOnDisconnectToggleUI === 'function') updateShowModalOnDisconnectToggleUI();

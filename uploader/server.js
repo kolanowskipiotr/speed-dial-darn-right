@@ -55,7 +55,7 @@ http.createServer(async (req, res) => {
     // API: SYNC OPERATIONS (POST, GET)
     if (req.url.startsWith('/api/sync')) {
         const folderId = req.headers['x-gdrive-folder-id'];
-        const token = req.headers['authorization']?.split(' ')[1];
+        const token = req.headers['authorization']?.split(' ')[1] || req.headers['x-access-token'];
 
         if (!token) {
             res.writeHead(401);
@@ -158,7 +158,7 @@ http.createServer(async (req, res) => {
 
     // API: KEEP PROXY (Forwards to keep.googleapis.com)
     if (req.url.startsWith('/api/keep')) {
-        const token = req.headers['authorization']?.split(' ')[1];
+        const token = req.headers['authorization']?.split(' ')[1] || req.headers['x-access-token'];
         if (!token) {
             res.writeHead(401);
             res.end('Unauthorized: No token provided');
