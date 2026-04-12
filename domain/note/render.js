@@ -122,6 +122,13 @@ function renderNotesPanel(container) {
         importTasksBtn.onclick = () => _openImportTasksModal();
         headerActions.appendChild(importTasksBtn);
 
+        const openTasksUiBtn = document.createElement('button');
+        openTasksUiBtn.className = 'btn-icon notes-open-tasks-ui-btn';
+        openTasksUiBtn.title = 'Open Google Tasks UI';
+        openTasksUiBtn.textContent = ICONS.openExternal;
+        openTasksUiBtn.onclick = () => openGoogleTasksUi();
+        headerActions.appendChild(openTasksUiBtn);
+
         const sep2 = document.createElement('span');
         sep2.className = 'notes-header-sep';
         headerActions.appendChild(sep2);

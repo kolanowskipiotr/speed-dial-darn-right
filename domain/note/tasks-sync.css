@@ -42,6 +42,7 @@
 /* Sync now + import buttons in header */
 .notes-tasks-sync-btn  { color: var(--accent); }
 .notes-import-tasks-btn { color: var(--accent); }
+.notes-open-tasks-ui-btn { color: var(--accent); }
 
 /* ── Conflict modal: 5-column grid ─────────────────────────────── */
 /* local | >>gutter | merge | <<gutter | remote                     */

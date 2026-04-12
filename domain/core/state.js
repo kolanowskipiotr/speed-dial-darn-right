@@ -37,6 +37,7 @@ const ICONS = {
     taskSyncing: '↻',
     taskConflict:'⚠',
     taskImport:  '⊕',
+    openExternal:'☑',
 };
 
 const EMOJI_CATEGORIES = [
