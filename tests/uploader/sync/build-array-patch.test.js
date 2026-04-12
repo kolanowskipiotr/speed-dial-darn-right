@@ -47,5 +47,34 @@ test('Bug 1: buildArrayPatch — item-level patches', async (t) => {
         assert.strictEqual(patch.upsert.length, 0);
         assert.strictEqual(patch.delete.length, 0);
     });
-});
 
+    await t.test('should ignore visitCount changes (technical metadata)', () => {
+        const oldDials = [{ id: 'dial-001', name: 'Google', url: 'https://google.com', visitCount: 5 }];
+        const newDials = [{ id: 'dial-001', name: 'Google', url: 'https://google.com', visitCount: 42 }];
+
+        const patch = buildArrayPatch(oldDials, newDials);
+
+        assert.strictEqual(patch.upsert.length, 0, 'visitCount change should not trigger upsert');
+        assert.strictEqual(patch.delete.length, 0);
+    });
+
+    await t.test('should ignore lastVisited changes (technical metadata)', () => {
+        const oldDials = [{ id: 'dial-001', name: 'Google', url: 'https://google.com', lastVisited: '2026-01-01T00:00:00Z' }];
+        const newDials = [{ id: 'dial-001', name: 'Google', url: 'https://google.com', lastVisited: '2026-04-12T10:00:00Z' }];
+
+        const patch = buildArrayPatch(oldDials, newDials);
+
+        assert.strictEqual(patch.upsert.length, 0, 'lastVisited change should not trigger upsert');
+        assert.strictEqual(patch.delete.length, 0);
+    });
+
+    await t.test('should detect real changes even when visitCount also changed', () => {
+        const oldDials = [{ id: 'dial-001', name: 'Google', url: 'https://google.com', visitCount: 5 }];
+        const newDials = [{ id: 'dial-001', name: 'Google', url: 'https://google.com', visitCount: 42, emoji: '🔍' }];
+
+        const patch = buildArrayPatch(oldDials, newDials);
+
+        assert.strictEqual(patch.upsert.length, 1, 'real change (emoji) should trigger upsert even with visitCount change');
+        assert.strictEqual(patch.upsert[0].emoji, '🔍');
+    });
+});

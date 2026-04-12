@@ -1,0 +1,23 @@
+{
+  "name": "speed-dial-darn-right",
+  "version": "2.0.0",
+  "description": "Self-hosted browser speed-dial page with sync to Google Drive",
+  "private": true,
+  "scripts": {
+    "test": "npm test --prefix uploader",
+    "bundle": "npm run bundle --prefix scripts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GITHUB_USER/speed-dial-darn-right"
+  },
+  "keywords": [
+    "speed-dial",
+    "productivity",
+    "browser-extension",
+    "self-hosted"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+

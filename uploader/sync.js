@@ -24,8 +24,39 @@ async function getLatestFullBackup(d, folderId) {
 }
 
 /**
+ * Rekurencyjnie porównuje dwa obiekty pomijając pola techniczne (visitCount, lastVisited).
+ * Zwraca true jeśli obiekty są istotnie równe (bez zmian w danych użytkownika).
+ */
+function _areEssentiallyEqual(oldItem, newItem) {
+    // Skopiuj obiekty i usuń pola techniczne
+    const oldCopy = JSON.parse(JSON.stringify(oldItem));
+    const newCopy = JSON.parse(JSON.stringify(newItem));
+
+    // Rekurencyjnie usuń visitCount i lastVisited ze wszystkich poziomów
+    function stripTechnicalFields(obj) {
+        if (typeof obj !== 'object' || obj === null) return obj;
+        if (Array.isArray(obj)) {
+            return obj.map(item => stripTechnicalFields(item));
+        }
+        for (const key in obj) {
+            if (key === 'visitCount' || key === 'lastVisited') {
+                delete obj[key];
+            } else {
+                obj[key] = stripTechnicalFields(obj[key]);
+            }
+        }
+        return obj;
+    }
+
+    const stripped_old = stripTechnicalFields(oldCopy);
+    const stripped_new = stripTechnicalFields(newCopy);
+
+    return JSON.stringify(stripped_old) === JSON.stringify(stripped_new);
+}
+
+/**
  * Buduje patch dla tablicy obiektów identyfikowanych przez pole `id`.
- * - upsert: obiekty nowe lub zmienione (wg JSON.stringify)
+ * - upsert: obiekty nowe lub zmienione (wg JSON.stringify), pomijając visitCount i lastVisited
  * - delete: id obiektów obecnych w oldArr, brakujących w newArr
  */
 function buildArrayPatch(oldArr = [], newArr = []) {
@@ -35,7 +66,7 @@ function buildArrayPatch(oldArr = [], newArr = []) {
     const upsert = [];
     for (const [id, newItem] of newMap) {
         const oldItem = oldMap.get(id);
-        if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
+        if (!oldItem || !_areEssentiallyEqual(oldItem, newItem)) {
             upsert.push(newItem);
         }
     }
@@ -99,6 +130,10 @@ function calculateDiff(fullBackup, newData) {
     return diff;
 }
 
+function hasMeaningfulDiff(diff) {
+    return Object.keys(diff).some(k => k !== '_type' && k !== '_meta');
+}
+
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 async function performSync(data, token, folderId) {
@@ -121,6 +156,10 @@ async function performSync(data, token, folderId) {
         } else {
             console.log('[sync] Performing incremental backup (diff)');
             const diff = calculateDiff(latestFull, data);
+            if (!hasMeaningfulDiff(diff)) {
+                console.log('[sync] No meaningful changes detected, skipping incremental backup');
+                return;
+            }
             await uploadToDrive(d, folderId, `backup_${timestamp}.diff.json`, JSON.stringify(diff, null, 2));
         }
 
@@ -205,5 +244,5 @@ module.exports = {
     fetchGDriveFile,
     createGDriveFolder,
     // Test exports
-    __test__: { buildArrayPatch, calculateDiff }
+    __test__: { buildArrayPatch, calculateDiff, hasMeaningfulDiff }
 };
