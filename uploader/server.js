@@ -62,15 +62,48 @@ function createServer(deps = {}) {
     const _fetchIcsCalendarWindow = deps.fetchIcsCalendarWindow || fetchIcsCalendarWindow;
     const _now = deps.now || (() => Date.now());
     const m365Config = getM365Config(deps.config || {});
+    const icsCache = new Map();
+    const ICS_CACHE_TTL_MS = 60 * 1000;
+
+    function getIcsCacheKey(requestConfig) {
+        return JSON.stringify({
+            icsUrl: requestConfig.icsUrl || '',
+            horizonDays: requestConfig.horizonDays,
+        });
+    }
 
     async function loadCalendarEvents(requestConfig) {
         const startDate = new Date(_now());
         if (!requestConfig.icsUrl) throw new Error('ICS URL is not configured');
+
+        const cacheKey = getIcsCacheKey(requestConfig);
+        const cached = icsCache.get(cacheKey);
+        const nowMs = _now();
+        if (cached && nowMs - cached.cachedAt < ICS_CACHE_TTL_MS) {
+            return {
+                ...cached.payload,
+                cache: {
+                    hit: true,
+                    ageMs: nowMs - cached.cachedAt,
+                    ttlMs: ICS_CACHE_TTL_MS,
+                },
+            };
+        }
+
         const events = await _fetchIcsCalendarWindow(requestConfig.icsUrl, {
             fromDate: startDate,
             horizonDays: requestConfig.horizonDays,
         });
-        return { source: 'ics', events };
+        const payload = { source: 'ics', events };
+        icsCache.set(cacheKey, { cachedAt: nowMs, payload });
+        return {
+            ...payload,
+            cache: {
+                hit: false,
+                ageMs: 0,
+                ttlMs: ICS_CACHE_TTL_MS,
+            },
+        };
     }
 
     return http.createServer(async (req, res) => {
@@ -135,6 +168,7 @@ function createServer(deps = {}) {
                 json(res, 200, {
                     source: calendarData.source,
                     next: serializeEvent(next),
+                    cache: calendarData.cache,
                     fetchedAt: new Date(_now()).toISOString(),
                 });
                 return;
@@ -148,6 +182,7 @@ function createServer(deps = {}) {
                 });
                 json(res, 200, {
                     source: calendarData.source,
+                    cache: calendarData.cache,
                     days: agenda.map((day) => ({
                         dayKey: day.dayKey,
                         dayLabel: day.dayLabel,
@@ -167,6 +202,7 @@ function createServer(deps = {}) {
                 const event = calendarData.events.find((item) => item.id === eventId) || null;
                 json(res, 200, {
                     source: calendarData.source,
+                    cache: calendarData.cache,
                     event: serializeEvent(event),
                 });
                 return;
