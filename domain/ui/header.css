@@ -48,7 +48,8 @@ header {
     display: grid;
     grid-template-columns: 1fr auto auto;
     align-items: center;
-    gap: 4px 12px;
+    gap: 4px 22px;
+    margin-left: 15px;
 }
 
 .header-m365-col {
