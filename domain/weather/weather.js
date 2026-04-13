@@ -91,17 +91,15 @@ function _openWeatherDetails() {
     window.open(`https://www.google.com/search?q=${encodeURIComponent(`weather ${q}`)}`, '_blank', 'noopener');
 }
 
-function _buildInlineCard({ label, icon, top, bottom, isNow }) {
+function _buildInlineCard({ label, icon, sublabel, mainTemp, temp, isNow }) {
     return `
         <div class="weather-inline-card${isNow ? ' weather-inline-now' : ''}">
-            <div class="weather-inline-row">
-                <div class="weather-inline-icon">${icon}</div>
-                <div class="weather-inline-label">${label}</div>
-            </div>
-            <div class="weather-inline-row">
-                <div class="weather-inline-top">${top}</div>
-                <div class="weather-inline-bottom">${bottom}</div>
-            </div>
+            <div class="weather-inline-icon">${icon}</div>
+            <div class="weather-inline-label">${label}</div>
+            <div></div>
+            <div class="weather-inline-sublabel">${sublabel}</div>
+            <div class="weather-inline-main-temp">${mainTemp}</div>
+            <div class="weather-inline-temp">${temp}</div>
         </div>
     `;
 }
@@ -129,8 +127,9 @@ function _updateInline() {
         _buildInlineCard({
             label: 'Now',
             icon: _wmoIcon(c.weather_code),
-            top: _fmtTemp(c.temperature_2m),
-            bottom: `feels ${_fmtTemp(c.apparent_temperature)}`,
+            sublabel: 'feels',
+            mainTemp: _fmtTemp(c.temperature_2m),
+            temp: _fmtTemp(c.apparent_temperature),
             isNow: true
         })
     ];
@@ -144,8 +143,9 @@ function _updateInline() {
             cards.push(_buildInlineCard({
                 label,
                 icon: _wmoIcon(daily.weather_code[i]),
-                top: _fmtTemp(daily.temperature_2m_max[i]),
-                bottom: `min ${_fmtTemp(daily.temperature_2m_min[i])}`,
+                sublabel: 'min',
+                mainTemp: _fmtTemp(daily.temperature_2m_max[i]),
+                temp: _fmtTemp(daily.temperature_2m_min[i]),
                 isNow: false
             }));
         }
