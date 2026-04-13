@@ -57,6 +57,7 @@ async function getExportObject() {
         _config: {
             theme: localStorage.getItem('speedDial_theme') || 'dark-yellow',
             logoAnim: logoAnimEnabled,
+            weather: JSON.parse(localStorage.getItem('speedDial_weather') || 'null'),
             syncConfig: {
                 autoSync: typeof gdriveSyncEnabled !== 'undefined' ? gdriveSyncEnabled : false,
                 showModalOnDisconnect: typeof showModalOnDisconnect !== 'undefined' ? showModalOnDisconnect : true,
@@ -221,6 +222,12 @@ async function _doImport(imported) {
         logoAnimEnabled = config.logoAnim;
         localStorage.setItem('logoAnim', logoAnimEnabled);
         if (typeof updateAnimToggleUI === 'function') updateAnimToggleUI();
+    }
+
+    if (config.weather !== undefined && config.weather !== null) {
+        localStorage.setItem('speedDial_weather', JSON.stringify(config.weather));
+        if (typeof _loadWeatherConfig === 'function') _loadWeatherConfig();
+        if (typeof _updateInline === 'function') _updateInline();
     }
 
     if (config.syncConfig) {
