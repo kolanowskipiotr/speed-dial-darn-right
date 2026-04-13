@@ -232,8 +232,8 @@ function _m365RenderCompact() {
     const startsSoon = !inProgress && _m365IsWithinNextMinutes(ev.start, 5);
     target.classList.add('has-event');
     target.innerHTML = [
-        '<span class="m365-label">Next</span>',
         `<span class="m365-compact-row">
+            <span class="m365-label">Next</span>
             <span class="m365-time">${_m365FmtTime(ev.start)}-${_m365FmtTime(ev.end)} (${_m365Duration(ev.start, ev.end)})</span>
             ${countdown ? `<span class="m365-countdown">Starts in ${countdown}</span>` : ''}
             ${ev.joinUrl
