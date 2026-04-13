@@ -4,6 +4,7 @@ let _m365State = {
     detailsPopover: null,
     agendaBody: null,
     detailsBody: null,
+    detailsHeadActions: null,
     nextEvent: null,
     agendaDays: [],
     compactTimer: null,
@@ -245,16 +246,20 @@ function _m365RenderAgenda() {
 
 function _m365RenderDetails(eventData) {
     const body = _m365State.detailsBody;
+    const headActions = _m365State.detailsHeadActions;
     if (!body || !eventData) return;
+
+    if (headActions) {
+        headActions.innerHTML = eventData.joinUrl
+            ? `<a class="m365-join-btn m365-join-btn--lg" href="${_m365Esc(eventData.joinUrl)}" target="_blank" rel="noopener noreferrer">Join meeting</a>`
+            : '<span class="m365-join-offline m365-join-offline--lg" aria-label="In person meeting">In person</span>';
+    }
 
     body.innerHTML = `
         <h4>${_m365Esc(eventData.subject)}</h4>
         <div><strong>Time:</strong> ${_m365FmtTime(eventData.start)}-${_m365FmtTime(eventData.end)} (${_m365Duration(eventData.start, eventData.end)})</div>
         <div><strong>Location:</strong> ${_m365Esc(eventData.location || '-')}</div>
         <div><strong>Organizer:</strong> ${_m365Esc(eventData.organizer || '-')}</div>
-        ${eventData.joinUrl
-            ? `<div style="margin-top:8px"><a class="m365-join-btn m365-join-btn--lg" href="${_m365Esc(eventData.joinUrl)}" target="_blank" rel="noopener noreferrer">Join meeting</a></div>`
-            : '<div style="margin-top:8px"><span class="m365-join-offline m365-join-offline--lg" aria-label="In person meeting">In person</span></div>'}
         ${eventData.bodyPreview ? `<p class="m365-body-preview">${_m365Esc(eventData.bodyPreview)}</p>` : ''}
     `;
 
@@ -310,6 +315,7 @@ function _m365ShowCompactLoading() {
 function _m365ShowDetailsLoading() {
     const body = _m365State.detailsBody;
     if (!body) return;
+    if (_m365State.detailsHeadActions) _m365State.detailsHeadActions.innerHTML = '';
     body.innerHTML = '<div class="m365-loading">Loading meeting details…</div>';
     _m365State.detailsPopover?.classList.add('open');
 }
@@ -432,7 +438,29 @@ function initM365Calendar() {
     _m365State.detailsPopover = document.getElementById('m365DetailsPopover');
     _m365State.agendaBody = document.getElementById('m365AgendaBody');
     _m365State.detailsBody = document.getElementById('m365DetailsBody');
+    _m365State.detailsHeadActions = document.getElementById('m365DetailsHeadActions');
+    const detailsCloseBtn = document.getElementById('m365DetailsCloseBtn');
     _bindM365ConfigModal();
+
+    if (detailsCloseBtn && detailsCloseBtn.dataset.bound !== '1') {
+        detailsCloseBtn.dataset.bound = '1';
+        detailsCloseBtn.addEventListener('click', () => _m365HideDetails());
+    }
+
+    if (_m365State.detailsPopover && _m365State.detailsPopover.dataset.bound !== '1') {
+        _m365State.detailsPopover.dataset.bound = '1';
+        _m365State.detailsPopover.addEventListener('click', (event) => {
+            if (event.target === _m365State.detailsPopover) _m365HideDetails();
+        });
+    }
+
+    if (!document.body.dataset.m365DetailsEscBound) {
+        document.body.dataset.m365DetailsEscBound = '1';
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            if (_m365State.detailsPopover?.classList.contains('open')) _m365HideDetails();
+        });
+    }
 
     if (!_m365State.compact || !_m365State.agendaPopover) return;
     _m365ApplyEnabledState();
@@ -468,6 +496,7 @@ function initM365Calendar() {
 
     document.addEventListener('click', (event) => {
         const target = event.target;
+        if (target.closest('#m365DetailsPopover')) return;
         if (!target.closest('.header-m365-col')) _m365HideAgenda();
     });
 

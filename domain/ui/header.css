@@ -204,51 +204,74 @@ header {
     display: block;
 }
 
-.m365-details {
-    left: 24px;
-    top: calc(100% + 14px);
-    width: 500px;
-    max-height: none;
-    overflow: visible;
-    z-index: 221;
-    border: 1px solid var(--border-hover);
-    border-radius: 18px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-    animation: modal-in 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+.m365-details-backdrop {
+    z-index: 260;
 }
 
-.m365-details .m365-popover-head {
-    position: static;
-    background: transparent;
-    border-bottom: none;
-    padding: 24px 24px 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
+.m365-details-modal {
+    max-width: 980px;
+    padding: 24px;
 }
 
-.m365-details .m365-popover-body {
-    padding: 16px 24px 24px;
+.m365-details-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
 }
 
-.m365-details .m365-popover-body h4 {
+.m365-details-head-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-height: 30px;
+}
+
+.m365-details-modal-head .modal-title {
+    margin-bottom: 0;
+}
+
+.m365-details-close {
+    padding: 8px 14px;
+    font-size: 12px;
+}
+
+.m365-details-modal-body {
+    margin-top: 14px;
+    max-height: min(72vh, 700px);
+    overflow: auto;
+    overflow-x: hidden;
+}
+
+.m365-details-modal-actions {
+    margin-top: 18px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.m365-details-modal-body h4 {
     margin: 0 0 14px;
     font-size: 16px;
     color: var(--text);
 }
 
-.m365-details .m365-popover-body > div {
+.m365-details-modal-body > div {
     margin-top: 8px;
     color: var(--text-dim);
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
-.m365-details .m365-popover-body strong {
+.m365-details-modal-body strong {
     color: var(--text);
 }
 
-.m365-details .m365-body-preview {
+.m365-details-modal-body .m365-body-preview {
     margin: 14px 0 0;
     line-height: 1.45;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .m365-popover-head {
