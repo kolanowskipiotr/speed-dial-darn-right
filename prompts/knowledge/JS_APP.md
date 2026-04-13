@@ -45,6 +45,9 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 - `domain/note/codemirror.js` — (Module) CodeMirror 6 bridge for note editing.
 - Mermaid.js is vendored at `vendor/mermaid.min.js` and initialized with `startOnLoad: false` in `index.html`. Mermaid diagrams render in two contexts: (1) `language === 'mermaid'` notes show a full live split-pane preview; (2) fenced `mermaid` code blocks inside markdown notes are replaced with rendered SVGs via `_applyMermaidInMarkdown()`. The `_renderMermaidPreview()` async helper uses a render token to discard stale results. `_initPreviewSplit()` supersedes the former `_initMarkdownSplit()` and handles both `markdown` and `mermaid` note types.
 
+### weather
+- `domain/weather/weather.js` — Weather widget. Config CRUD (`_loadWeatherConfig`, `_saveWeatherCfg`), Open-Meteo API calls (`_geocodeCity`, `_doFetchWeather`), inline display update (`_updateInline`), popup management (`toggleWeatherPopup`, `_openWeatherPopup`, `_closeWeatherPopup`, `_renderPopup`), forecast view builder (`_buildForecastView`, `_makeDayCard`), config form builder (`_buildConfigView`), init (`initWeather`). Config stored in `localStorage` key `speedDial_weather`.
+
 ### ui
 - `domain/ui/init.js` — Bootstrap logic, global event listeners, and Safari focus fix.
 - `domain/ui/search.js` — Global search functionality across dials, todos, and notes.
@@ -83,7 +86,8 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 25. `domain/dial/render-dials.js`
 26. `domain/dial/view.js`
 27. `domain/dial/drag-drop.js`
-28. `domain/ui/init.js`
+28. `domain/weather/weather.js`
+29. `domain/ui/init.js`
 
 ---
 

@@ -5,12 +5,6 @@ let _tasksSyncInFlight = new Set();
 const TASKS_API_BASE = 'https://www.googleapis.com/tasks/v1';
 const TASKS_LIST_NAME = 'SDDR - Notes';
 const MAX_TASK_LENGTH = 8000;
-const GOOGLE_TASKS_UI_URL = 'https://tasks.google.com/tasks';
-
-function openGoogleTasksUi() {
-    const popup = window.open(GOOGLE_TASKS_UI_URL, '_blank', 'noopener,noreferrer');
-    if (popup) popup.opener = null;
-}
 
 function _encodeTaskBody(noteId, content) {
     return `speed-dial:${noteId}\n${content || ''}`;
@@ -513,7 +507,6 @@ window.removeNoteFromTasks = removeNoteFromTasks;
 window.toggleNoteTasksSync = toggleNoteTasksSync;
 window.listTasksNotes = listTasksNotes;
 window.importNoteFromTasks = importNoteFromTasks;
-window.openGoogleTasksUi = openGoogleTasksUi;
 window._fetchTasksNoteContentForConflict = _fetchTasksNoteContentForConflict;
 window._tasksSyncInFlight = _tasksSyncInFlight;
 

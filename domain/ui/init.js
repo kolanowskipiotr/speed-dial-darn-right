@@ -54,6 +54,12 @@ setTimeout(initSearch, 100);
 // Initialize Sync Config
 initSyncConfig();
 
+// Initialize Weather
+if (typeof initWeather === 'function') {
+    initWeather();
+}
+
+
 const _hdr = document.querySelector('header');
 const _updateHeaderHeight = () =>
     document.documentElement.style.setProperty('--header-height', _hdr.offsetHeight + 'px');

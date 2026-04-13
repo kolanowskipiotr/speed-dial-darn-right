@@ -1,0 +1,144 @@
+/* ── WEATHER INLINE ────────────────────────────────────────────── */
+
+.header-date-row {
+    display: flex;
+    align-items: center;
+    user-select: none;
+}
+
+#headerWeatherInline {
+    display: block;
+    max-width: min(54vw, 720px);
+    min-height: 48px;
+    cursor: pointer;
+    transition: opacity var(--transition);
+}
+
+#headerWeatherInline:hover {
+    opacity: 0.9;
+}
+
+#headerWeatherInline:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.weather-inline-strip {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.weather-inline-strip::-webkit-scrollbar {
+    display: none;
+}
+
+.weather-inline-card {
+    min-width: 72px;
+    padding: 4px 7px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    text-align: left;
+    font-family: 'DM Mono', monospace;
+}
+
+.weather-inline-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: 5px;
+}
+
+.weather-inline-row + .weather-inline-row {
+    margin-top: 1px;
+}
+
+.weather-inline-now {
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface2));
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.weather-inline-label {
+    font-size: 9px;
+    color: var(--text-dimmer);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    justify-self: end;
+}
+
+.weather-inline-icon {
+    font-size: 25px;
+    line-height: 1;
+}
+
+.weather-inline-top {
+    font-size: 10px;
+    color: var(--text);
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.weather-inline-bottom {
+    font-size: 9px;
+    color: var(--text-dimmer);
+    line-height: 1.1;
+    white-space: nowrap;
+    justify-self: end;
+}
+
+.weather-inline-empty {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 4px 10px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dimmer);
+    white-space: nowrap;
+}
+
+/* ── WEATHER CONFIG MODAL ─────────────────────────────────────── */
+
+.weather-modal-coords {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.weather-modal-unit-row {
+    display: inline-flex;
+    gap: 8px;
+}
+
+.weather-unit-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-dimmer);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.weather-unit-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+}
+
+.weather-cfg-status {
+    min-height: 18px;
+    color: var(--text-dimmer);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+}

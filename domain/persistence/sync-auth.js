@@ -44,7 +44,13 @@ function initGis() {
                     renderNotesPanel(notesContainer);
                 }
                 await fetchGDriveFolders(true);
-                if (currentFolderId) fetchGDriveBackups();
+                if (currentFolderId) {
+                    fetchGDriveBackups();
+                } else {
+                    folderSelect.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    folderSelect.focus();
+                    try { folderSelect.showPicker(); } catch (_) {}
+                }
                 syncStatusSpan.textContent = 'Logged in successfully.';
                 checkAutoSync();
             } catch (e) {
@@ -59,7 +65,13 @@ function initGis() {
         // The backend uses the stored refresh token — no popup needed.
         fetchFreshToken().then(ok => {
             if (ok) {
-                fetchGDriveFolders(true).then(() => { if (currentFolderId) fetchGDriveBackups(); });
+                fetchGDriveFolders(true).then(() => {
+                    if (currentFolderId) {
+                        fetchGDriveBackups();
+                    } else {
+                        openDataModal();
+                    }
+                });
                 checkAutoSync();
                 // Re-render notes panel so sync/import buttons appear now that we have a token.
                 const notesContainer = _getNotesContainer?.();

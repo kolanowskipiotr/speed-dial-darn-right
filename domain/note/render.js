@@ -262,7 +262,7 @@ function renderNotesPanel(container) {
             requestAnimationFrame(() => NotesCM.focusAndHighlight(q));
         }
         if (note.language === 'markdown' || note.language === 'mermaid') {
-            _initPreviewSplit();
+            requestAnimationFrame(_initPreviewSplit);
         }
     }
 

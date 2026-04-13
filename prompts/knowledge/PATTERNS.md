@@ -36,6 +36,10 @@ Global scope is shared across all non-module scripts. State vars must be declare
 ## Page title auto-fetch
 - `fetchPageTitle()` fires on URL field blur — `fetch()` + regex on raw HTML
 
+## Weather domain
+
+`domain/weather/weather.js` is a self-contained domain. Key globals: `toggleWeatherPopup()` (called from `header.html`), `_closeWeatherPopup()` (called from `init.js` Escape handler), `initWeather()` (called from `init.js`). Config persisted to `localStorage` key `speedDial_weather`. Weather fetched from Open-Meteo (free, no API key). WMO code tables are defined in the module — these are weather data constants, not UI icons.
+
 ## Icons & emoji — single source of truth
 
 All UI icons/emojis are defined in `domain/core/state.js` (loaded first). Never hardcode emoji strings outside of data definitions:

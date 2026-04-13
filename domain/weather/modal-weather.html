@@ -1,0 +1,34 @@
+<div class="modal-backdrop" id="weatherModal">
+    <div class="modal" style="max-width: 560px;">
+        <div class="modal-title">Weather Configuration</div>
+
+        <div class="form-group">
+            <label class="form-label" for="weatherCityInput">City name</label>
+            <input type="text" id="weatherCityInput" class="form-input" placeholder="e.g. Warsaw, London, Tokyo">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Or coordinates</label>
+            <div class="weather-modal-coords">
+                <input type="number" id="weatherLatInput" class="form-input" placeholder="Latitude" step="0.001">
+                <input type="number" id="weatherLonInput" class="form-input" placeholder="Longitude" step="0.001">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Temperature unit</label>
+            <div class="weather-modal-unit-row">
+                <button type="button" id="weatherUnitC" class="weather-unit-btn">C</button>
+                <button type="button" id="weatherUnitF" class="weather-unit-btn">F</button>
+            </div>
+        </div>
+
+        <div id="weatherCfgStatus" class="weather-cfg-status"></div>
+
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('weatherModal')">Cancel</button>
+            <button class="btn-primary" id="weatherSaveBtn">Save & Fetch</button>
+        </div>
+    </div>
+</div>
+

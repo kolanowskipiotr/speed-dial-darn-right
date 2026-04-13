@@ -5,8 +5,15 @@
             <div class="header-tagline" id="headerDialCount"></div>
         </div>
         <div class="header-center">
-            <div class="header-clock" id="headerClock"></div>
-            <div class="header-date" id="headerDate"></div>
+            <div class="header-time-col">
+                <div class="header-clock" id="headerClock"></div>
+                <div class="header-date-row" id="headerDateRow">
+                    <span class="header-date" id="headerDate"></span>
+                </div>
+            </div>
+            <div class="header-weather-col">
+                <div id="headerWeatherInline" class="header-weather-inline" role="button" tabindex="0" aria-label="Open detailed weather"></div>
+            </div>
         </div>
         <div class="header-actions">
             <div class="header-search-wrap" id="headerSearchWrap">
@@ -70,6 +77,8 @@
                 <div class="toggle-thumb"></div>
             </div>
         </div>
+        <div class="theme-sep"></div>
+        <button class="btn-secondary" onclick="openWeatherConfigModal()">Weather Config</button>
         <button class="btn-primary" style="margin-left: 10px;" onclick="openDataModal()">Manage Data</button>
     </div>
     <div class="tabs-bar" id="tabsBar"></div>
