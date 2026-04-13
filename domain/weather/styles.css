@@ -38,10 +38,10 @@
 .weather-inline-card {
     display: grid;
     grid-template-columns: auto 1fr;
-    align-items: center;
+    align-items: start;
     column-gap: 6px;
     row-gap: 2px;
-    padding: 5px 7px;
+    padding: 4px 7px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
     background: var(--surface2);
