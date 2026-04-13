@@ -21,6 +21,11 @@ let showModalOnDisconnect = true; // Default to true as requested
 let lastAutoSync = null;
 let lastManualSync = null;  // timestamp (ms) ostatniego ręcznego backupu
 let backupInProgress = false; // true while a backup fetch is in-flight
+let m365CalendarConfig = {
+    enabled: true,
+    icsUrl: '',
+    timezone: '',
+};
 
 // --- DOM Elements ---
 const dataModal = document.getElementById('dataModal');
@@ -67,6 +72,11 @@ function loadSyncSettings() {
     showModalOnDisconnect = (settings.showModalOnDisconnect !== undefined) ? settings.showModalOnDisconnect : true;
     lastAutoSync = settings.lastAutoSync || null;
     lastManualSync = settings.lastManualSync || null;
+    m365CalendarConfig = {
+        enabled: settings.m365CalendarConfig?.enabled !== false,
+        icsUrl: settings.m365CalendarConfig?.icsUrl || '',
+        timezone: settings.m365CalendarConfig?.timezone || '',
+    };
 
     // Don't fetch folders/backups here — wait for the token to be confirmed
     // valid inside initGis(). Fetching with a stale stored token causes
@@ -86,7 +96,8 @@ function saveSyncSettings() {
         autoSync: gdriveSyncEnabled,
         showModalOnDisconnect: showModalOnDisconnect,
         lastAutoSync: lastAutoSync,
-        lastManualSync: lastManualSync
+        lastManualSync: lastManualSync,
+        m365CalendarConfig: m365CalendarConfig,
     }));
 }
 

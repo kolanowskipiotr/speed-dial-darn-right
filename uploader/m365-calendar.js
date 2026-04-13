@@ -1,0 +1,313 @@
+function unfoldIcs(raw) {
+    return String(raw || '').replace(/\r?\n[ \t]/g, '');
+}
+
+function parseLine(line) {
+    const idx = line.indexOf(':');
+    if (idx < 0) return null;
+    const lhs = line.slice(0, idx);
+    const value = line.slice(idx + 1);
+    const [name, ...paramParts] = lhs.split(';');
+    const params = {};
+    for (const p of paramParts) {
+        const eq = p.indexOf('=');
+        if (eq > 0) params[p.slice(0, eq).toUpperCase()] = p.slice(eq + 1);
+    }
+    return { name: name.toUpperCase(), value, params };
+}
+
+function parseIcsDate(raw, params = {}) {
+    if (!raw) return null;
+    if (params.VALUE === 'DATE' || /^\d{8}$/.test(raw)) {
+        const y = Number(raw.slice(0, 4));
+        const m = Number(raw.slice(4, 6));
+        const d = Number(raw.slice(6, 8));
+        return new Date(Date.UTC(y, m - 1, d));
+    }
+
+    const match = String(raw).match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?(Z?)$/);
+    if (!match) return null;
+    const [, y, mo, d, h, mi, s = '00', z] = match;
+    if (z === 'Z') return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)));
+    return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s));
+}
+
+function parseRRule(raw = '') {
+    const out = {};
+    for (const part of raw.split(';')) {
+        const idx = part.indexOf('=');
+        if (idx > 0) out[part.slice(0, idx).toUpperCase()] = part.slice(idx + 1);
+    }
+    return Object.keys(out).length ? out : null;
+}
+
+function parseExDates(raw = '', params = {}) {
+    if (!raw) return [];
+    return raw.split(',').map((v) => parseIcsDate(v.trim(), params)).filter(Boolean);
+}
+
+function unescapeIcsText(v = '') {
+    return String(v)
+        .replace(/\\n/gi, '\n')
+        .replace(/\\,/g, ',')
+        .replace(/\\;/g, ';')
+        .replace(/\\\\/g, '\\');
+}
+
+function stripUrlNoise(raw = '') {
+    return String(raw).trim().replace(/^<+/, '').replace(/>+$/, '').replace(/[),.;]+$/, '');
+}
+
+function decodeSafeLink(rawUrl = '') {
+    const cleaned = stripUrlNoise(rawUrl);
+    if (!cleaned) return '';
+    try {
+        const url = new URL(cleaned);
+        if (!url.hostname.includes('safelinks.protection.outlook.com')) return cleaned;
+        const target = url.searchParams.get('url');
+        return target ? stripUrlNoise(target) : cleaned;
+    } catch {
+        return cleaned;
+    }
+}
+
+function extractJoinUrl(description = '', urlProp = '') {
+    const links = description.match(/https?:\/\/[^\s<>")]+/gi) || [];
+    const decodedLinks = links.map(decodeSafeLink);
+    const teams = decodedLinks.find((l) => /^https:\/\/teams\.microsoft\.com\//i.test(l));
+    if (teams) return teams;
+
+    const decodedUrlProp = decodeSafeLink(urlProp);
+    if (/^https:\/\/teams\.microsoft\.com\//i.test(decodedUrlProp)) return decodedUrlProp;
+
+    return decodedUrlProp || decodedLinks[0] || '';
+}
+
+function parseIcsEvents(rawIcs) {
+    const lines = unfoldIcs(rawIcs).split(/\r?\n/);
+    const events = [];
+    let current = null;
+
+    for (const line of lines) {
+        if (line === 'BEGIN:VEVENT') {
+            current = { raw: {} };
+            continue;
+        }
+        if (line === 'END:VEVENT') {
+            if (current) events.push(current);
+            current = null;
+            continue;
+        }
+        if (!current) continue;
+
+        const parsed = parseLine(line);
+        if (!parsed) continue;
+        current.raw[parsed.name] = { value: parsed.value, params: parsed.params };
+    }
+
+    return events
+        .map((event) => {
+            const start = parseIcsDate(event.raw.DTSTART?.value, event.raw.DTSTART?.params);
+            const end = parseIcsDate(event.raw.DTEND?.value, event.raw.DTEND?.params) || start;
+            if (!start || !end) return null;
+
+            const description = unescapeIcsText(event.raw.DESCRIPTION?.value || '');
+            const webLink = unescapeIcsText(event.raw.URL?.value || '');
+
+            return {
+                id: unescapeIcsText(event.raw.UID?.value || ''),
+                subject: unescapeIcsText(event.raw.SUMMARY?.value || '(no subject)'),
+                start,
+                end,
+                recurrenceId: parseIcsDate(event.raw['RECURRENCE-ID']?.value, event.raw['RECURRENCE-ID']?.params),
+                rrule: parseRRule(event.raw.RRULE?.value || ''),
+                exdates: parseExDates(event.raw.EXDATE?.value || '', event.raw.EXDATE?.params || {}),
+                isCancelled: (event.raw.STATUS?.value || '').toUpperCase() === 'CANCELLED',
+                organizer: unescapeIcsText(event.raw.ORGANIZER?.value || ''),
+                location: unescapeIcsText(event.raw.LOCATION?.value || ''),
+                webLink,
+                joinUrl: extractJoinUrl(description, webLink),
+                bodyPreview: description.slice(0, 280),
+                source: 'ics',
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.start - b.start);
+}
+
+function addDays(date, amount) {
+    const copy = new Date(date);
+    copy.setDate(copy.getDate() + amount);
+    return copy;
+}
+
+function toDateOnlyLocal(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+}
+
+function toOccurrenceKey(uid, date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return `${uid}|${y}-${m}-${d}T${hh}:${mm}`;
+}
+
+function expandRecurringEvents(events, fromDate, horizonDays = 60) {
+    const windowStart = new Date(fromDate);
+    const windowEnd = addDays(windowStart, horizonDays);
+    const explicit = events.filter((event) => !!event.recurrenceId);
+    const explicitKeys = new Set(explicit.map((event) => toOccurrenceKey(event.id, event.start)));
+    const out = events.filter((event) => !event.rrule || event.recurrenceId);
+
+    for (const master of events) {
+        if (!master.rrule || master.recurrenceId) continue;
+        const freq = String(master.rrule.FREQ || '').toUpperCase();
+        if (freq !== 'DAILY' && freq !== 'WEEKLY') continue;
+
+        const interval = Math.max(1, Number(master.rrule.INTERVAL || 1));
+        const byDay = String(master.rrule.BYDAY || '')
+            .split(',')
+            .map((x) => x.trim().toUpperCase())
+            .filter(Boolean);
+
+        const until = parseIcsDate(master.rrule.UNTIL || '', {});
+        const rangeEnd = until && until < windowEnd ? until : windowEnd;
+        const startDay = toDateOnlyLocal(master.start);
+        const iterStart = toDateOnlyLocal(master.start > windowStart ? master.start : windowStart);
+
+        for (let day = new Date(iterStart); day <= rangeEnd; day = addDays(day, 1)) {
+            const diffDays = Math.floor((toDateOnlyLocal(day) - startDay) / 86400000);
+            if (diffDays < 0) continue;
+
+            let matches = false;
+            if (freq === 'DAILY') {
+                matches = diffDays % interval === 0;
+            } else {
+                const iCalDay = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][day.getDay()];
+                const defaultDay = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][master.start.getDay()];
+                const wantedDays = byDay.length ? byDay : [defaultDay];
+                const diffWeeks = Math.floor(diffDays / 7);
+                matches = diffWeeks % interval === 0 && wantedDays.includes(iCalDay);
+            }
+            if (!matches) continue;
+
+            const occStart = new Date(
+                day.getFullYear(),
+                day.getMonth(),
+                day.getDate(),
+                master.start.getHours(),
+                master.start.getMinutes(),
+                master.start.getSeconds()
+            );
+            const occEnd = new Date(occStart.getTime() + (master.end.getTime() - master.start.getTime()));
+            if (occEnd < windowStart) continue;
+            if (master.exdates.some((x) => x.getTime() === occStart.getTime())) continue;
+
+            const key = toOccurrenceKey(master.id, occStart);
+            if (explicitKeys.has(key)) continue;
+
+            out.push({
+                ...master,
+                start: occStart,
+                end: occEnd,
+                recurrenceId: occStart,
+                rrule: null,
+            });
+        }
+    }
+
+    return out.sort((a, b) => a.start - b.start);
+}
+
+async function fetchIcsCalendarWindow(icsUrl, options = {}) {
+    if (!icsUrl) throw new Error('ICS URL missing');
+    const response = await fetch(icsUrl);
+    if (!response.ok) throw new Error(`ICS request failed: HTTP ${response.status}`);
+    const raw = await response.text();
+    const parsed = parseIcsEvents(raw);
+    return expandRecurringEvents(parsed, options.fromDate || new Date(), options.horizonDays || 90);
+}
+
+function pickNextNotCanceled(events, nowMs = Date.now()) {
+    return events.find((event) => !event.isCancelled && event.end.getTime() >= nowMs) || null;
+}
+
+function getWorkingDayKey(date, timezone) {
+    return new Intl.DateTimeFormat('en-CA', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: timezone,
+    }).format(date);
+}
+
+function isWorkingDay(date, timezone) {
+    const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: timezone }).format(date);
+    return dayName !== 'Sat' && dayName !== 'Sun';
+}
+
+function formatAgendaDayLabel(date, timezone) {
+    return new Intl.DateTimeFormat('en-GB', {
+        weekday: 'short',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: timezone,
+    }).format(date);
+}
+
+function buildWorkingDaysAgenda(events, options = {}) {
+    const timezone = options.timezone || 'Europe/Warsaw';
+    const now = options.now || new Date();
+    const daysCount = Math.max(1, Number(options.daysCount || 5));
+    const grouped = new Map();
+
+    for (const event of events) {
+        if (event.isCancelled || event.end < now || !isWorkingDay(event.start, timezone)) continue;
+        const key = getWorkingDayKey(event.start, timezone);
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key).push(event);
+    }
+
+    return [...grouped.entries()]
+        .slice(0, daysCount)
+        .map(([dayKey, items]) => ({
+            dayKey,
+            dayLabel: formatAgendaDayLabel(items[0].start, timezone),
+            items: items.sort((a, b) => a.start - b.start),
+        }));
+}
+
+function serializeEvent(event) {
+    if (!event) return null;
+    return {
+        id: event.id,
+        subject: event.subject,
+        start: event.start.toISOString(),
+        end: event.end.toISOString(),
+        isCancelled: !!event.isCancelled,
+        isAllDay: !!event.isAllDay,
+        organizer: event.organizer || '',
+        location: event.location || '',
+        joinUrl: event.joinUrl || '',
+        webLink: event.webLink || '',
+        bodyPreview: event.bodyPreview || '',
+        source: event.source || '',
+    };
+}
+
+module.exports = {
+    fetchIcsCalendarWindow,
+    pickNextNotCanceled,
+    buildWorkingDaysAgenda,
+    serializeEvent,
+    __test__: {
+        parseIcsEvents,
+        expandRecurringEvents,
+        decodeSafeLink,
+        extractJoinUrl,
+    },
+};
+

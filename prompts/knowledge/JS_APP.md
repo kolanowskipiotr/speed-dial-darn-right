@@ -48,6 +48,9 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 ### weather
 - `domain/weather/weather.js` — Weather widget. Config CRUD (`_loadWeatherConfig`, `_saveWeatherCfg`), Open-Meteo API calls (`_geocodeCity`, `_doFetchWeather`), inline display update (`_updateInline`), popup management (`toggleWeatherPopup`, `_openWeatherPopup`, `_closeWeatherPopup`, `_renderPopup`), forecast view builder (`_buildForecastView`, `_makeDayCard`), config form builder (`_buildConfigView`), init (`initWeather`). Config stored in `localStorage` key `speedDial_weather`.
 
+### calendar
+- `domain/calendar/m365.js` — Header M365 meeting widget (`initM365Calendar`) with 3-level UX: compact next meeting, agenda popover for next working days, and details popover for selected meeting. Includes edit-mode configuration modal (`openM365ConfigModal`) for ICS URL, timezone, and enable/disable state. Runtime config is persisted as `m365CalendarConfig` via `speedDial_syncSettings` in `domain/persistence/sync.js`.
+
 ### ui
 - `domain/ui/init.js` — Bootstrap logic, global event listeners, and Safari focus fix.
 - `domain/ui/search.js` — Global search functionality across dials, todos, and notes.
@@ -87,7 +90,8 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 26. `domain/dial/view.js`
 27. `domain/dial/drag-drop.js`
 28. `domain/weather/weather.js`
-29. `domain/ui/init.js`
+29. `domain/calendar/m365.js`
+30. `domain/ui/init.js`
 
 ---
 

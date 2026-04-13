@@ -14,7 +14,7 @@ header {
 
 .header-top {
     display: grid;
-    grid-template-columns: 1.35fr auto 1fr;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     padding: 6px 28px;
     border-bottom: 1px solid var(--border);
@@ -45,9 +45,155 @@ header {
 
 .header-center {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto auto 1fr;
     align-items: center;
     gap: 4px 12px;
+}
+
+.header-m365-col {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.m365-compact {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 170px;
+    max-width: 220px;
+    gap: 1px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    text-align: left;
+}
+
+.m365-compact:hover {
+    border-color: var(--border-hover);
+    background: var(--surface3);
+}
+
+.m365-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dimmer);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.m365-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+}
+
+.m365-subject,
+.m365-empty {
+    max-width: 100%;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.m365-state {
+    font-size: 10px;
+    color: var(--success);
+}
+
+.m365-source-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dimmer);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 6px;
+}
+
+.m365-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 320px;
+    max-height: 340px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-hover);
+    overflow: auto;
+    z-index: 220;
+    display: none;
+}
+
+.m365-popover.open {
+    display: block;
+}
+
+.m365-details {
+    left: 24px;
+    top: calc(100% + 14px);
+    width: 360px;
+    z-index: 221;
+}
+
+.m365-popover-head {
+    position: sticky;
+    top: 0;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.m365-popover-body {
+    padding: 8px;
+}
+
+.m365-day h4 {
+    margin: 8px 0 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.m365-agenda-item {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    cursor: pointer;
+}
+
+.m365-agenda-item:hover {
+    border-color: var(--border-hover);
+    background: var(--surface3);
+}
+
+.m365-agenda-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dimmer);
+}
+
+.m365-agenda-title {
+    font-size: 12px;
+    color: var(--text);
+}
+
+.m365-empty-block,
+.m365-body-preview {
+    font-size: 12px;
+    color: var(--text-dim);
 }
 
 .header-time-col {

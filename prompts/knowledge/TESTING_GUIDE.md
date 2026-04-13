@@ -14,16 +14,18 @@ npm test --prefix uploader
 ## Expected Output
 
 ```
-✔ Bug 1: buildArrayPatch — item-level patches (5 tests) ✓
+✔ Bug 1: buildArrayPatch — item-level patches (7 tests) ✓
 ✔ Bug 1: calculateDiff — Format 2 diff backups (5 tests) ✓
 ✔ Bug 1: applyDiff — restore scenarios (4 tests) ✓
 ✔ Restore Full Backup scenario (1 test) ✓
 ✔ Restore Diff Backup scenario (2 tests) ✓
+✔ m365 calendar logic (4 tests) ✓
+✔ m365 calendar server endpoints (3 tests) ✓
 ✔ Rate-limiting manual backups (3 tests) ✓
 ✔ Edge cases (3 tests) ✓
 
-ℹ tests 29
-ℹ pass 29
+ℹ tests 53
+ℹ pass 53
 ℹ fail 0
 ```
 
@@ -31,6 +33,8 @@ npm test --prefix uploader
 
 - **`tests/uploader/sync/build-array-patch.test.js`** — `buildArrayPatch` scenarios
 - **`tests/uploader/sync/calculate-diff.test.js`** — Format 2 `calculateDiff` scenarios
+- **`tests/uploader/m365/calendar-logic.test.js`** — logika M365 (next meeting, agenda, ICS recurrence, SafeLinks)
+- **`tests/uploader/m365/server-calendar.test.js`** — endpointy HTTP `/api/m365/calendar/*` (ICS-only)
 - **`tests/domain/persistence/sync-backup/apply-diff.test.js`** — `applyDiff` restore scenarios
 - **`tests/domain/persistence/sync-backup/restore-full.test.js`** — full backup restore scenario
 - **`tests/domain/persistence/sync-backup/restore-diff.test.js`** — diff restore and chained diffs

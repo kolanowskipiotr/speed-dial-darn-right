@@ -5,6 +5,21 @@
             <div class="header-tagline" id="headerDialCount"></div>
         </div>
         <div class="header-center">
+            <div class="header-m365-col">
+                <button class="m365-compact" id="m365Compact" type="button" aria-label="Open calendar agenda">
+                    <span class="m365-label">Next</span>
+                    <span class="m365-empty">No meeting</span>
+                </button>
+                <span class="m365-source-badge" id="m365SourceBadge">N/A</span>
+                <div class="m365-popover" id="m365AgendaPopover">
+                    <div class="m365-popover-head">Agenda (5 working days)</div>
+                    <div class="m365-popover-body" id="m365AgendaBody"></div>
+                </div>
+                <div class="m365-popover m365-details" id="m365DetailsPopover">
+                    <div class="m365-popover-head">Meeting details</div>
+                    <div class="m365-popover-body" id="m365DetailsBody"></div>
+                </div>
+            </div>
             <div class="header-time-col">
                 <div class="header-clock" id="headerClock"></div>
                 <div class="header-date-row" id="headerDateRow">
@@ -79,6 +94,7 @@
         </div>
         <div class="theme-sep"></div>
         <button class="btn-secondary" onclick="openWeatherConfigModal()">Weather Config</button>
+        <button class="btn-secondary" onclick="openM365ConfigModal()">M365 Config</button>
         <button class="btn-primary" style="margin-left: 10px;" onclick="openDataModal()">Manage Data</button>
     </div>
     <div class="tabs-bar" id="tabsBar"></div>

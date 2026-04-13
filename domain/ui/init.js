@@ -59,6 +59,11 @@ if (typeof initWeather === 'function') {
     initWeather();
 }
 
+// Initialize M365 calendar widget
+if (typeof initM365Calendar === 'function') {
+    initM365Calendar();
+}
+
 
 const _hdr = document.querySelector('header');
 const _updateHeaderHeight = () =>

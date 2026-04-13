@@ -3,16 +3,77 @@ const fs   = require('fs');
 const path = require('path');
 const { performSync, listGDriveFolders, listGDriveBackups, fetchGDriveFile, createGDriveFolder } = require('./sync');
 const { exchangeCode, getFreshToken } = require('./auth');
+const {
+    fetchIcsCalendarWindow,
+    pickNextNotCanceled,
+    buildWorkingDaysAgenda,
+    serializeEvent,
+} = require('./m365-calendar');
 
-const UPLOADS_DIR = '/uploads';
+let UPLOADS_DIR = process.env.UPLOADS_DIR || '/uploads';
 const PORT = 3001;
 
 // Ensure uploads dir exists
 if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    try {
+        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    } catch (error) {
+        const localFallback = path.resolve(process.cwd(), 'uploads');
+        fs.mkdirSync(localFallback, { recursive: true });
+        UPLOADS_DIR = localFallback;
+    }
 }
 
-http.createServer(async (req, res) => {
+function json(res, statusCode, payload) {
+    res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(payload));
+}
+
+function getM365Config(overrides = {}) {
+    return {
+        timezone: process.env.M365_TIMEZONE || 'Europe/Warsaw',
+        workDays: Math.max(1, Number(process.env.M365_WORK_DAYS || 5)),
+        icsUrl: process.env.M365_ICS_URL || '',
+        horizonDays: Math.max(30, Number(process.env.M365_ICS_HORIZON_DAYS || 90)),
+        ...overrides,
+    };
+}
+
+function getM365RequestConfig(req, baseConfig, requestUrl, requestData = {}) {
+    let icsUrl = requestData.icsUrl || requestUrl.searchParams.get('icsUrl') || req.headers['x-m365-ics-url'] || baseConfig.icsUrl;
+    const encodedIcs = req.headers['x-m365-ics-url-enc'];
+    if (encodedIcs) {
+        try {
+            icsUrl = decodeURIComponent(String(encodedIcs));
+        } catch {
+            icsUrl = '';
+        }
+    }
+    return {
+        ...baseConfig,
+        timezone: requestData.timezone || requestUrl.searchParams.get('timezone') || req.headers['x-m365-timezone'] || baseConfig.timezone,
+        icsUrl,
+    };
+}
+
+function createServer(deps = {}) {
+    const _exchangeCode = deps.exchangeCode || exchangeCode;
+    const _getFreshToken = deps.getFreshToken || getFreshToken;
+    const _fetchIcsCalendarWindow = deps.fetchIcsCalendarWindow || fetchIcsCalendarWindow;
+    const _now = deps.now || (() => Date.now());
+    const m365Config = getM365Config(deps.config || {});
+
+    async function loadCalendarEvents(requestConfig) {
+        const startDate = new Date(_now());
+        if (!requestConfig.icsUrl) throw new Error('ICS URL is not configured');
+        const events = await _fetchIcsCalendarWindow(requestConfig.icsUrl, {
+            fromDate: startDate,
+            horizonDays: requestConfig.horizonDays,
+        });
+        return { source: 'ics', events };
+    }
+
+    return http.createServer(async (req, res) => {
     // --- Auth: exchange code for tokens (no Authorization header needed) ---
     if (req.url === '/api/sync/auth' && req.method === 'POST') {
         const chunks = [];
@@ -20,13 +81,11 @@ http.createServer(async (req, res) => {
         req.on('end', async () => {
             try {
                 const { code } = JSON.parse(Buffer.concat(chunks).toString());
-                const result = await exchangeCode(code);
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify(result));
+                const result = await _exchangeCode(code);
+                json(res, 200, result);
             } catch (e) {
                 console.error('[auth] Code exchange failed:', e.message);
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: e.message }));
+                json(res, 500, { error: e.message });
             }
         });
         return;
@@ -35,19 +94,91 @@ http.createServer(async (req, res) => {
     // --- Auth: silent token refresh using stored refresh token ---
     if (req.url === '/api/sync/auth/token' && req.method === 'GET') {
         try {
-            const tokens = await getFreshToken();
+            const tokens = await _getFreshToken();
             if (!tokens) {
-                res.writeHead(404, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'no_session' }));
+                json(res, 404, { error: 'no_session' });
                 return;
             }
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(tokens));
+            json(res, 200, tokens);
         } catch (e) {
             console.error('[auth] Token refresh failed:', e.message);
-            res.writeHead(401, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'refresh_failed' }));
+            json(res, 401, { error: 'refresh_failed' });
         }
+        return;
+    }
+
+    // --- M365 Calendar API ---
+    if (req.url.startsWith('/api/m365/calendar') && (req.method === 'GET' || req.method === 'POST')) {
+        const requestUrl = new URL(req.url, `http://${req.headers.host}`);
+        let requestData = {};
+        if (req.method === 'POST') {
+            try {
+                const chunks = [];
+                for await (const chunk of req) chunks.push(chunk);
+                const rawBody = Buffer.concat(chunks).toString();
+                requestData = rawBody ? JSON.parse(rawBody) : {};
+            } catch {
+                json(res, 400, { error: 'invalid_json' });
+                return;
+            }
+        }
+
+        const requestConfig = getM365RequestConfig(req, m365Config, requestUrl, requestData);
+        const daysParam = Number(requestData.days || requestUrl.searchParams.get('days') || m365Config.workDays);
+        const days = Math.max(1, daysParam);
+
+        try {
+            const calendarData = await loadCalendarEvents(requestConfig);
+
+            if (requestUrl.pathname === '/api/m365/calendar/next') {
+                const next = pickNextNotCanceled(calendarData.events, _now());
+                json(res, 200, {
+                    source: calendarData.source,
+                    next: serializeEvent(next),
+                    fetchedAt: new Date(_now()).toISOString(),
+                });
+                return;
+            }
+
+            if (requestUrl.pathname === '/api/m365/calendar/agenda') {
+                const agenda = buildWorkingDaysAgenda(calendarData.events, {
+                    timezone: requestConfig.timezone,
+                    daysCount: days,
+                    now: new Date(_now()),
+                });
+                json(res, 200, {
+                    source: calendarData.source,
+                    days: agenda.map((day) => ({
+                        dayKey: day.dayKey,
+                        dayLabel: day.dayLabel,
+                        items: day.items.map(serializeEvent),
+                    })),
+                    fetchedAt: new Date(_now()).toISOString(),
+                });
+                return;
+            }
+
+            if (requestUrl.pathname === '/api/m365/calendar/event') {
+                const eventId = requestData.eventId || requestUrl.searchParams.get('eventId') || '';
+                if (!eventId) {
+                    json(res, 400, { error: 'eventId is required' });
+                    return;
+                }
+                const event = calendarData.events.find((item) => item.id === eventId) || null;
+                json(res, 200, {
+                    source: calendarData.source,
+                    event: serializeEvent(event),
+                });
+                return;
+            }
+        } catch (error) {
+            console.error('[m365] Calendar endpoint failed:', error.message);
+            json(res, 500, { error: error.message });
+            return;
+        }
+
+        res.writeHead(404);
+        res.end('not found');
         return;
     }
 
@@ -189,4 +320,11 @@ http.createServer(async (req, res) => {
         res.end('method not allowed');
     }
 
-}).listen(PORT, () => console.log(`uploader listening on ${PORT}`));
+    });
+}
+
+if (require.main === module) {
+    createServer().listen(PORT, () => console.log(`uploader listening on ${PORT}`));
+}
+
+module.exports = { createServer, getM365Config };

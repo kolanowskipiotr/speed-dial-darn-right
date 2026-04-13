@@ -4,7 +4,7 @@
   "description": "Uploader sidecar for Speed Dial Darn Right",
   "main": "server.js",
   "scripts": {
-    "test": "node --test ../tests/uploader/sync/*.test.js ../tests/domain/persistence/sync-backup/*.test.js ../tests/domain/note/tasks-sync/*.test.js"
+    "test": "node --test ../tests/uploader/sync/*.test.js ../tests/uploader/m365/*.test.js ../tests/domain/persistence/sync-backup/*.test.js ../tests/domain/note/tasks-sync/*.test.js"
   },
   "dependencies": {
     "googleapis": "^126.0.0",

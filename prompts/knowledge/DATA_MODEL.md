@@ -49,6 +49,11 @@ localStorage key: `speedDial_syncSettings`
   showModalOnDisconnect: boolean, // Show Manage Data popup when account disconnected? (default: true)
   lastAutoSync: number | null,   // Timestamp (ms) of last successful auto-backup
   lastManualSync: number | null, // Timestamp (ms) of last successful manual backup (rate-limited to 24h cooldown)
+  m365CalendarConfig: {
+    enabled: boolean,            // Header M365 widget visibility
+    icsUrl: string,              // Outlook ICS URL used as the only calendar source
+    timezone: string,            // Optional timezone override for backend requests
+  }
 }
 ```
 

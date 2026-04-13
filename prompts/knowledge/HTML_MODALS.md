@@ -25,6 +25,9 @@ The application uses **nginx SSI** (`ssi on` in `nginx.conf`) to include domain-
 ### Persistence Domain (`domain/persistence/`)
 - `modal-data.html` — Unified Data Management modal (`#dataModal`). Two-column layout: left panel for Google Drive Sync (auth, folder select, auto-backup toggle, manage-on-disconnect toggle, backup list), right column stacked with Local File (export/import) and Google Tasks Sync (sync-all button).
 
+### Calendar Domain (`domain/calendar/`)
+- `modal-m365.html` — M365 widget settings modal (`#m365ConfigModal`) for edit mode: enable/disable widget, ICS URL, and optional timezone override (ICS-only integration).
+
 ---
 
 ## Load Pattern (index.html)
@@ -36,6 +39,7 @@ The application uses **nginx SSI** (`ssi on` in `nginx.conf`) to include domain-
 <!--#include virtual="/domain/note/modal-conflict.html" -->
 <!--#include virtual="/domain/note/modal-import-tasks.html" -->
 <!--#include virtual="/domain/persistence/modal-data.html" -->
+<!--#include virtual="/domain/calendar/modal-m365.html" -->
 ```
 
 ---
