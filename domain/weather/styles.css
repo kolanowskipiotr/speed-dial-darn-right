@@ -40,7 +40,7 @@
     grid-template-columns: auto 1fr;
     align-items: start;
     column-gap: 6px;
-    row-gap: 2px;
+    row-gap: 1px;
     padding: 4px 7px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
