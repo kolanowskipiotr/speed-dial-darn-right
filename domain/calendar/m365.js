@@ -1,15 +1,14 @@
 let _m365State = {
     compact: null,
-    sourceBadge: null,
     agendaPopover: null,
     detailsPopover: null,
     agendaBody: null,
     detailsBody: null,
     nextEvent: null,
     agendaDays: [],
-    currentSource: '',
     compactTimer: null,
     agendaTimer: null,
+    countdownTimer: null,
 };
 
 const _M365_DEFAULT_CONFIG = {
@@ -63,6 +62,17 @@ function _m365ValidateHttpUrl(raw) {
     }
 }
 
+function _m365HasIcsSource() {
+    const cfg = _m365GetConfig();
+    const valid = _m365ValidateHttpUrl(cfg.icsUrl);
+    return valid.ok && !!valid.value;
+}
+
+function _m365CanLoadCalendar() {
+    const cfg = _m365GetConfig();
+    return cfg.enabled && _m365HasIcsSource();
+}
+
 function _m365FmtTime(iso) {
     const date = new Date(iso);
     return new Intl.DateTimeFormat('en-GB', {
@@ -74,6 +84,21 @@ function _m365FmtTime(iso) {
 
 function _m365Duration(startIso, endIso) {
     const mins = Math.max(0, Math.round((new Date(endIso) - new Date(startIso)) / 60000));
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h && m) return `${h}h ${m}m`;
+    if (h) return `${h}h`;
+    return `${m}m`;
+}
+
+function _m365TimeUntilStart(startIso) {
+    const startTs = new Date(startIso).getTime();
+    if (!Number.isFinite(startTs)) return '';
+
+    const diffMs = startTs - Date.now();
+    if (diffMs <= 0) return '';
+
+    const mins = Math.ceil(diffMs / 60000);
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     if (h && m) return `${h}h ${m}m`;
@@ -151,6 +176,19 @@ function _m365RenderCompact() {
     const target = _m365State.compact;
     if (!target) return;
 
+    const cfg = _m365GetConfig();
+    if (!cfg.enabled) {
+        target.classList.remove('has-event');
+        target.innerHTML = '<span class="m365-label">Next</span><span class="m365-empty">Widget disabled</span>';
+        return;
+    }
+
+    if (!_m365HasIcsSource()) {
+        target.classList.remove('has-event');
+        target.innerHTML = '<span class="m365-label">Next</span><span class="m365-empty">Integration disabled (no ICS URL)</span>';
+        return;
+    }
+
     const ev = _m365State.nextEvent;
     if (!ev) {
         target.classList.remove('has-event');
@@ -159,17 +197,20 @@ function _m365RenderCompact() {
     }
 
     const inProgress = new Date(ev.start) <= new Date() && new Date(ev.end) >= new Date();
+    const countdown = !inProgress ? _m365TimeUntilStart(ev.start) : '';
     target.classList.add('has-event');
     target.innerHTML = [
         '<span class="m365-label">Next</span>',
-        `<span class="m365-time">${_m365FmtTime(ev.start)}-${_m365FmtTime(ev.end)}</span>`,
+        `<span class="m365-compact-row">
+            <span class="m365-time">${_m365FmtTime(ev.start)}-${_m365FmtTime(ev.end)} (${_m365Duration(ev.start, ev.end)})</span>
+            ${countdown ? `<span class="m365-countdown">Starts in ${countdown}</span>` : ''}
+            ${ev.joinUrl
+                ? `<a class="m365-join-btn" href="${_m365Esc(ev.joinUrl)}" target="_blank" rel="noopener noreferrer">Join</a>`
+                : '<span class="m365-join-offline" aria-label="In person meeting">In person</span>'}
+        </span>`,
         `<span class="m365-subject">${_m365Esc(ev.subject)}</span>`,
         inProgress ? '<span class="m365-state">In progress</span>' : '',
     ].join('');
-
-    if (_m365State.sourceBadge) {
-        _m365State.sourceBadge.textContent = 'ICS';
-    }
 }
 
 function _m365RenderAgenda() {
@@ -177,6 +218,11 @@ function _m365RenderAgenda() {
     if (!body) return;
 
     if (!_m365State.agendaDays.length) {
+        const cfg = _m365GetConfig();
+        if (cfg.enabled && !_m365HasIcsSource()) {
+            body.innerHTML = '<div class="m365-empty-block">Integration disabled (no ICS URL).</div>';
+            return;
+        }
         body.innerHTML = '<div class="m365-empty-block">No meetings in upcoming working days.</div>';
         return;
     }
@@ -184,7 +230,12 @@ function _m365RenderAgenda() {
     body.innerHTML = _m365State.agendaDays.map((day) => {
         const items = day.items.map((ev) => `
             <button class="m365-agenda-item" type="button" data-event-id="${_m365Esc(ev.id)}">
-                <span class="m365-agenda-time">${_m365FmtTime(ev.start)}-${_m365FmtTime(ev.end)}</span>
+                <span class="m365-agenda-row">
+                    <span class="m365-agenda-time">${_m365FmtTime(ev.start)}-${_m365FmtTime(ev.end)} (${_m365Duration(ev.start, ev.end)})</span>
+                    ${ev.joinUrl
+                        ? `<a class="m365-join-btn" href="${_m365Esc(ev.joinUrl)}" target="_blank" rel="noopener noreferrer">Join</a>`
+                        : '<span class="m365-join-offline" aria-label="In person meeting">In person</span>'}
+                </span>
                 <span class="m365-agenda-title">${_m365Esc(ev.subject)}</span>
             </button>
         `).join('');
@@ -201,7 +252,9 @@ function _m365RenderDetails(eventData) {
         <div><strong>Time:</strong> ${_m365FmtTime(eventData.start)}-${_m365FmtTime(eventData.end)} (${_m365Duration(eventData.start, eventData.end)})</div>
         <div><strong>Location:</strong> ${_m365Esc(eventData.location || '-')}</div>
         <div><strong>Organizer:</strong> ${_m365Esc(eventData.organizer || '-')}</div>
-        <div><strong>Join:</strong> ${eventData.joinUrl ? `<a href="${_m365Esc(eventData.joinUrl)}" target="_blank" rel="noopener noreferrer">Open link</a>` : '-'}</div>
+        ${eventData.joinUrl
+            ? `<div style="margin-top:8px"><a class="m365-join-btn m365-join-btn--lg" href="${_m365Esc(eventData.joinUrl)}" target="_blank" rel="noopener noreferrer">Join meeting</a></div>`
+            : '<div style="margin-top:8px"><span class="m365-join-offline m365-join-offline--lg" aria-label="In person meeting">In person</span></div>'}
         ${eventData.bodyPreview ? `<p class="m365-body-preview">${_m365Esc(eventData.bodyPreview)}</p>` : ''}
     `;
 
@@ -210,34 +263,83 @@ function _m365RenderDetails(eventData) {
 
 async function _m365LoadNext() {
     if (!_m365GetConfig().enabled) return;
-    const payload = await _m365FetchJson('/api/m365/calendar/next');
-    _m365State.nextEvent = payload.next;
-    _m365State.currentSource = payload.source || '';
-    _m365RenderCompact();
+    if (!_m365CanLoadCalendar()) {
+        _m365State.nextEvent = null;
+        _m365RenderCompact();
+        return;
+    }
+    _m365ShowCompactLoading();
+    try {
+        const payload = await _m365FetchJson('/api/m365/calendar/next');
+        _m365State.nextEvent = payload.next;
+        _m365RenderCompact();
+    } catch (error) {
+        _m365RenderCompact();
+        throw error;
+    }
 }
 
 async function _m365LoadAgenda(forceOpen = false) {
     if (!_m365GetConfig().enabled) return;
+    if (!_m365CanLoadCalendar()) {
+        _m365State.agendaDays = [];
+        _m365RenderCompact();
+        _m365RenderAgenda();
+        return;
+    }
     const payload = await _m365FetchJson('/api/m365/calendar/agenda?days=5&workingDays=true');
     _m365State.agendaDays = payload.days || [];
-    _m365State.currentSource = payload.source || _m365State.currentSource;
     _m365RenderCompact();
     _m365RenderAgenda();
     if (forceOpen) _m365State.agendaPopover?.classList.add('open');
 }
 
+function _m365ShowAgendaLoading() {
+    const body = _m365State.agendaBody;
+    if (!body) return;
+    body.innerHTML = '<div class="m365-loading">Loading calendar…</div>';
+}
+
+function _m365ShowCompactLoading() {
+    const target = _m365State.compact;
+    if (!target) return;
+    target.classList.remove('has-event');
+    target.innerHTML = '<span class="m365-label">Next</span><span class="m365-loading-inline">Loading calendar…</span>';
+}
+
+function _m365ShowDetailsLoading() {
+    const body = _m365State.detailsBody;
+    if (!body) return;
+    body.innerHTML = '<div class="m365-loading">Loading meeting details…</div>';
+    _m365State.detailsPopover?.classList.add('open');
+}
+
 async function _m365OpenDetails(eventId) {
     if (!eventId) return;
-    const payload = await _m365FetchJson(`/api/m365/calendar/event?eventId=${encodeURIComponent(eventId)}`);
-    if (!payload.event) return;
-    _m365RenderDetails(payload.event);
+    _m365ShowDetailsLoading();
+    try {
+        const payload = await _m365FetchJson(`/api/m365/calendar/event?eventId=${encodeURIComponent(eventId)}`);
+        if (!payload.event) {
+            if (_m365State.detailsBody) _m365State.detailsBody.innerHTML = '<div class="m365-empty-block">Meeting details unavailable.</div>';
+            return;
+        }
+        _m365RenderDetails(payload.event);
+    } catch (error) {
+        if (_m365State.detailsBody) _m365State.detailsBody.innerHTML = '<div class="m365-empty-block">Meeting details unavailable.</div>';
+        throw error;
+    }
 }
 
 function _m365ScheduleRefresh() {
     if (_m365State.compactTimer) clearInterval(_m365State.compactTimer);
     if (_m365State.agendaTimer) clearInterval(_m365State.agendaTimer);
+    if (_m365State.countdownTimer) clearInterval(_m365State.countdownTimer);
 
-    if (!_m365GetConfig().enabled) return;
+    if (!_m365CanLoadCalendar()) return;
+
+    _m365State.countdownTimer = setInterval(() => {
+        if (_m365State.nextEvent) _m365RenderCompact();
+    }, 60 * 1000);
 
     _m365State.compactTimer = setInterval(() => {
         _m365LoadNext().catch((error) => console.warn('[m365] compact refresh failed:', error.message));
@@ -294,27 +396,26 @@ async function _saveM365ConfigFromModal() {
     }
     nextConfig.icsUrl = icsValidation.value;
 
-    if (!nextConfig.icsUrl) {
-        status.textContent = `${ICONS.warn} ICS URL is required`;
-        return;
-    }
-
     _m365SetConfig(nextConfig);
     _m365ApplyEnabledState();
     _m365ScheduleRefresh();
 
-    if (nextConfig.enabled) {
-        try {
-            await _m365LoadNext();
-            await _m365LoadAgenda(false);
-            status.textContent = `${ICONS.ok} M365 settings saved`;
-            setTimeout(() => closeModal('m365ConfigModal'), 250);
-        } catch (error) {
-            status.textContent = `${ICONS.warn} Saved, but fetch failed (${error.message})`;
-        }
+    const msg = !nextConfig.enabled
+        ? `${ICONS.ok} M365 widget disabled`
+        : (!nextConfig.icsUrl
+            ? `${ICONS.warn} ICS URL removed - integration disabled`
+            : `${ICONS.ok} M365 settings saved`);
+    status.textContent = msg;
+    setTimeout(() => closeModal('m365ConfigModal'), 400);
+
+    if (nextConfig.enabled && nextConfig.icsUrl) {
+        _m365LoadNext().catch((err) => console.warn('[m365] post-save refresh failed:', err.message));
+        _m365LoadAgenda(false).catch(() => {});
     } else {
-        status.textContent = `${ICONS.ok} M365 widget disabled`;
-        setTimeout(() => closeModal('m365ConfigModal'), 250);
+        _m365State.nextEvent = null;
+        _m365State.agendaDays = [];
+        _m365RenderCompact();
+        _m365RenderAgenda();
     }
 }
 
@@ -327,7 +428,6 @@ function _bindM365ConfigModal() {
 
 function initM365Calendar() {
     _m365State.compact = document.getElementById('m365Compact');
-    _m365State.sourceBadge = document.getElementById('m365SourceBadge');
     _m365State.agendaPopover = document.getElementById('m365AgendaPopover');
     _m365State.detailsPopover = document.getElementById('m365DetailsPopover');
     _m365State.agendaBody = document.getElementById('m365AgendaBody');
@@ -337,15 +437,19 @@ function initM365Calendar() {
     if (!_m365State.compact || !_m365State.agendaPopover) return;
     _m365ApplyEnabledState();
 
-    _m365State.compact.addEventListener('click', async () => {
+    _m365State.compact.addEventListener('click', async (event) => {
+        if (event.target.closest('.m365-join-btn')) return;
         const willOpen = !_m365State.agendaPopover.classList.contains('open');
         if (!willOpen) {
             _m365HideAgenda();
             return;
         }
 
+        _m365ShowAgendaLoading();
+        _m365State.agendaPopover.classList.add('open');
+
         try {
-            await _m365LoadAgenda(true);
+            await _m365LoadAgenda(false);
         } catch (error) {
             showToast(`${ICONS.warn} Calendar unavailable`);
             console.warn('[m365] Failed to open agenda:', error.message);
@@ -353,6 +457,7 @@ function initM365Calendar() {
     });
 
     _m365State.agendaBody?.addEventListener('click', (event) => {
+        if (event.target.closest('.m365-join-btn')) return;
         const btn = event.target.closest('.m365-agenda-item');
         if (!btn) return;
         _m365OpenDetails(btn.dataset.eventId).catch((error) => {
@@ -379,4 +484,3 @@ function initM365Calendar() {
     }
     _m365ScheduleRefresh();
 }
-

@@ -497,6 +497,10 @@ async function _fetchTasksNoteContentForConflict(note) {
     return _reassembleTasksToNote(tasks);
 }
 
+function openGoogleTasksUi() {
+    window.open('https://tasks.google.com/tasks', '_blank', 'noopener,noreferrer');
+}
+
 window.syncNoteToTasks = syncNoteToTasks;
 window.debounceTasksSync = debounceTasksSync;
 window.pollNoteFromTasks = pollNoteFromTasks;
@@ -507,6 +511,7 @@ window.removeNoteFromTasks = removeNoteFromTasks;
 window.toggleNoteTasksSync = toggleNoteTasksSync;
 window.listTasksNotes = listTasksNotes;
 window.importNoteFromTasks = importNoteFromTasks;
+window.openGoogleTasksUi = openGoogleTasksUi;
 window._fetchTasksNoteContentForConflict = _fetchTasksNoteContentForConflict;
 window._tasksSyncInFlight = _tasksSyncInFlight;
 

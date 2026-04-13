@@ -14,8 +14,9 @@ header {
 
 .header-top {
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
+    column-gap: 14px;
     padding: 6px 28px;
     border-bottom: 1px solid var(--border);
 }
@@ -45,7 +46,7 @@ header {
 
 .header-center {
     display: grid;
-    grid-template-columns: auto auto 1fr;
+    grid-template-columns: 1fr auto auto;
     align-items: center;
     gap: 4px 12px;
 }
@@ -55,14 +56,16 @@ header {
     display: flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
 }
 
 .m365-compact {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    min-width: 170px;
-    max-width: 220px;
+    flex: 1;
+    min-width: 0;
+    width: 100%;
     gap: 1px;
     padding: 6px 8px;
     border-radius: var(--radius-sm);
@@ -106,21 +109,83 @@ header {
     color: var(--success);
 }
 
-.m365-source-badge {
+.m365-compact-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+}
+
+.m365-compact .m365-join-btn {
+    margin-left: auto;
+}
+
+.m365-compact .m365-join-offline {
+    margin-left: auto;
+}
+
+.m365-countdown {
     font-family: 'DM Mono', monospace;
-    font-size: 9px;
-    color: var(--text-dimmer);
-    border: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--text-dim);
+    white-space: nowrap;
+}
+
+.m365-join-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
     border-radius: 999px;
-    padding: 2px 6px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 9px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background var(--transition), color var(--transition);
+}
+
+.m365-join-offline {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    font-size: 9px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: default;
+}
+
+.m365-join-btn:hover {
+    background: var(--accent);
+    color: var(--accent-text);
+}
+
+.m365-join-btn--lg {
+    font-size: 12px;
+    padding: 5px 14px;
+}
+
+.m365-join-offline--lg {
+    font-size: 12px;
+    padding: 5px 14px;
 }
 
 .m365-popover {
     position: absolute;
     top: calc(100% + 6px);
     left: 0;
-    width: 320px;
-    max-height: 340px;
+    width: 440px;
+    max-height: 520px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -130,6 +195,11 @@ header {
     display: none;
 }
 
+#m365AgendaPopover {
+    width: 100%;
+    box-sizing: border-box;
+}
+
 .m365-popover.open {
     display: block;
 }
@@ -137,8 +207,48 @@ header {
 .m365-details {
     left: 24px;
     top: calc(100% + 14px);
-    width: 360px;
+    width: 500px;
+    max-height: none;
+    overflow: visible;
     z-index: 221;
+    border: 1px solid var(--border-hover);
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    animation: modal-in 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.m365-details .m365-popover-head {
+    position: static;
+    background: transparent;
+    border-bottom: none;
+    padding: 24px 24px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.m365-details .m365-popover-body {
+    padding: 16px 24px 24px;
+}
+
+.m365-details .m365-popover-body h4 {
+    margin: 0 0 14px;
+    font-size: 16px;
+    color: var(--text);
+}
+
+.m365-details .m365-popover-body > div {
+    margin-top: 8px;
+    color: var(--text-dim);
+}
+
+.m365-details .m365-popover-body strong {
+    color: var(--text);
+}
+
+.m365-details .m365-body-preview {
+    margin: 14px 0 0;
+    line-height: 1.45;
 }
 
 .m365-popover-head {
@@ -153,6 +263,50 @@ header {
 
 .m365-popover-body {
     padding: 8px;
+}
+
+.m365-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px 16px;
+    font-size: 12px;
+    color: var(--text-dimmer);
+}
+
+.m365-loading-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-dimmer);
+}
+
+.m365-loading-inline::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: m365-spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+.m365-loading::before {
+    content: '';
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: m365-spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes m365-spin {
+    to { transform: rotate(360deg); }
 }
 
 .m365-day h4 {
@@ -183,6 +337,14 @@ header {
     font-family: 'DM Mono', monospace;
     font-size: 10px;
     color: var(--text-dimmer);
+}
+
+.m365-agenda-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
 }
 
 .m365-agenda-title {
