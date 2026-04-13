@@ -107,6 +107,36 @@ function _m365TimeUntilStart(startIso) {
     return `${m}m`;
 }
 
+function _m365IsWithinNextMinutes(iso, minutes) {
+    const ts = new Date(iso).getTime();
+    if (!Number.isFinite(ts)) return false;
+    const diff = ts - Date.now();
+    return diff > 0 && diff < minutes * 60 * 1000;
+}
+
+function _m365FmtDate(iso) {
+    const date = new Date(iso);
+    return new Intl.DateTimeFormat('en-GB', {
+        weekday: 'short',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+    }).format(date);
+}
+
+function _m365NormalizeBodyPreview(raw) {
+    const text = String(raw || '').replace(/\r\n/g, '\n').trim();
+    if (!text) return { text: '', hasSeparator: false };
+
+    const separator = text.match(/^_{20,}\s*/);
+    if (!separator) return { text, hasSeparator: false };
+
+    return {
+        text: text.slice(separator[0].length).trimStart(),
+        hasSeparator: true,
+    };
+}
+
 function _m365BuildRequest(endpoint, extraPayload = {}) {
     const cfg = _m365GetConfig();
     const splitIndex = endpoint.indexOf('?');
@@ -199,6 +229,7 @@ function _m365RenderCompact() {
 
     const inProgress = new Date(ev.start) <= new Date() && new Date(ev.end) >= new Date();
     const countdown = !inProgress ? _m365TimeUntilStart(ev.start) : '';
+    const startsSoon = !inProgress && _m365IsWithinNextMinutes(ev.start, 5);
     target.classList.add('has-event');
     target.innerHTML = [
         '<span class="m365-label">Next</span>',
@@ -206,7 +237,7 @@ function _m365RenderCompact() {
             <span class="m365-time">${_m365FmtTime(ev.start)}-${_m365FmtTime(ev.end)} (${_m365Duration(ev.start, ev.end)})</span>
             ${countdown ? `<span class="m365-countdown">Starts in ${countdown}</span>` : ''}
             ${ev.joinUrl
-                ? `<a class="m365-join-btn" href="${_m365Esc(ev.joinUrl)}" target="_blank" rel="noopener noreferrer">Join</a>`
+                ? `<a class="m365-join-btn${startsSoon ? ' m365-join-btn--soon' : ''}" href="${_m365Esc(ev.joinUrl)}" target="_blank" rel="noopener noreferrer">Join</a>`
                 : '<span class="m365-join-offline" aria-label="In person meeting">In person</span>'}
         </span>`,
         `<span class="m365-subject">${_m365Esc(ev.subject)}</span>`,
@@ -248,6 +279,17 @@ function _m365RenderDetails(eventData) {
     const body = _m365State.detailsBody;
     const headActions = _m365State.detailsHeadActions;
     if (!body || !eventData) return;
+    const preview = _m365NormalizeBodyPreview(eventData.bodyPreview);
+    const now = Date.now();
+    const startTs = new Date(eventData.start).getTime();
+    const endTs = new Date(eventData.end).getTime();
+    const inProgress = Number.isFinite(startTs) && Number.isFinite(endTs) && startTs <= now && endTs >= now;
+    const startsIn = startTs > now ? _m365TimeUntilStart(eventData.start) : '';
+    const endsIn = inProgress ? _m365TimeUntilStart(eventData.end) : '';
+    const statusLabel = inProgress ? 'In progress' : (startTs > now ? 'Upcoming' : 'Finished');
+    const meetingType = eventData.joinUrl ? 'Online meeting' : 'In person';
+    const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local';
+    const tzLabel = _m365GetConfig().timezone || localTz;
 
     if (headActions) {
         headActions.innerHTML = eventData.joinUrl
@@ -257,10 +299,21 @@ function _m365RenderDetails(eventData) {
 
     body.innerHTML = `
         <h4>${_m365Esc(eventData.subject)}</h4>
-        <div><strong>Time:</strong> ${_m365FmtTime(eventData.start)}-${_m365FmtTime(eventData.end)} (${_m365Duration(eventData.start, eventData.end)})</div>
-        <div><strong>Location:</strong> ${_m365Esc(eventData.location || '-')}</div>
-        <div><strong>Organizer:</strong> ${_m365Esc(eventData.organizer || '-')}</div>
-        ${eventData.bodyPreview ? `<p class="m365-body-preview">${_m365Esc(eventData.bodyPreview)}</p>` : ''}
+        <div class="m365-detail-row"><strong>Date:</strong> ${_m365Esc(_m365FmtDate(eventData.start))}</div>
+        <div class="m365-detail-row"><strong>Time:</strong> ${_m365FmtTime(eventData.start)}-${_m365FmtTime(eventData.end)} (${_m365Duration(eventData.start, eventData.end)})</div>
+        ${startsIn ? `<div class="m365-detail-row"><strong>Starts in:</strong> ${_m365Esc(startsIn)}</div>` : ''}
+        ${endsIn ? `<div class="m365-detail-row"><strong>Ends in:</strong> ${_m365Esc(endsIn)}</div>` : ''}
+        <div class="m365-detail-row"><strong>Status:</strong> ${_m365Esc(statusLabel)}</div>
+        <div class="m365-detail-row"><strong>Type:</strong> ${_m365Esc(meetingType)}</div>
+        <div class="m365-detail-row"><strong>Timezone:</strong> ${_m365Esc(tzLabel)}</div>
+        <div class="m365-detail-row"><strong>Location:</strong> ${_m365Esc(eventData.location || '-')}</div>
+        <div class="m365-detail-row"><strong>Organizer:</strong> ${_m365Esc(eventData.organizer || '-')}</div>
+        ${preview.text
+            ? `<div class="m365-body-preview-wrap${preview.hasSeparator ? ' has-separator' : ''}">
+                ${preview.hasSeparator ? '<div class="m365-body-separator" aria-hidden="true"></div>' : ''}
+                <p class="m365-body-preview">${_m365Esc(preview.text)}</p>
+            </div>`
+            : ''}
     `;
 
     _m365State.detailsPopover?.classList.add('open');

@@ -29,6 +29,13 @@
     animation: modal-in 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+ /* M365 details uses the modal shell but needs a wider layout than default modals. */
+.modal.m365-details-modal {
+    width: min(96vw, 1120px);
+    max-width: 1120px;
+    padding: 24px;
+}
+
 @keyframes modal-in {
     from { opacity: 0; transform: scale(0.95) translateY(8px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
