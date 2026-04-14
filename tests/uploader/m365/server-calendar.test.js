@@ -140,5 +140,26 @@ test('m365 calendar server endpoints', async (t) => {
             assert.strictEqual(payload.next.id, 'i-1');
         });
     });
+
+    await t.test('POST /api/m365/calendar/next forwards timezone to ICS loader options', async () => {
+        let capturedOptions = null;
+        await withServer({
+            now: () => nowMs,
+            fetchIcsCalendarWindow: async (_icsUrl, options) => {
+                capturedOptions = options;
+                return fallbackEvents;
+            },
+            config: { timezone: 'UTC', workDays: 5, icsUrl: '' },
+        }, async (baseUrl) => {
+            const { status } = await postJson(`${baseUrl}/api/m365/calendar/next`, {
+                icsUrl: 'https://tenant.example/calendar.ics',
+                timezone: 'Europe/Warsaw',
+            });
+
+            assert.strictEqual(status, 200);
+            assert.ok(capturedOptions);
+            assert.strictEqual(capturedOptions.timezone, 'Europe/Warsaw');
+        });
+    });
 });
 

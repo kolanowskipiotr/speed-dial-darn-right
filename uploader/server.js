@@ -68,6 +68,7 @@ function createServer(deps = {}) {
     function getIcsCacheKey(requestConfig) {
         return JSON.stringify({
             icsUrl: requestConfig.icsUrl || '',
+            timezone: requestConfig.timezone || '',
             horizonDays: requestConfig.horizonDays,
         });
     }
@@ -93,6 +94,7 @@ function createServer(deps = {}) {
         const events = await _fetchIcsCalendarWindow(requestConfig.icsUrl, {
             fromDate: startDate,
             horizonDays: requestConfig.horizonDays,
+            timezone: requestConfig.timezone,
         });
         const payload = { source: 'ics', events };
         icsCache.set(cacheKey, { cachedAt: nowMs, payload });

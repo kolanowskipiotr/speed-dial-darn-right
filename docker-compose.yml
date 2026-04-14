@@ -10,6 +10,7 @@ services:
     environment:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - TZ=${TZ:-Europe/Warsaw}
     volumes:
       - speed_dial_uploads:/uploads
 

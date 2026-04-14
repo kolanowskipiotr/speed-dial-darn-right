@@ -16,7 +16,58 @@ function parseLine(line) {
     return { name: name.toUpperCase(), value, params };
 }
 
-function parseIcsDate(raw, params = {}) {
+function normalizeIanaTimeZone(rawTz) {
+    const value = String(rawTz || '').trim().replace(/^"|"$/g, '');
+    if (!value) return '';
+    try {
+        new Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date());
+        return value;
+    } catch {
+        return '';
+    }
+}
+
+function getTimeZoneParts(date, timezone) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23',
+    }).formatToParts(date);
+
+    const out = {};
+    for (const part of parts) {
+        if (part.type === 'year') out.year = Number(part.value);
+        if (part.type === 'month') out.month = Number(part.value);
+        if (part.type === 'day') out.day = Number(part.value);
+        if (part.type === 'hour') out.hour = Number(part.value);
+        if (part.type === 'minute') out.minute = Number(part.value);
+        if (part.type === 'second') out.second = Number(part.value);
+    }
+    return out;
+}
+
+function parseZonedDateTime(year, month, day, hour, minute, second, timezone) {
+    const targetUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+    let guessUtc = targetUtc;
+
+    // Iteracyjnie dopasowujemy offset strefy (w tym DST) do zadanych komponentów.
+    for (let i = 0; i < 4; i += 1) {
+        const got = getTimeZoneParts(new Date(guessUtc), timezone);
+        const gotUtc = Date.UTC(got.year, got.month - 1, got.day, got.hour, got.minute, got.second);
+        const delta = targetUtc - gotUtc;
+        if (delta === 0) break;
+        guessUtc += delta;
+    }
+
+    return new Date(guessUtc);
+}
+
+function parseIcsDate(raw, params = {}, options = {}) {
     if (!raw) return null;
     if (params.VALUE === 'DATE' || /^\d{8}$/.test(raw)) {
         const y = Number(raw.slice(0, 4));
@@ -29,6 +80,12 @@ function parseIcsDate(raw, params = {}) {
     if (!match) return null;
     const [, y, mo, d, h, mi, s = '00', z] = match;
     if (z === 'Z') return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)));
+
+    const tzid = normalizeIanaTimeZone(params.TZID) || normalizeIanaTimeZone(options.defaultTimeZone);
+    if (tzid) {
+        return parseZonedDateTime(Number(y), Number(mo), Number(d), Number(h), Number(mi), Number(s), tzid);
+    }
+
     return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s));
 }
 
@@ -41,9 +98,9 @@ function parseRRule(raw = '') {
     return Object.keys(out).length ? out : null;
 }
 
-function parseExDates(raw = '', params = {}) {
+function parseExDates(raw = '', params = {}, options = {}) {
     if (!raw) return [];
-    return raw.split(',').map((v) => parseIcsDate(v.trim(), params)).filter(Boolean);
+    return raw.split(',').map((v) => parseIcsDate(v.trim(), params, options)).filter(Boolean);
 }
 
 function unescapeIcsText(v = '') {
@@ -83,7 +140,7 @@ function extractJoinUrl(description = '', urlProp = '') {
     return decodedUrlProp || decodedLinks[0] || '';
 }
 
-function parseIcsEvents(rawIcs) {
+function parseIcsEvents(rawIcs, options = {}) {
     const lines = unfoldIcs(rawIcs).split(/\r?\n/);
     const events = [];
     let current = null;
@@ -107,8 +164,9 @@ function parseIcsEvents(rawIcs) {
 
     return events
         .map((event) => {
-            const start = parseIcsDate(event.raw.DTSTART?.value, event.raw.DTSTART?.params);
-            const end = parseIcsDate(event.raw.DTEND?.value, event.raw.DTEND?.params) || start;
+            const parseOpts = { defaultTimeZone: options.defaultTimeZone || '' };
+            const start = parseIcsDate(event.raw.DTSTART?.value, event.raw.DTSTART?.params, parseOpts);
+            const end = parseIcsDate(event.raw.DTEND?.value, event.raw.DTEND?.params, parseOpts) || start;
             if (!start || !end) return null;
 
             const description = unescapeIcsText(event.raw.DESCRIPTION?.value || '');
@@ -119,9 +177,10 @@ function parseIcsEvents(rawIcs) {
                 subject: unescapeIcsText(event.raw.SUMMARY?.value || '(no subject)'),
                 start,
                 end,
-                recurrenceId: parseIcsDate(event.raw['RECURRENCE-ID']?.value, event.raw['RECURRENCE-ID']?.params),
+                timezone: normalizeIanaTimeZone(event.raw.DTSTART?.params?.TZID) || parseOpts.defaultTimeZone,
+                recurrenceId: parseIcsDate(event.raw['RECURRENCE-ID']?.value, event.raw['RECURRENCE-ID']?.params, parseOpts),
                 rrule: parseRRule(event.raw.RRULE?.value || ''),
-                exdates: parseExDates(event.raw.EXDATE?.value || '', event.raw.EXDATE?.params || {}),
+                exdates: parseExDates(event.raw.EXDATE?.value || '', event.raw.EXDATE?.params || {}, parseOpts),
                 isCancelled: (event.raw.STATUS?.value || '').toUpperCase() === 'CANCELLED',
                 organizer: unescapeIcsText(event.raw.ORGANIZER?.value || ''),
                 location: unescapeIcsText(event.raw.LOCATION?.value || ''),
@@ -172,7 +231,7 @@ function expandRecurringEvents(events, fromDate, horizonDays = 60) {
             .map((x) => x.trim().toUpperCase())
             .filter(Boolean);
 
-        const until = parseIcsDate(master.rrule.UNTIL || '', {});
+        const until = parseIcsDate(master.rrule.UNTIL || '', {}, { defaultTimeZone: master.timezone || '' });
         const rangeEnd = until && until < windowEnd ? until : windowEnd;
         const startDay = toDateOnlyLocal(master.start);
         const iterStart = toDateOnlyLocal(master.start > windowStart ? master.start : windowStart);
@@ -226,7 +285,7 @@ async function fetchIcsCalendarWindow(icsUrl, options = {}) {
     const response = await fetch(icsUrl);
     if (!response.ok) throw new Error(`ICS request failed: HTTP ${response.status}`);
     const raw = await response.text();
-    const parsed = parseIcsEvents(raw);
+    const parsed = parseIcsEvents(raw, { defaultTimeZone: options.timezone || '' });
     return expandRecurringEvents(parsed, options.fromDate || new Date(), options.horizonDays || 90);
 }
 

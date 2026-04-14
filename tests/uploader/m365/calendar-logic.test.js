@@ -65,6 +65,42 @@ test('m365 calendar logic', async (t) => {
         ]);
     });
 
+    await t.test('ICS TZID date-time is converted to correct UTC instant', () => {
+        const rawIcs = [
+            'BEGIN:VCALENDAR',
+            'BEGIN:VEVENT',
+            'UID:tzid-1',
+            'SUMMARY:Local TZID meeting',
+            'DTSTART;TZID=Europe/Warsaw:20260413T092000',
+            'DTEND;TZID=Europe/Warsaw:20260413T095000',
+            'END:VEVENT',
+            'END:VCALENDAR',
+        ].join('\n');
+
+        const parsed = parseIcsEvents(rawIcs);
+        assert.strictEqual(parsed.length, 1);
+        assert.strictEqual(parsed[0].start.toISOString(), '2026-04-13T07:20:00.000Z');
+        assert.strictEqual(parsed[0].end.toISOString(), '2026-04-13T07:50:00.000Z');
+    });
+
+    await t.test('floating ICS date-time uses provided default timezone', () => {
+        const rawIcs = [
+            'BEGIN:VCALENDAR',
+            'BEGIN:VEVENT',
+            'UID:floating-1',
+            'SUMMARY:Floating meeting',
+            'DTSTART:20260413T092000',
+            'DTEND:20260413T095000',
+            'END:VEVENT',
+            'END:VCALENDAR',
+        ].join('\n');
+
+        const parsed = parseIcsEvents(rawIcs, { defaultTimeZone: 'Europe/Warsaw' });
+        assert.strictEqual(parsed.length, 1);
+        assert.strictEqual(parsed[0].start.toISOString(), '2026-04-13T07:20:00.000Z');
+        assert.strictEqual(parsed[0].end.toISOString(), '2026-04-13T07:50:00.000Z');
+    });
+
     await t.test('SafeLinks are decoded to Teams URL', () => {
         const safeLink = 'https://nam01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fteams.microsoft.com%2Fl%2Fmeetup-join%2Fabc';
         const decoded = decodeSafeLink(safeLink);
