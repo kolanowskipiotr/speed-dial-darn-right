@@ -8,7 +8,6 @@
 
 #headerWeatherInline {
     display: block;
-    max-width: min(54vw, 720px);
     min-height: 48px;
     cursor: pointer;
     transition: opacity var(--transition);
@@ -27,12 +26,6 @@
     display: flex;
     align-items: stretch;
     gap: 4px;
-    overflow-x: auto;
-    scrollbar-width: none;
-}
-
-.weather-inline-strip::-webkit-scrollbar {
-    display: none;
 }
 
 .weather-inline-card {

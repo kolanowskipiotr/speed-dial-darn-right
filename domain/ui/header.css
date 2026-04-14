@@ -13,15 +13,20 @@ header {
 }
 
 .header-top {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
+    display: flex;
     align-items: center;
-    column-gap: 14px;
     padding: 4px 28px;
     border-bottom: 1px solid var(--border);
 }
 
+/* Four equally-weighted spacers; grow when space allows, never collapse to 0 */
+.header-spacer {
+    flex: 1 0 0;
+    min-width: 12px;
+}
+
 .header-left {
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -44,20 +49,15 @@ header {
     padding-left: 36px;
 }
 
-.header-center {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    align-items: center;
-    gap: 4px 22px;
-    margin-left: 15px;
-}
-
 .header-m365-col {
     position: relative;
     display: flex;
     align-items: center;
     gap: 6px;
-    min-width: 0;
+    /* Clamp: scales with viewport, capped at max to prevent over-expansion */
+    flex: 0 0 clamp(270px, 21vw, 440px);
+    min-width: 270px;
+    max-width: 440px;
 }
 
 .m365-compact {
@@ -98,6 +98,8 @@ header {
     font-family: 'DM Mono', monospace;
     font-size: 11px;
     color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .m365-subject,
@@ -431,6 +433,7 @@ header {
 }
 
 .header-time-col {
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -438,10 +441,16 @@ header {
 }
 
 .header-weather-col {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
+    /* flex-basis MUST be explicit (not auto): container-type:inline-size suppresses
+       the flex item's intrinsic inline-size contribution, so auto collapses to
+       min-width (~80px = 1 card). 560px is just above 7 cards × 75px + 6 × 4px gap
+       (=549px), leaving at most ~11px of blank at the right when fully expanded —
+       imperceptible at normal spacer widths. Cards are hidden right→left by the
+       container queries below as the col shrinks below 560px. */
+    flex: 0 1 560px;
+    min-width: 80px;
+    container-type: inline-size;
+    container-name: weather-col;
 }
 
 .header-clock {
@@ -472,7 +481,7 @@ header {
 }
 
 .header-actions {
-    justify-self: end;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -956,4 +965,34 @@ body.edit-mode .tab-btn.active .tab-edit-btn { display: inline; }
     text-align: center;
     font-size: 13px;
     color: var(--text-dim);
+}
+
+/* ── WEATHER PROGRESSIVE CARD HIDE ───────────────────────────────
+   Cards are ~75px wide with 4px gap between cards.
+   N cards = N×75 + (N-1)×4. Hide the rightmost card when the
+   container can no longer fit it. Card 1 (Now) is always visible.
+   ─────────────────────────────────────────────────────────────── */
+@container weather-col (max-width: 548px) {
+    /* < 7 cards (549px): hide 7th */
+    .weather-inline-card:nth-child(n+7) { display: none; }
+}
+@container weather-col (max-width: 469px) {
+    /* < 6 cards (470px): hide 6th+ */
+    .weather-inline-card:nth-child(n+6) { display: none; }
+}
+@container weather-col (max-width: 390px) {
+    /* < 5 cards (391px): hide 5th+ */
+    .weather-inline-card:nth-child(n+5) { display: none; }
+}
+@container weather-col (max-width: 311px) {
+    /* < 4 cards (312px): hide 4th+ */
+    .weather-inline-card:nth-child(n+4) { display: none; }
+}
+@container weather-col (max-width: 232px) {
+    /* < 3 cards (233px): hide 3rd+ */
+    .weather-inline-card:nth-child(n+3) { display: none; }
+}
+@container weather-col (max-width: 153px) {
+    /* < 2 cards (154px): hide 2nd+ — only Now remains */
+    .weather-inline-card:nth-child(n+2) { display: none; }
 }
