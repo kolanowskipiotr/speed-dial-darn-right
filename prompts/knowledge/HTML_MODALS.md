@@ -28,6 +28,9 @@ The application uses **nginx SSI** (`ssi on` in `nginx.conf`) to include domain-
 ### Calendar Domain (`domain/calendar/`)
 - `modal-m365.html` — M365 widget settings modal (`#m365ConfigModal`) for edit mode: enable/disable widget, ICS URL, and optional timezone override (ICS-only integration).
 
+### Weather Domain (`domain/weather/`)
+- `modal-weather.html` — Weather settings modal (`#weatherModal`) for edit mode: city/coordinates, temperature unit, and header widget visibility toggle.
+
 ---
 
 ## Load Pattern (index.html)

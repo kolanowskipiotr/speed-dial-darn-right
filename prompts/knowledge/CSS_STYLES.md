@@ -12,7 +12,7 @@ Styles are organized into domains following the DDD structure.
 - `domain/core/style.css` — **Deprecated stub only** (5-line comment pointing to the split files above). Do not add styles here.
 
 ### ui
-- `domain/ui/header.css` — Header layout, clock, search, and edit mode bar.
+- `domain/ui/header.css` — Header layout, clock, search, and edit mode bar, including visibility toggles via `body.hide-status-indicators`, `body.hide-header-search`, and `body.hide-header-clock`.
 - `domain/ui/modals.css` — Modal backdrops, containers, and form elements.
 - `domain/ui/pickers.css` — Emoji, color, and favicon picker styles.
 
@@ -28,7 +28,7 @@ Styles are organized into domains following the DDD structure.
 - `domain/note/keep-sync.css` — Keep sync dot, cloud toggle button, spinning animation, conflict modal 3-pane layout, and import modal list.
 
 ### weather
-- `domain/weather/styles.css` — `.header-date-row` (clickable date+weather row), `#headerWeatherInline` (inline weather text), `.weather-popup` (fixed-positioned popup), `.weather-days-strip` (horizontal scroll of day cards), `.weather-day-card` / `.weather-day-now` (individual day cards), config form elements (`.weather-cfg-row`, `.weather-cfg-coords`, `.weather-cfg-input`, `.weather-unit-btn`).
+- `domain/weather/styles.css` — `.header-date-row` (clickable date+weather row), `#headerWeatherInline` (inline weather text), `.header-weather-col.weather-col-hidden` (hide weather column when disabled), `.weather-popup` (fixed-positioned popup), `.weather-days-strip` (horizontal scroll of day cards), `.weather-day-card` / `.weather-day-now` (individual day cards), config form elements (`.weather-cfg-row`, `.weather-cfg-coords`, `.weather-cfg-input`, `.weather-unit-btn`).
 
 ### persistence
 - `domain/persistence/styles.css` — Data management modal layout (`.data-cols`, `.data-panel`, `.data-sep`), Google Drive sync section (`.gdrive-user-row`, `.gdrive-config-section`, `.gdrive-folder-row`, `.gdrive-backup-list`), backup type badges, and sync status row.

@@ -22,6 +22,10 @@
     outline-offset: 2px;
 }
 
+.header-weather-col.weather-col-hidden {
+    display: none;
+}
+
 .weather-inline-strip {
     display: flex;
     align-items: stretch;

@@ -22,6 +22,8 @@ let lastAutoSync = null;
 let lastManualSync = null;  // timestamp (ms) ostatniego ręcznego backupu
 let backupInProgress = false; // true while a backup fetch is in-flight
 let showStatusIndicators = true; // Show/hide the State indicators row in the header
+let showHeaderSearch = true; // Show/hide search input in the header
+let showHeaderClock = true; // Show/hide clock/date column in the header
 let m365CalendarConfig = {
     enabled: true,
     icsUrl: '',
@@ -72,6 +74,8 @@ function loadSyncSettings() {
     gdriveSyncEnabled = settings.autoSync || false;
     showModalOnDisconnect = (settings.showModalOnDisconnect !== undefined) ? settings.showModalOnDisconnect : true;
     showStatusIndicators = (settings.showStatusIndicators !== undefined) ? settings.showStatusIndicators : true;
+    showHeaderSearch = (settings.showHeaderSearch !== undefined) ? settings.showHeaderSearch : true;
+    showHeaderClock = (settings.showHeaderClock !== undefined) ? settings.showHeaderClock : true;
     lastAutoSync = settings.lastAutoSync || null;
     lastManualSync = settings.lastManualSync || null;
     m365CalendarConfig = {
@@ -86,6 +90,7 @@ function loadSyncSettings() {
     updateAutoSyncToggleUI();
     updateShowModalOnDisconnectToggleUI();
     updateStatusIndicatorsUI();
+    updateHeaderVisibilityUI();
     updateSyncIndicators();
 }
 
@@ -99,6 +104,8 @@ function saveSyncSettings() {
         autoSync: gdriveSyncEnabled,
         showModalOnDisconnect: showModalOnDisconnect,
         showStatusIndicators: showStatusIndicators,
+        showHeaderSearch: showHeaderSearch,
+        showHeaderClock: showHeaderClock,
         lastAutoSync: lastAutoSync,
         lastManualSync: lastManualSync,
         m365CalendarConfig: m365CalendarConfig,
@@ -230,6 +237,23 @@ function updateStatusIndicatorsUI() {
     if (toggle) toggle.classList.toggle('active', showStatusIndicators);
 }
 
+function updateHeaderVisibilityUI() {
+    document.body.classList.toggle('hide-header-search', !showHeaderSearch);
+    document.body.classList.toggle('hide-header-clock', !showHeaderClock);
+
+    const searchToggle = document.getElementById('headerSearchToggle');
+    if (searchToggle) searchToggle.classList.toggle('active', showHeaderSearch);
+
+    const clockToggle = document.getElementById('headerClockToggle');
+    if (clockToggle) clockToggle.classList.toggle('active', showHeaderClock);
+
+    if (!showHeaderSearch) {
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput && document.activeElement === searchInput) searchInput.blur();
+        if (typeof hideSearchResults === 'function') hideSearchResults();
+    }
+}
+
 // Centralized error handling for sync operations
 function handleSyncError(e, customMsg) {
     console.error('Sync error:', e);
@@ -283,6 +307,18 @@ function toggleShowModalOnDisconnect() {
 function toggleStatusIndicators() {
     showStatusIndicators = !showStatusIndicators;
     updateStatusIndicatorsUI();
+    saveSyncSettings();
+}
+
+function toggleHeaderSearch() {
+    showHeaderSearch = !showHeaderSearch;
+    updateHeaderVisibilityUI();
+    saveSyncSettings();
+}
+
+function toggleHeaderClock() {
+    showHeaderClock = !showHeaderClock;
+    updateHeaderVisibilityUI();
     saveSyncSettings();
 }
 

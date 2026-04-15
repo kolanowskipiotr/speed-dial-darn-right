@@ -32,7 +32,9 @@ function initSearch() {
         }
     });
 
-    input.focus();
+    const searchWrap = document.getElementById('headerSearchWrap');
+    const isHidden = !!(searchWrap && getComputedStyle(searchWrap).display === 'none');
+    if (!isHidden) input.focus();
 }
 
 function clearSearch() {

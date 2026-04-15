@@ -4,7 +4,7 @@
 const WEATHER_KEY = 'speedDial_weather';
 
 // Module state
-let _weatherConfig = null;   // { city?, lat, lon, label, unit:'C'|'F' }
+let _weatherConfig = null;   // { enabled:boolean, city?, lat, lon, label, unit:'C'|'F' }
 let _weatherData = null;     // cached Open-Meteo response
 let _weatherLastFetch = 0;   // ms timestamp
 let _weatherInterval = null;
@@ -38,18 +38,26 @@ function _fmtTemp(c) {
     return `${Math.round(c)}°C`;
 }
 
+function _normalizeWeatherConfig(cfg) {
+    if (!cfg || typeof cfg !== 'object') return null;
+    return {
+        ...cfg,
+        enabled: cfg.enabled !== false,
+    };
+}
+
 function _loadWeatherConfig() {
     try {
         const raw = localStorage.getItem(WEATHER_KEY);
-        _weatherConfig = raw ? JSON.parse(raw) : null;
+        _weatherConfig = _normalizeWeatherConfig(raw ? JSON.parse(raw) : null);
     } catch {
         _weatherConfig = null;
     }
 }
 
 function _saveWeatherCfg(cfg) {
-    _weatherConfig = cfg;
-    localStorage.setItem(WEATHER_KEY, JSON.stringify(cfg));
+    _weatherConfig = _normalizeWeatherConfig(cfg);
+    localStorage.setItem(WEATHER_KEY, JSON.stringify(_weatherConfig));
 }
 
 async function _geocodeCity(city) {
@@ -83,7 +91,7 @@ async function _doFetchWeather() {
 }
 
 function _openWeatherDetails() {
-    if (!_weatherConfig) {
+    if (!_weatherConfig || _weatherConfig.enabled === false) {
         openWeatherConfigModal();
         return;
     }
@@ -107,6 +115,17 @@ function _buildInlineCard({ label, icon, sublabel, mainTemp, temp, isNow }) {
 function _updateInline() {
     const root = document.getElementById('headerWeatherInline');
     if (!root) return;
+    const weatherCol = root.closest('.header-weather-col');
+
+    if (_weatherConfig?.enabled === false) {
+        if (weatherCol) weatherCol.classList.add('weather-col-hidden');
+        root.innerHTML = '';
+        root.title = '';
+        root.style.opacity = '';
+        return;
+    }
+
+    if (weatherCol) weatherCol.classList.remove('weather-col-hidden');
 
     if (!_weatherConfig) {
         root.innerHTML = '<div class="weather-inline-empty">Set weather in Edit mode</div>';
@@ -164,6 +183,12 @@ function _setWeatherUnit(activeUnit) {
     btnF.classList.toggle('active', activeUnit === 'F');
 }
 
+function _setWeatherEnabled(enabled) {
+    const toggle = document.getElementById('weatherWidgetToggle');
+    if (!toggle) return;
+    toggle.classList.toggle('active', enabled !== false);
+}
+
 function openWeatherConfigModal() {
     const cfg = _weatherConfig || {};
     const cityInput = document.getElementById('weatherCityInput');
@@ -176,24 +201,28 @@ function openWeatherConfigModal() {
     lonInput.value = cfg.city ? '' : (cfg.lon ?? '');
     status.textContent = '';
     _setWeatherUnit(cfg.unit || 'C');
+    _setWeatherEnabled(cfg.enabled !== false);
     openModal('weatherModal');
 }
 
 async function _saveWeatherConfigFromModal() {
     const btnF = document.getElementById('weatherUnitF');
+    const widgetToggle = document.getElementById('weatherWidgetToggle');
     const cityInput = document.getElementById('weatherCityInput');
     const latInput = document.getElementById('weatherLatInput');
     const lonInput = document.getElementById('weatherLonInput');
     const status = document.getElementById('weatherCfgStatus');
-    if (!btnF || !cityInput || !latInput || !lonInput || !status) return;
+    if (!btnF || !widgetToggle || !cityInput || !latInput || !lonInput || !status) return;
 
+    const prevCfg = _weatherConfig || {};
     const city = cityInput.value.trim();
     const latV = latInput.value.trim();
     const lonV = lonInput.value.trim();
     const unit = btnF.classList.contains('active') ? 'F' : 'C';
+    const enabled = widgetToggle.classList.contains('active');
     status.textContent = '';
 
-    let newCfg = { unit };
+    let newCfg = { unit, enabled };
     if (city) {
         status.textContent = `${ICONS.loading} Looking up city...`;
         try {
@@ -211,6 +240,17 @@ async function _saveWeatherConfigFromModal() {
             return;
         }
         newCfg = { ...newCfg, lat, lon, label: `${lat.toFixed(3)}, ${lon.toFixed(3)}` };
+    } else if (prevCfg.lat && prevCfg.lon) {
+        newCfg = {
+            ...newCfg,
+            city: prevCfg.city,
+            lat: prevCfg.lat,
+            lon: prevCfg.lon,
+            label: prevCfg.label || `${Number(prevCfg.lat).toFixed(3)}, ${Number(prevCfg.lon).toFixed(3)}`,
+        };
+    } else if (!enabled) {
+        // Allow turning widget visibility off before location is configured.
+        newCfg = { ...newCfg, city: prevCfg.city || '', label: prevCfg.label || '' };
     } else {
         status.textContent = `${ICONS.warn} Enter city or coordinates`;
         return;
@@ -220,6 +260,12 @@ async function _saveWeatherConfigFromModal() {
     _weatherData = null;
     _weatherLastFetch = 0;
     _updateInline();
+
+    if (!enabled) {
+        status.textContent = `${ICONS.ok} Weather widget hidden`;
+        setTimeout(() => closeModal('weatherModal'), 250);
+        return;
+    }
 
     status.textContent = `${ICONS.loading} Fetching weather...`;
     try {
@@ -235,15 +281,18 @@ async function _saveWeatherConfigFromModal() {
 function _bindWeatherModal() {
     const btnC = document.getElementById('weatherUnitC');
     const btnF = document.getElementById('weatherUnitF');
+    const widgetToggle = document.getElementById('weatherWidgetToggle');
     const saveBtn = document.getElementById('weatherSaveBtn');
-    if (!btnC || !btnF || !saveBtn) return;
+    if (!btnC || !btnF || !widgetToggle || !saveBtn) return;
 
     btnC.addEventListener('click', () => _setWeatherUnit('C'));
     btnF.addEventListener('click', () => _setWeatherUnit('F'));
+    widgetToggle.addEventListener('click', () => widgetToggle.classList.toggle('active'));
     saveBtn.addEventListener('click', _saveWeatherConfigFromModal);
 }
 
 async function _fetchAndUpdate() {
+    if (_weatherConfig?.enabled === false) return;
     try {
         await _doFetchWeather();
         _updateInline();

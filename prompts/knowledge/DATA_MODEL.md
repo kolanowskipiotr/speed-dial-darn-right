@@ -48,6 +48,8 @@ localStorage key: `speedDial_syncSettings`
   autoSync: boolean,            // Daily auto-backup enabled? (default: false)
   showModalOnDisconnect: boolean, // Show Manage Data popup when account disconnected? (default: true)
   showStatusIndicators: boolean, // Show/hide State indicator dots in the header (default: true)
+  showHeaderSearch: boolean,    // Show/hide header search input (default: true)
+  showHeaderClock: boolean,     // Show/hide header clock/date column (default: true)
   lastAutoSync: number | null,   // Timestamp (ms) of last successful auto-backup
   lastManualSync: number | null, // Timestamp (ms) of last successful manual backup (rate-limited to 24h cooldown)
   m365CalendarConfig: {
@@ -138,6 +140,7 @@ localStorage key: `speedDial_weather`
 
 ```js
 {
+  enabled: boolean,            // Header weather widget visibility (default: true)
   city:  string | undefined,  // last city name entered by user (for pre-filling the form)
   lat:   number,              // geocoded or manually entered latitude
   lon:   number,              // geocoded or manually entered longitude

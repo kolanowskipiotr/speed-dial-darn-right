@@ -489,6 +489,10 @@ header {
     gap: 1px;
 }
 
+body.hide-header-clock .header-time-col {
+    display: none;
+}
+
 .header-weather-col {
     /* flex-basis MUST be explicit (not auto): container-type:inline-size suppresses
        the flex item's intrinsic inline-size contribution, so auto collapses to
@@ -933,6 +937,10 @@ body.edit-mode .tab-btn.active .tab-edit-btn { display: inline; }
 /* ─── SEARCH ──────────────────────────────────────────────── */
 .header-search-wrap {
     position: relative;
+}
+
+body.hide-header-search #headerSearchWrap {
+    display: none;
 }
 
 .header-search-input {
