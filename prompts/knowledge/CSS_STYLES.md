@@ -73,6 +73,10 @@ The notes tabs bar now uses a flex layout with a separate scroll area to keep th
 ### Fullscreen Modes
 Fullscreen modes for Todo and Notes are toggled via classes on `body` (`.todo-fullscreen`, `.notes-fullscreen`). These classes override the grid layout in `layout.css` to give the active domain 100% of the viewport.
 
+### Header M365 Compact Row
+In `domain/ui/header.css`, `.m365-compact-row` uses `overflow: visible` so the `Join` CTA (including the `m365-join-btn--soon` flash effect) is not visually clipped.
+The `m365-join-soon-blink` keyframes use a sharper LED-like glow (crisp outer ring + subtle inset core) and pulse between the base CTA state and the hover-like filled state.
+
 ### Google Keep Sync UI
 
 - **Sync Dot** (`.notes-tab-sync-dot`): Small indicator on note tabs. Uses status colors: `--text-muted` (off), `--accent` (in sync), `--warning` (pending/syncing), `--danger` (conflict).

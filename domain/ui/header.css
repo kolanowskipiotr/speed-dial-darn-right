@@ -156,7 +156,7 @@ header {
     gap: 6px;
     width: 100%;
     min-width: 0;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .m365-compact .m365-join-btn {
@@ -222,10 +222,21 @@ header {
 
 @keyframes m365-join-soon-blink {
     0%, 100% {
-        box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
+        background: transparent;
+        color: var(--accent);
+        box-shadow:
+            0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent),
+            0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent),
+            inset 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
     }
     50% {
-        box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 28%, transparent);
+        background: var(--accent);
+        color: var(--accent-text);
+        box-shadow:
+            0 0 0 1px color-mix(in srgb, var(--accent) 72%, transparent),
+            0 0 5px 1px color-mix(in srgb, var(--accent) 56%, transparent),
+            inset 0 0 0 1px color-mix(in srgb, var(--accent) 66%, transparent),
+            inset 0 0 3px 0 color-mix(in srgb, var(--accent) 44%, transparent);
     }
 }
 

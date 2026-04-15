@@ -272,7 +272,7 @@ function _m365RenderCompact() {
 
     const inProgress = new Date(ev.start) <= new Date() && new Date(ev.end) >= new Date();
     const countdown = !inProgress ? _m365TimeUntilStart(ev.start) : '';
-    const startsSoon = !inProgress && _m365IsWithinNextMinutes(ev.start, 5);
+    const startsSoon = inProgress || _m365IsWithinNextMinutes(ev.start, 5);
     target.classList.add('has-event');
     target.innerHTML = [
         `<span class="m365-compact-row">
