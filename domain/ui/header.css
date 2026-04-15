@@ -144,7 +144,7 @@ header {
 .m365-actions-group {
     display: flex;
     align-items: center;
-    gap: 1px;
+    gap: 4px;
     margin-left: auto;
     flex-shrink: 0;
 }
@@ -211,13 +211,25 @@ header {
     cursor: default;
 }
 
-.m365-join-btn:hover {
+.m365-join-btn:not(.m365-join-btn--soon):hover {
     background: var(--accent);
     color: var(--accent-text);
 }
 
 .m365-join-btn--soon {
     animation: m365-join-soon-blink 1s ease-in-out infinite;
+}
+
+.m365-join-btn--soon:hover,
+.m365-join-btn--soon:focus-visible {
+    animation: none;
+    background: var(--accent);
+    color: var(--accent-text);
+    box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--accent) 72%, transparent),
+        0 0 5px 1px color-mix(in srgb, var(--accent) 56%, transparent),
+        inset 0 0 0 1px color-mix(in srgb, var(--accent) 66%, transparent),
+        inset 0 0 3px 0 color-mix(in srgb, var(--accent) 44%, transparent);
 }
 
 @keyframes m365-join-soon-blink {

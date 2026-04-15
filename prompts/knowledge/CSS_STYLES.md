@@ -75,7 +75,7 @@ Fullscreen modes for Todo and Notes are toggled via classes on `body` (`.todo-fu
 
 ### Header M365 Compact Row
 In `domain/ui/header.css`, `.m365-compact-row` uses `overflow: visible` so the `Join` CTA (including the `m365-join-btn--soon` flash effect) is not visually clipped.
-The `m365-join-soon-blink` keyframes use a sharper LED-like glow (crisp outer ring + subtle inset core) and pulse between the base CTA state and the hover-like filled state.
+The `m365-join-soon-blink` keyframes use a sharper LED-like glow (crisp outer ring + subtle inset core) and blink between the base/off CTA state and the filled/on state. The glow/blink is active when the meeting is within 5 minutes or already in progress. On `:hover` / `:focus-visible`, `.m365-join-btn--soon` stops the animation and stays pinned in the filled "on" state.
 
 ### Google Keep Sync UI
 
