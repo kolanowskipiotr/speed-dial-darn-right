@@ -145,6 +145,7 @@ header {
     align-items: center;
     gap: 1px;
     margin-left: auto;
+    flex-shrink: 0;
 }
 
 .m365-compact-row {
@@ -170,6 +171,10 @@ header {
     font-size: 10px;
     color: var(--text-dim);
     white-space: nowrap;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .m365-join-btn {
