@@ -15,6 +15,10 @@ let _m365State = {
     compactTimer: null,
     agendaTimer: null,
     countdownTimer: null,
+    // ICS indicator state
+    icsFetchInFlight: 0,
+    icsLastError: null,
+    icsEverLoaded: false,
 };
 
 const _M365_DEFAULT_CONFIG = {
@@ -200,12 +204,42 @@ function _m365HideAgenda() {
     _m365HideDetails();
 }
 
+function _m365UpdateIcsIndicator() {
+    const btn = document.getElementById('icsIndicator');
+    if (!btn) return;
+
+    const cfg = _m365GetConfig();
+    let cls = '';
+    let label = '';
+
+    if (!cfg.enabled) {
+        label = 'ICS Calendar integration: disabled';
+    } else if (!_m365HasIcsSource()) {
+        label = 'ICS Calendar integration: not configured (no ICS URL)';
+    } else if (_m365State.icsFetchInFlight > 0) {
+        cls = 'updating';
+        label = 'ICS Calendar integration: updating…';
+    } else if (_m365State.icsLastError) {
+        cls = 'conflict';
+        label = `ICS Calendar integration: error — ${_m365State.icsLastError}`;
+    } else if (_m365State.icsEverLoaded) {
+        cls = 'connected';
+        label = 'ICS Calendar integration: active';
+    } else {
+        label = 'ICS Calendar integration: not yet loaded';
+    }
+
+    btn.className = 'gdrive-indicator' + (cls ? ` ${cls}` : '');
+    btn.dataset.label = label;
+}
+
 function _m365ApplyEnabledState() {
     const root = _m365State.compact?.closest('.header-m365-col');
     if (!root) return;
     const cfg = _m365GetConfig();
     root.style.display = cfg.enabled ? '' : 'none';
     if (!cfg.enabled) _m365HideAgenda();
+    _m365UpdateIcsIndicator();
 }
 
 function _m365RenderCompact() {
@@ -351,6 +385,7 @@ async function _m365LoadNext() {
         _m365State.compactRefreshInFlight = 0;
         _m365State.compactRefreshing = false;
         _m365RenderCompact();
+        _m365UpdateIcsIndicator();
         return;
     }
     const useInlineRefresh = _m365State.hasNextCache;
@@ -359,16 +394,23 @@ async function _m365LoadNext() {
     } else {
         _m365ShowCompactLoading();
     }
+    _m365State.icsFetchInFlight += 1;
+    _m365UpdateIcsIndicator();
     try {
         const payload = await _m365FetchJson('/api/m365/calendar/next');
         _m365State.nextEvent = payload.next;
         _m365State.hasNextCache = true;
+        _m365State.icsLastError = null;
+        _m365State.icsEverLoaded = true;
     } catch (error) {
         if (!_m365State.hasNextCache) {
             _m365State.nextEvent = null;
         }
+        _m365State.icsLastError = error?.message || 'unknown error';
         throw error;
     } finally {
+        _m365State.icsFetchInFlight = Math.max(0, _m365State.icsFetchInFlight - 1);
+        _m365UpdateIcsIndicator();
         if (useInlineRefresh) {
             _m365EndCompactRefresh();
         } else {
@@ -384,18 +426,28 @@ async function _m365LoadAgenda(forceOpen = false) {
         _m365State.hasAgendaCache = false;
         _m365RenderCompact();
         _m365RenderAgenda();
+        _m365UpdateIcsIndicator();
         return;
     }
     const useInlineRefresh = _m365State.hasAgendaCache;
     if (useInlineRefresh) _m365BeginCompactRefresh();
+    _m365State.icsFetchInFlight += 1;
+    _m365UpdateIcsIndicator();
     try {
         const payload = await _m365FetchJson('/api/m365/calendar/agenda?days=5&workingDays=true');
         _m365State.agendaDays = payload.days || [];
         _m365State.hasAgendaCache = true;
+        _m365State.icsLastError = null;
+        _m365State.icsEverLoaded = true;
         _m365RenderCompact();
         _m365RenderAgenda();
         if (forceOpen) _m365State.agendaPopover?.classList.add('open');
+    } catch (error) {
+        _m365State.icsLastError = error?.message || 'unknown error';
+        throw error;
     } finally {
+        _m365State.icsFetchInFlight = Math.max(0, _m365State.icsFetchInFlight - 1);
+        _m365UpdateIcsIndicator();
         if (useInlineRefresh) _m365EndCompactRefresh();
     }
 }
@@ -583,6 +635,7 @@ function initM365Calendar() {
 
     if (!_m365State.compact || !_m365State.agendaPopover) return;
     _m365ApplyEnabledState();
+    _m365UpdateIcsIndicator();
 
     _m365State.compact.addEventListener('click', async (event) => {
         if (event.target.closest('.m365-join-btn')) return;

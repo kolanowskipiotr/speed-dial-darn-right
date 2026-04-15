@@ -673,7 +673,7 @@ body.edit-mode .tab-size-control { display: flex; }
 
 .gdrive-indicator {
     position: relative;
-    width: 20px;
+    width: 16px;
     height: 18px;
     display: flex;
     flex-direction: column;
@@ -712,6 +712,23 @@ body.edit-mode .tab-size-control { display: flex; }
 .gdrive-indicator.conflict .gdrive-dot {
     background: var(--danger);
     box-shadow: 0 0 5px var(--danger);
+}
+
+.gdrive-indicator.updating .gdrive-dot {
+    background: var(--success);
+    box-shadow: 0 0 5px var(--success);
+    animation: ics-dot-blink 1s ease-in-out infinite;
+}
+
+@keyframes ics-dot-blink {
+    0%, 100% { opacity: 1; box-shadow: 0 0 5px var(--success); }
+    50%       { opacity: 0.25; box-shadow: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gdrive-indicator.updating .gdrive-dot {
+        animation: none;
+    }
 }
 
 /* Abbreviation label */
