@@ -75,6 +75,7 @@ header {
     background: var(--surface2);
     cursor: pointer;
     text-align: left;
+    position: relative;
 }
 
 .m365-compact:hover {
@@ -388,6 +389,21 @@ header {
     gap: 6px;
     font-size: 11px;
     color: var(--text-dimmer);
+}
+
+.m365-loading-inline--compact {
+    position: absolute;
+    left: 8px;
+    top: 20px;
+    font-size: 0;
+    line-height: 0;
+    pointer-events: none;
+}
+
+.m365-loading-inline--compact::before {
+    width: 9px;
+    height: 9px;
+    border-width: 2px;
 }
 
 .m365-loading-inline::before {

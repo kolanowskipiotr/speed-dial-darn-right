@@ -7,6 +7,11 @@ let _m365State = {
     detailsHeadActions: null,
     nextEvent: null,
     agendaDays: [],
+    detailsCache: {},
+    hasNextCache: false,
+    hasAgendaCache: false,
+    compactRefreshing: false,
+    compactRefreshInFlight: 0,
     compactTimer: null,
     agendaTimer: null,
     countdownTimer: null,
@@ -223,7 +228,11 @@ function _m365RenderCompact() {
     const ev = _m365State.nextEvent;
     if (!ev) {
         target.classList.remove('has-event');
-        target.innerHTML = '<span class="m365-label">Next</span><span class="m365-empty">No meeting</span>';
+        target.innerHTML = [
+            '<span class="m365-label">Next</span>',
+            _m365State.compactRefreshing ? '<span class="m365-loading-inline m365-loading-inline--compact" aria-label="Loading calendar" title="Loading calendar"></span>' : '',
+            '<span class="m365-empty">No meeting</span>',
+        ].join('');
         return;
     }
 
@@ -243,8 +252,21 @@ function _m365RenderCompact() {
                      : '<span class="m365-join-offline" aria-label="In person meeting">In person</span>'}
              </span>
          </span>`,
+        _m365State.compactRefreshing ? '<span class="m365-loading-inline m365-loading-inline--compact" aria-label="Loading calendar" title="Loading calendar"></span>' : '',
         `<span class="m365-subject">${_m365Esc(ev.subject)}</span>`,
     ].join('');
+}
+
+function _m365BeginCompactRefresh() {
+    _m365State.compactRefreshInFlight += 1;
+    _m365State.compactRefreshing = _m365State.compactRefreshInFlight > 0;
+    _m365RenderCompact();
+}
+
+function _m365EndCompactRefresh() {
+    _m365State.compactRefreshInFlight = Math.max(0, _m365State.compactRefreshInFlight - 1);
+    _m365State.compactRefreshing = _m365State.compactRefreshInFlight > 0;
+    _m365RenderCompact();
 }
 
 function _m365RenderAgenda() {
@@ -325,17 +347,33 @@ async function _m365LoadNext() {
     if (!_m365GetConfig().enabled) return;
     if (!_m365CanLoadCalendar()) {
         _m365State.nextEvent = null;
+        _m365State.hasNextCache = false;
+        _m365State.compactRefreshInFlight = 0;
+        _m365State.compactRefreshing = false;
         _m365RenderCompact();
         return;
     }
-    _m365ShowCompactLoading();
+    const useInlineRefresh = _m365State.hasNextCache;
+    if (useInlineRefresh) {
+        _m365BeginCompactRefresh();
+    } else {
+        _m365ShowCompactLoading();
+    }
     try {
         const payload = await _m365FetchJson('/api/m365/calendar/next');
         _m365State.nextEvent = payload.next;
-        _m365RenderCompact();
+        _m365State.hasNextCache = true;
     } catch (error) {
-        _m365RenderCompact();
+        if (!_m365State.hasNextCache) {
+            _m365State.nextEvent = null;
+        }
         throw error;
+    } finally {
+        if (useInlineRefresh) {
+            _m365EndCompactRefresh();
+        } else {
+            _m365RenderCompact();
+        }
     }
 }
 
@@ -343,15 +381,23 @@ async function _m365LoadAgenda(forceOpen = false) {
     if (!_m365GetConfig().enabled) return;
     if (!_m365CanLoadCalendar()) {
         _m365State.agendaDays = [];
+        _m365State.hasAgendaCache = false;
         _m365RenderCompact();
         _m365RenderAgenda();
         return;
     }
-    const payload = await _m365FetchJson('/api/m365/calendar/agenda?days=5&workingDays=true');
-    _m365State.agendaDays = payload.days || [];
-    _m365RenderCompact();
-    _m365RenderAgenda();
-    if (forceOpen) _m365State.agendaPopover?.classList.add('open');
+    const useInlineRefresh = _m365State.hasAgendaCache;
+    if (useInlineRefresh) _m365BeginCompactRefresh();
+    try {
+        const payload = await _m365FetchJson('/api/m365/calendar/agenda?days=5&workingDays=true');
+        _m365State.agendaDays = payload.days || [];
+        _m365State.hasAgendaCache = true;
+        _m365RenderCompact();
+        _m365RenderAgenda();
+        if (forceOpen) _m365State.agendaPopover?.classList.add('open');
+    } finally {
+        if (useInlineRefresh) _m365EndCompactRefresh();
+    }
 }
 
 function _m365ShowAgendaLoading() {
@@ -377,17 +423,30 @@ function _m365ShowDetailsLoading() {
 
 async function _m365OpenDetails(eventId) {
     if (!eventId) return;
-    _m365ShowDetailsLoading();
+    const cached = _m365State.detailsCache[eventId];
+    if (cached) _m365BeginCompactRefresh();
+    if (cached) {
+        _m365RenderDetails(cached);
+    } else {
+        _m365ShowDetailsLoading();
+    }
     try {
         const payload = await _m365FetchJson(`/api/m365/calendar/event?eventId=${encodeURIComponent(eventId)}`);
         if (!payload.event) {
-            if (_m365State.detailsBody) _m365State.detailsBody.innerHTML = '<div class="m365-empty-block">Meeting details unavailable.</div>';
+            if (!cached && _m365State.detailsBody) {
+                _m365State.detailsBody.innerHTML = '<div class="m365-empty-block">Meeting details unavailable.</div>';
+            }
             return;
         }
+        if (payload.event.id) _m365State.detailsCache[payload.event.id] = payload.event;
         _m365RenderDetails(payload.event);
     } catch (error) {
-        if (_m365State.detailsBody) _m365State.detailsBody.innerHTML = '<div class="m365-empty-block">Meeting details unavailable.</div>';
+        if (!cached && _m365State.detailsBody) {
+            _m365State.detailsBody.innerHTML = '<div class="m365-empty-block">Meeting details unavailable.</div>';
+        }
         throw error;
+    } finally {
+        if (cached) _m365EndCompactRefresh();
     }
 }
 
@@ -475,6 +534,11 @@ async function _saveM365ConfigFromModal() {
     } else {
         _m365State.nextEvent = null;
         _m365State.agendaDays = [];
+        _m365State.detailsCache = {};
+        _m365State.hasNextCache = false;
+        _m365State.hasAgendaCache = false;
+        _m365State.compactRefreshing = false;
+        _m365State.compactRefreshInFlight = 0;
         _m365RenderCompact();
         _m365RenderAgenda();
     }
@@ -528,7 +592,7 @@ function initM365Calendar() {
             return;
         }
 
-        _m365ShowAgendaLoading();
+        if (!_m365State.hasAgendaCache) _m365ShowAgendaLoading();
         _m365State.agendaPopover.classList.add('open');
 
         try {
