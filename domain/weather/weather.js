@@ -8,6 +8,11 @@ let _weatherConfig = null;   // { enabled:boolean, city?, lat, lon, label, unit:
 let _weatherData = null;     // cached Open-Meteo response
 let _weatherLastFetch = 0;   // ms timestamp
 let _weatherInterval = null;
+let _weatherState = {
+    fetchInFlight: 0,
+    lastError: null,
+    everLoaded: false,
+};
 
 const _WMO_ICON = {
     0:'☀️', 1:'🌤️', 2:'⛅', 3:'☁️',
@@ -60,14 +65,42 @@ function _saveWeatherCfg(cfg) {
     localStorage.setItem(WEATHER_KEY, JSON.stringify(_weatherConfig));
 }
 
+function _stripDiacritics(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+}
+
 async function _geocodeCity(city) {
-    const res = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`
-    );
-    const json = await res.json();
-    if (!json.results?.length) throw new Error('City not found');
-    const r = json.results[0];
-    return { lat: r.latitude, lon: r.longitude, label: `${r.name}, ${r.country}` };
+    const input = String(city || '').trim();
+    if (!input) throw new Error('CITY_NOT_FOUND');
+
+    const variants = [input];
+    const asciiFallback = _stripDiacritics(input);
+    if (asciiFallback && asciiFallback !== input) variants.push(asciiFallback);
+
+    for (const query of variants) {
+        let res;
+        try {
+            res = await fetch(
+                `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`
+            );
+        } catch (error) {
+            throw new Error(error?.message || 'Network request failed');
+        }
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        const json = await res.json();
+        if (!json.results?.length) continue;
+
+        const r = json.results[0];
+        return { lat: r.latitude, lon: r.longitude, label: `${r.name}, ${r.country}` };
+    }
+
+    throw new Error('CITY_NOT_FOUND');
 }
 
 async function _doFetchWeather() {
@@ -84,10 +117,51 @@ async function _doFetchWeather() {
         `&forecast_days=7` +
         `&timezone=auto`;
 
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    _weatherData = await res.json();
-    _weatherLastFetch = now;
+    _weatherState.fetchInFlight += 1;
+    _updateWeatherIndicator();
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        _weatherData = await res.json();
+        _weatherLastFetch = now;
+        _weatherState.lastError = null;
+        _weatherState.everLoaded = true;
+    } catch (error) {
+        _weatherState.lastError = error?.message || 'unknown error';
+        throw error;
+    } finally {
+        _weatherState.fetchInFlight = Math.max(0, _weatherState.fetchInFlight - 1);
+        _updateWeatherIndicator();
+    }
+}
+
+function _updateWeatherIndicator() {
+    const btn = document.getElementById('weatherIndicator');
+    if (!btn) return;
+
+    const cfg = _weatherConfig;
+    let cls = '';
+    let label = '';
+
+    if (_weatherState.fetchInFlight > 0) {
+        cls = 'updating';
+        label = 'Weather integration: updating...';
+    } else if (_weatherState.lastError) {
+        cls = 'conflict';
+        label = `Weather integration: error - ${_weatherState.lastError}`;
+    } else if (!cfg || cfg.enabled === false) {
+        label = 'Weather integration: disabled';
+    } else if (!cfg.lat || !cfg.lon) {
+        label = 'Weather integration: enabled (location not configured)';
+    } else {
+        cls = 'connected';
+        label = _weatherState.everLoaded
+            ? 'Weather integration: active'
+            : 'Weather integration: enabled';
+    }
+
+    btn.className = 'gdrive-indicator' + (cls ? ` ${cls}` : '');
+    btn.dataset.label = label;
 }
 
 function _openWeatherDetails() {
@@ -228,10 +302,16 @@ async function _saveWeatherConfigFromModal() {
         try {
             const geo = await _geocodeCity(city);
             newCfg = { ...newCfg, city, lat: geo.lat, lon: geo.lon, label: geo.label };
-        } catch {
-            status.textContent = `${ICONS.error} City not found`;
-            return;
-        }
+        } catch (error) {
+            _weatherState.lastError = error?.message === 'CITY_NOT_FOUND'
+                ? 'city not found'
+                : (error?.message || 'network error');
+            _updateWeatherIndicator();
+            status.textContent = error?.message === 'CITY_NOT_FOUND'
+                ? `${ICONS.error} City not found`
+                : `${ICONS.error} Geocoding failed`;
+             return;
+         }
     } else if (latV && lonV) {
         const lat = parseFloat(latV);
         const lon = parseFloat(lonV);
@@ -259,7 +339,9 @@ async function _saveWeatherConfigFromModal() {
     _saveWeatherCfg(newCfg);
     _weatherData = null;
     _weatherLastFetch = 0;
+    _weatherState.lastError = null;
     _updateInline();
+    _updateWeatherIndicator();
 
     if (!enabled) {
         status.textContent = `${ICONS.ok} Weather widget hidden`;
@@ -292,7 +374,10 @@ function _bindWeatherModal() {
 }
 
 async function _fetchAndUpdate() {
-    if (_weatherConfig?.enabled === false) return;
+    if (_weatherConfig?.enabled === false) {
+        _updateWeatherIndicator();
+        return;
+    }
     try {
         await _doFetchWeather();
         _updateInline();
@@ -305,6 +390,7 @@ async function initWeather() {
     _loadWeatherConfig();
     _bindWeatherModal();
     _updateInline();
+    _updateWeatherIndicator();
 
     const inline = document.getElementById('headerWeatherInline');
     if (inline) {
