@@ -23,7 +23,11 @@
 
         <div class="form-group">
             <label class="form-label" for="m365TimezoneInput">Timezone override (optional)</label>
-            <input type="text" id="m365TimezoneInput" class="form-input" placeholder="e.g. Europe/Warsaw">
+            <input type="text" id="m365TimezoneInput" class="form-input" placeholder="e.g. Europe/Warsaw" list="m365TimezoneList" autocomplete="off">
+            <datalist id="m365TimezoneList"></datalist>
+            <div style="font-size: 11px; color: var(--text-dimmer); margin-top: 6px;">
+                Start typing to filter timezones. Leave empty to use the browser's local timezone.
+            </div>
         </div>
 
         <div id="m365CfgStatus" class="sync-status" style="text-align: left;"></div>

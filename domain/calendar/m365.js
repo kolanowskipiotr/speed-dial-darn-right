@@ -534,6 +534,18 @@ function toggleM365CalendarEnabled() {
     _setM365EnabledToggle(!current.enabled);
 }
 
+function _m365PopulateTimezoneList() {
+    const list = document.getElementById('m365TimezoneList');
+    if (!list || list.dataset.populated === '1') return;
+    try {
+        const zones = Intl.supportedValuesOf('timeZone');
+        list.innerHTML = zones.map((tz) => `<option value="${_m365Esc(tz)}"></option>`).join('');
+        list.dataset.populated = '1';
+    } catch {
+        // Intl.supportedValuesOf not available — datalist stays empty, free-text still works
+    }
+}
+
 function openM365ConfigModal() {
     const cfg = _m365GetConfig();
     const icsInput = document.getElementById('m365IcsUrlInput');
@@ -541,6 +553,7 @@ function openM365ConfigModal() {
     const status = document.getElementById('m365CfgStatus');
     if (!icsInput || !timezone || !status) return;
 
+    _m365PopulateTimezoneList();
     icsInput.value = cfg.icsUrl;
     timezone.value = cfg.timezone;
     status.textContent = '';
@@ -567,6 +580,15 @@ async function _saveM365ConfigFromModal() {
         return;
     }
     nextConfig.icsUrl = icsValidation.value;
+
+    if (nextConfig.timezone) {
+        try {
+            Intl.DateTimeFormat(undefined, { timeZone: nextConfig.timezone });
+        } catch {
+            status.textContent = `${ICONS.warn} Invalid timezone — pick one from the list or leave empty`;
+            return;
+        }
+    }
 
     _m365SetConfig(nextConfig);
     _m365ApplyEnabledState();
