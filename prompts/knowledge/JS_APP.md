@@ -14,7 +14,7 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 - `domain/persistence/export.js` — Unified export logic, import processing, and GDrive background sync.
 
 ### persistence (sync)
-- `domain/persistence/sync.js` — Constants, state vars, DOM refs, `initSyncConfig`, settings CRUD, all UI updaters, `handleSyncError`, toggle functions.
+- `domain/persistence/sync.js` — Constants, state vars, DOM refs, `initSyncConfig`, settings CRUD, all UI updaters, `handleSyncError`, toggle functions. Includes `toggleStatusIndicators()` / `updateStatusIndicatorsUI()` which toggle the `body.hide-status-indicators` class to show/hide the header State dot cluster; persisted as `showStatusIndicators` in `speedDial_syncSettings`.
 - `domain/persistence/sync-auth.js` — GIS init (`initGis`), `fetchFreshToken`, `scheduleTokenRefresh`, `loginGDrive`, `logoutGDrive`.
 - `domain/persistence/sync-backup.js` — Folder & backup management (`fetchGDriveFolders`, `onFolderSelected`, `fetchGDriveBackups`, `renderBackupList`, `restoreFromGDrive`), `applyDiff`, `triggerManualSync`, `checkAutoSync`, `createBackupFolder`, and backend API call helpers.
 

@@ -21,6 +21,7 @@ let showModalOnDisconnect = true; // Default to true as requested
 let lastAutoSync = null;
 let lastManualSync = null;  // timestamp (ms) ostatniego ręcznego backupu
 let backupInProgress = false; // true while a backup fetch is in-flight
+let showStatusIndicators = true; // Show/hide the State indicators row in the header
 let m365CalendarConfig = {
     enabled: true,
     icsUrl: '',
@@ -70,6 +71,7 @@ function loadSyncSettings() {
     tasksNotesListId = settings.tasksNotesListId || null;
     gdriveSyncEnabled = settings.autoSync || false;
     showModalOnDisconnect = (settings.showModalOnDisconnect !== undefined) ? settings.showModalOnDisconnect : true;
+    showStatusIndicators = (settings.showStatusIndicators !== undefined) ? settings.showStatusIndicators : true;
     lastAutoSync = settings.lastAutoSync || null;
     lastManualSync = settings.lastManualSync || null;
     m365CalendarConfig = {
@@ -83,6 +85,7 @@ function loadSyncSettings() {
     // the folder/backup list to appear while the login button is showing.
     updateAutoSyncToggleUI();
     updateShowModalOnDisconnectToggleUI();
+    updateStatusIndicatorsUI();
     updateSyncIndicators();
 }
 
@@ -95,6 +98,7 @@ function saveSyncSettings() {
         tasksNotesListId: tasksNotesListId,
         autoSync: gdriveSyncEnabled,
         showModalOnDisconnect: showModalOnDisconnect,
+        showStatusIndicators: showStatusIndicators,
         lastAutoSync: lastAutoSync,
         lastManualSync: lastManualSync,
         m365CalendarConfig: m365CalendarConfig,
@@ -220,6 +224,12 @@ function updateShowModalOnDisconnectToggleUI() {
     showModalOnDisconnectToggle.classList.toggle('active', showModalOnDisconnect);
 }
 
+function updateStatusIndicatorsUI() {
+    document.body.classList.toggle('hide-status-indicators', !showStatusIndicators);
+    const toggle = document.getElementById('statusIndicatorsToggle');
+    if (toggle) toggle.classList.toggle('active', showStatusIndicators);
+}
+
 // Centralized error handling for sync operations
 function handleSyncError(e, customMsg) {
     console.error('Sync error:', e);
@@ -269,3 +279,10 @@ function toggleShowModalOnDisconnect() {
     saveSyncSettings();
     syncStatusSpan.textContent = showModalOnDisconnect ? 'Modal on disconnect enabled.' : 'Modal on disconnect disabled.';
 }
+
+function toggleStatusIndicators() {
+    showStatusIndicators = !showStatusIndicators;
+    updateStatusIndicatorsUI();
+    saveSyncSettings();
+}
+

@@ -656,6 +656,10 @@ body.edit-mode .tab-size-control { display: flex; }
     gap: 1px;
 }
 
+body.hide-status-indicators .gdrive-indicators {
+    display: none;
+}
+
 .gdrive-state-label {
     font-family: 'DM Mono', monospace;
     font-size: 8px;

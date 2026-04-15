@@ -47,6 +47,7 @@ localStorage key: `speedDial_syncSettings`
   tasksNotesListId: string | null, // Google Tasks list ID ("SDDR - Notes")
   autoSync: boolean,            // Daily auto-backup enabled? (default: false)
   showModalOnDisconnect: boolean, // Show Manage Data popup when account disconnected? (default: true)
+  showStatusIndicators: boolean, // Show/hide State indicator dots in the header (default: true)
   lastAutoSync: number | null,   // Timestamp (ms) of last successful auto-backup
   lastManualSync: number | null, // Timestamp (ms) of last successful manual backup (rate-limited to 24h cooldown)
   m365CalendarConfig: {
