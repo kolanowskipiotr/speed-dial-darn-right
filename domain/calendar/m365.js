@@ -233,15 +233,17 @@ function _m365RenderCompact() {
     target.classList.add('has-event');
     target.innerHTML = [
         `<span class="m365-compact-row">
-            <span class="m365-label">Next</span>
-            <span class="m365-time">${_m365FmtTime(ev.start)}-${_m365FmtTime(ev.end)} (${_m365Duration(ev.start, ev.end)})</span>
-            ${countdown ? `<span class="m365-countdown">Starts in ${countdown}</span>` : ''}
-            ${ev.joinUrl
-                ? `<a class="m365-join-btn${startsSoon ? ' m365-join-btn--soon' : ''}" href="${_m365Esc(ev.joinUrl)}" target="_blank" rel="noopener noreferrer">Join</a>`
-                : '<span class="m365-join-offline" aria-label="In person meeting">In person</span>'}
-        </span>`,
+             <span class="m365-label">Next</span>
+             <span class="m365-time">${_m365FmtTime(ev.start)}-${_m365FmtTime(ev.end)} (${_m365Duration(ev.start, ev.end)})</span>
+             ${countdown ? `<span class="m365-countdown">Starts in ${countdown}</span>` : ''}
+             <span class="m365-actions-group">
+                 ${inProgress ? '<span class="m365-state m365-state-badge">In progress</span>' : ''}
+                 ${ev.joinUrl
+                     ? `<a class="m365-join-btn${startsSoon ? ' m365-join-btn--soon' : ''}" href="${_m365Esc(ev.joinUrl)}" target="_blank" rel="noopener noreferrer">Join</a>`
+                     : '<span class="m365-join-offline" aria-label="In person meeting">In person</span>'}
+             </span>
+         </span>`,
         `<span class="m365-subject">${_m365Esc(ev.subject)}</span>`,
-        inProgress ? '<span class="m365-state">In progress</span>' : '',
     ].join('');
 }
 

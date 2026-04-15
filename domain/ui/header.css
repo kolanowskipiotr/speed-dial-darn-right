@@ -100,6 +100,9 @@ header {
     color: var(--text);
     white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .m365-subject,
@@ -121,20 +124,45 @@ header {
     color: var(--success);
 }
 
+.m365-state-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--success);
+    background: color-mix(in srgb, var(--success) 15%, transparent);
+    color: var(--success);
+    font-size: 9px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.m365-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    margin-left: auto;
+}
+
 .m365-compact-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 6px;
     width: 100%;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .m365-compact .m365-join-btn {
-    margin-left: auto;
+    /* margin-left handled by .m365-actions-group */
 }
 
 .m365-compact .m365-join-offline {
-    margin-left: auto;
+    /* margin-left handled by .m365-actions-group */
 }
 
 .m365-countdown {
