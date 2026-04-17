@@ -213,12 +213,18 @@ function toOccurrenceKey(uid, date) {
     return `${uid}|${y}-${m}-${d}T${hh}:${mm}`;
 }
 
+function getDayDifferenceUTC(date1, date2) {
+    const utc1 = Date.UTC(date1.getFullYear(), date1.getMonth(), date1.getDate());
+    const utc2 = Date.UTC(date2.getFullYear(), date2.getMonth(), date2.getDate());
+    return Math.floor((utc2 - utc1) / 86400000);
+}
+
 function expandRecurringEvents(events, fromDate, horizonDays = 60) {
     const windowStart = new Date(fromDate);
     const windowEnd = addDays(windowStart, horizonDays);
     const explicit = events.filter((event) => !!event.recurrenceId);
     const explicitKeys = new Set(explicit.map((event) => toOccurrenceKey(event.id, event.start)));
-    const out = events.filter((event) => !event.rrule || event.recurrenceId);
+    const out = events.filter((event) => (!event.rrule || event.recurrenceId) && event.end >= windowStart);
 
     for (const master of events) {
         if (!master.rrule || master.recurrenceId) continue;
@@ -237,7 +243,7 @@ function expandRecurringEvents(events, fromDate, horizonDays = 60) {
         const iterStart = toDateOnlyLocal(master.start > windowStart ? master.start : windowStart);
 
         for (let day = new Date(iterStart); day <= rangeEnd; day = addDays(day, 1)) {
-            const diffDays = Math.floor((toDateOnlyLocal(day) - startDay) / 86400000);
+            const diffDays = getDayDifferenceUTC(startDay, day);
             if (diffDays < 0) continue;
 
             let matches = false;
@@ -290,7 +296,9 @@ async function fetchIcsCalendarWindow(icsUrl, options = {}) {
 }
 
 function pickNextNotCanceled(events, nowMs = Date.now()) {
-    return events.find((event) => !event.isCancelled && event.end.getTime() >= nowMs) || null;
+    return events.find((event) => !event.isCancelled && event.start.getTime() <= nowMs && event.end.getTime() >= nowMs) ||
+           events.find((event) => !event.isCancelled && event.start.getTime() >= nowMs) ||
+           null;
 }
 
 function getWorkingDayKey(date, timezone) {
