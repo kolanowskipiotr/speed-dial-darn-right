@@ -281,6 +281,10 @@ header {
     overflow: auto;
     z-index: 220;
     display: none;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition), visibility var(--transition);
 }
 
 #m365AgendaPopover {
@@ -290,6 +294,14 @@ header {
 
 .m365-popover.open {
     display: block;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#m365AgendaPopover.open {
+    display: block;
+    visibility: visible;
 }
 
 .m365-details-backdrop {

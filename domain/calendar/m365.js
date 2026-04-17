@@ -305,7 +305,10 @@ function _m365EndCompactRefresh() {
 
 function _m365RenderAgenda() {
     const body = _m365State.agendaBody;
-    if (!body) return;
+    if (!body) {
+        console.warn('[m365] agendaBody element not found');
+        return;
+    }
 
     if (!_m365State.agendaDays.length) {
         const cfg = _m365GetConfig();
@@ -655,7 +658,10 @@ function initM365Calendar() {
         });
     }
 
-    if (!_m365State.compact || !_m365State.agendaPopover) return;
+    if (!_m365State.compact || !_m365State.agendaPopover) {
+        console.warn('[m365] Missing DOM elements: compact=%o, agendaPopover=%o', _m365State.compact, _m365State.agendaPopover);
+        return;
+    }
     _m365ApplyEnabledState();
     _m365UpdateIcsIndicator();
 
@@ -689,9 +695,26 @@ function initM365Calendar() {
     });
 
     document.addEventListener('click', (event) => {
+        const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
         const target = event.target;
-        if (target.closest('#m365DetailsPopover')) return;
-        if (!target.closest('.header-m365-col')) _m365HideAgenda();
+
+        if (!path.length && target instanceof Element) {
+            if (target.closest('#m365DetailsPopover')) return;
+            if (!target.closest('.header-m365-col')) _m365HideAgenda();
+            return;
+        }
+
+        const clickedInsideDetails = path.some((node) => node instanceof Element && node.id === 'm365DetailsPopover');
+        if (clickedInsideDetails) return;
+
+        const clickedInsideM365 = path.some((node) => node instanceof Element && (
+            node.classList.contains('header-m365-col')
+            || node.id === 'm365Compact'
+            || node.id === 'm365AgendaPopover'
+            || node.id === 'm365AgendaBody'
+        ));
+
+        if (!clickedInsideM365) _m365HideAgenda();
     });
 
     document.addEventListener('visibilitychange', () => {

@@ -5,7 +5,7 @@ function unfoldIcs(raw) {
 function parseLine(line) {
     const idx = line.indexOf(':');
     if (idx < 0) return null;
-    const lhs = line.slice(0, idx);E
+    const lhs = line.slice(0, idx);
     const value = line.slice(idx + 1);
     const [name, ...paramParts] = lhs.split(';');
     const params = {};
