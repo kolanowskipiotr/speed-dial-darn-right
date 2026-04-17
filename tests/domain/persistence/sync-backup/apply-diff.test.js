@@ -45,5 +45,28 @@ test('Bug 1: applyDiff — restore scenarios', async (t) => {
         assert.strictEqual(restored._images['img-001'], 'data:image/png;base64,ABC123');
         assert.strictEqual(restored._images['img-002'], 'data:image/png;base64,DEF456');
     });
+
+    await t.test('should preserve existing TODO items when list metadata is patched without items', () => {
+        const diffWithTodoMetaOnly = {
+            _type: 'diff',
+            _meta: {
+                diffAt: '2026-04-11T11:00:00.000Z',
+                fullBackupId: 'backup-full-001',
+                fullBackupName: 'backup_2026-04-11T10.full.json',
+                baseExportedAt: '2026-04-11T10:00:00.000Z',
+                diffFormat: 2
+            },
+            todoLists_patch: {
+                upsert: [{ id: 'list-001', name: 'TODO Renamed' }],
+                delete: []
+            }
+        };
+
+        const restored = applyDiff(fullBackupFixture, diffWithTodoMetaOnly);
+
+        assert.strictEqual(restored.todoLists[0].name, 'TODO Renamed');
+        assert.strictEqual(restored.todoLists[0].items.length, 1);
+        assert.strictEqual(restored.todoLists[0].items[0].id, 'item-001');
+    });
 });
 

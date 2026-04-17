@@ -32,13 +32,15 @@ test('Bug 1: calculateDiff — Format 2 diff backups', async (t) => {
         assert.strictEqual(diff.notes_patch.upsert[0].id, 'note-001');
     });
 
-    await t.test('should only include changed todoLists in todoLists_patch', () => {
+    await t.test('should include TODO item changes in todoItems_patch without full list upsert', () => {
         const fullBackup = { id: 'backup-001', name: 'backup_2026-04-11.full.json', data: fullBackupFixture };
         const diff = calculateDiff(fullBackup, fullBackupModified);
 
-        assert(diff.todoLists_patch);
-        assert.strictEqual(diff.todoLists_patch.upsert.length, 1);
-        assert.strictEqual(diff.todoLists_patch.upsert[0].items.length, 2);
+        assert(diff.todoItems_patch, 'todoItems_patch should exist for item-level TODO changes');
+        assert(diff.todoItems_patch['list-001']);
+        assert.strictEqual(diff.todoItems_patch['list-001'].upsert.length, 1);
+        assert.strictEqual(diff.todoItems_patch['list-001'].upsert[0].id, 'item-002');
+        assert(!diff.todoLists_patch, 'todoLists_patch should be omitted when only list items changed');
     });
 
     await t.test('should be smaller than full backup when changes are small', () => {

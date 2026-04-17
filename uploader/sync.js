@@ -79,6 +79,49 @@ function buildArrayPatch(oldArr = [], newArr = []) {
     return { upsert, delete: deleted };
 }
 
+function _stripTodoItems(todoList = {}) {
+    const { items, ...rest } = todoList;
+    return rest;
+}
+
+function buildTodoListsPatch(oldLists = [], newLists = []) {
+    const oldMap = new Map(oldLists.map(list => [list.id, list]));
+    const newMap = new Map(newLists.map(list => [list.id, list]));
+
+    const listsPatch = { upsert: [], delete: [] };
+    const itemsPatchByListId = {};
+
+    for (const [listId, newList] of newMap) {
+        const oldList = oldMap.get(listId);
+
+        if (!oldList) {
+            // New list must carry full payload (including items) so restore can create it in one step.
+            listsPatch.upsert.push(newList);
+            continue;
+        }
+
+        const oldMeta = _stripTodoItems(oldList);
+        const newMeta = _stripTodoItems(newList);
+        if (!_areEssentiallyEqual(oldMeta, newMeta)) {
+            // Existing list metadata update: keep items separate to avoid full-list upserts.
+            listsPatch.upsert.push(newMeta);
+        }
+
+        const itemsPatch = buildArrayPatch(oldList.items || [], newList.items || []);
+        if (itemsPatch.upsert.length > 0 || itemsPatch.delete.length > 0) {
+            itemsPatchByListId[listId] = itemsPatch;
+        }
+    }
+
+    for (const listId of oldMap.keys()) {
+        if (!newMap.has(listId)) {
+            listsPatch.delete.push(listId);
+        }
+    }
+
+    return { listsPatch, itemsPatchByListId };
+}
+
 function calculateDiff(fullBackup, newData) {
     const oldData = fullBackup.data;
     const diff = {
@@ -97,9 +140,12 @@ function calculateDiff(fullBackup, newData) {
         diff.tabs_patch = tabsPatch;
     }
 
-    const todoListsPatch = buildArrayPatch(oldData.todoLists, newData.todoLists);
+    const { listsPatch: todoListsPatch, itemsPatchByListId } = buildTodoListsPatch(oldData.todoLists, newData.todoLists);
     if (todoListsPatch.upsert.length > 0 || todoListsPatch.delete.length > 0) {
         diff.todoLists_patch = todoListsPatch;
+    }
+    if (Object.keys(itemsPatchByListId).length > 0) {
+        diff.todoItems_patch = itemsPatchByListId;
     }
 
     const notesPatch = buildArrayPatch(oldData.notes, newData.notes);

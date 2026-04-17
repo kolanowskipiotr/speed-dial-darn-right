@@ -144,37 +144,21 @@ const diffFormat2 = {
         ],
         delete: []
     },
-    todoLists_patch: {
-        upsert: [
-            {
-                id: 'list-001',
-                name: 'TODO',
-                emoji: '✅',
-                createdAt: '2026-04-01T08:00:00.000Z',
-                order: 1,
-                items: [
-                    {
-                        id: 'item-001',
-                        content: 'Fix backup system',
-                        isDone: false,
-                        createdAt: '2026-04-01T08:00:00.000Z',
-                        updatedAt: '2026-04-01T08:00:00.000Z',
-                        doneAt: null,
-                        order: 1
-                    },
-                    {
-                        id: 'item-002',
-                        content: 'Test diff backups',
-                        isDone: false,
-                        createdAt: '2026-04-11T11:00:00.000Z',
-                        updatedAt: '2026-04-11T11:00:00.000Z',
-                        doneAt: null,
-                        order: 2
-                    }
-                ]
-            }
-        ],
-        delete: []
+    todoItems_patch: {
+        'list-001': {
+            upsert: [
+                {
+                    id: 'item-002',
+                    content: 'Test diff backups',
+                    isDone: false,
+                    createdAt: '2026-04-11T11:00:00.000Z',
+                    updatedAt: '2026-04-11T11:00:00.000Z',
+                    doneAt: null,
+                    order: 2
+                }
+            ],
+            delete: []
+        }
     }
 };
 

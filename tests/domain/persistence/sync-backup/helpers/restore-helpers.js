@@ -30,7 +30,9 @@ function applyDiff(fullData, diff) {
 
     if (isNewFormat) {
         if (diff.tabs_patch) result.tabs = applyArrayPatch(result.tabs, diff.tabs_patch);
-        if (diff.todoLists_patch) result.todoLists = applyArrayPatch(result.todoLists, diff.todoLists_patch);
+        if (diff.todoLists_patch || diff.todoItems_patch) {
+            result.todoLists = applyTodoListsDiffPatch(result.todoLists, diff.todoLists_patch, diff.todoItems_patch);
+        }
         if (diff.notes_patch) result.notes = applyArrayPatch(result.notes, diff.notes_patch);
         if (diff.notesTrash_patch) result.notesTrash = applyArrayPatch(result.notesTrash, diff.notesTrash_patch);
     } else {
@@ -42,6 +44,43 @@ function applyDiff(fullData, diff) {
 
     if (diff._config !== undefined) result._config = diff._config;
     if (diff._images !== undefined) result._images = { ...result._images, ...diff._images };
+
+    return result;
+}
+
+function applyTodoListsDiffPatch(baseTodoLists, listsPatch, itemsPatchByListId) {
+    const deleteSet = new Set(listsPatch?.delete || []);
+    const upsertMap = new Map((listsPatch?.upsert || []).map(item => [item.id, item]));
+
+    const result = (baseTodoLists || [])
+        .filter(list => !deleteSet.has(list.id))
+        .map(list => {
+            const listCopy = {
+                ...list,
+                items: Array.isArray(list.items) ? [...list.items] : []
+            };
+            if (!upsertMap.has(list.id)) return listCopy;
+            const listPatch = upsertMap.get(list.id);
+            const merged = { ...listCopy, ...listPatch };
+            if (!Array.isArray(listPatch.items)) {
+                merged.items = listCopy.items;
+            }
+            return merged;
+        });
+
+    const existingIds = new Set(result.map(list => list.id));
+    for (const listPatch of (listsPatch?.upsert || [])) {
+        if (existingIds.has(listPatch.id)) continue;
+        const newList = { ...listPatch };
+        if (!Array.isArray(newList.items)) newList.items = [];
+        result.push(newList);
+    }
+
+    for (const list of result) {
+        const itemPatch = itemsPatchByListId?.[list.id];
+        if (!itemPatch) continue;
+        list.items = applyArrayPatch(Array.isArray(list.items) ? list.items : [], itemPatch);
+    }
 
     return result;
 }
