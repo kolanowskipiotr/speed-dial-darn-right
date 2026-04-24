@@ -65,9 +65,9 @@ function _renderTodoAccordion(container) {
                 ${list.emoji ? `<span class="todo-list-emoji">${list.emoji}</span>` : ''}
                 <span class="todo-list-name">${escHtml(list.name)}</span>
                 <div class="todo-list-header-actions">
-                    <button class="btn-icon" title="Edit list" onclick="openTodoListModal('${list.id}')">${ICONS.edit}</button>
                     <button class="btn-icon" title="Add to top" onclick="addTodoItem('${list.id}','top')">⤒+</button>
                     <button class="btn-icon" title="Add to bottom" onclick="addTodoItem('${list.id}','bottom')">⤓+</button>
+                    <button class="btn-icon" title="Edit list" onclick="openTodoListModal('${list.id}')">${ICONS.edit}</button>
                 </div>
             `;
         } else {
@@ -292,10 +292,10 @@ function _makeTodoItemRow(item, listId) {
     const actions = document.createElement('div');
     actions.className = 'todo-item-actions';
     actions.innerHTML = `
-        <button class="btn-icon" title="Edit" onclick="openItemEditor('${item.id}')">${ICONS.edit}</button>
         <button class="btn-icon todo-item-pos-btn" title="Move to top" onclick="moveTodoItemToPosition('${item.id}','${listId}','top')">${ICONS.moveTop}</button>
         <button class="btn-icon todo-item-pos-btn" title="Move to bottom" onclick="moveTodoItemToPosition('${item.id}','${listId}','bottom')">${ICONS.moveBottom}</button>
         <button class="btn-icon danger" title="Delete" onclick="deleteTodoItem('${item.id}')">${ICONS.delete}</button>
+        <button class="btn-icon" title="Edit" onclick="openItemEditor('${item.id}')">${ICONS.edit}</button>
         <button class="btn-icon todo-move-list-btn" title="Move to another list" onclick="openTodoMoveModal('${item.id}')">⋯</button>
     `;
 
