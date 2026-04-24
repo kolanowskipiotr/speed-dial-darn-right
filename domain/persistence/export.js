@@ -98,6 +98,8 @@ async function exportData() {
 
 // ─── SYNC ────────────────────────────────────────────────────────
 
+const _BG_SYNC_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between background backups
+
 let _syncTimer = null;
 async function triggerSync() {
     if (_syncTimer) clearTimeout(_syncTimer);
@@ -105,6 +107,14 @@ async function triggerSync() {
         try {
             // Background sync runs only for an authenticated session.
             if (!googleUser || !currentAccessToken) {
+                return;
+            }
+
+            // Rate-limit: at most one background backup per hour.
+            // Persisted in localStorage so page reloads don't reset the clock.
+            const lastBg = parseInt(localStorage.getItem('speedDial_lastBgSync') || '0', 10);
+            if (Date.now() - lastBg < _BG_SYNC_COOLDOWN_MS) {
+                console.log('[sync] skipped — background backup cooldown active (1h)');
                 return;
             }
 
@@ -139,6 +149,7 @@ async function triggerSync() {
             }
 
             if (res.ok) {
+                localStorage.setItem('speedDial_lastBgSync', String(Date.now()));
                 console.log('[sync] successful');
             } else {
                 if (res.status === 401 && typeof handleSyncError === 'function') {

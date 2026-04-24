@@ -113,6 +113,8 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 ### GDrive Sync (Unified Export)
 `domain/persistence/export.js` generates a standard JSON export object including all configuration and base64-encoded images. The `uploader` sidecar compares this with the latest full backup on GDrive to decide between an incremental (diff) or full upload.
 
+**Background sync rate-limiting:** `triggerSync()` (called from every `saveData()`, debounced 5 s) is rate-limited to **at most one backup per hour** via `localStorage` key `speedDial_lastBgSync` (ms timestamp of last successful background backup). The key is read before sending and updated on `res.ok`. Using localStorage (not a module variable) ensures the cooldown survives page reloads. This does **not** affect the manual backup button (24 h cooldown, `lastManualSync`) nor the daily auto-backup (`checkAutoSync`, 24 h cooldown, `lastAutoSync`).
+
 ### GDrive Auth & Token Refresh (`domain/persistence/sync.js`)
 - Uses Google Identity Services (GIS) implicit flow — access tokens only, no refresh tokens.
 - `tokenExpiry` (ms timestamp) is stored in localStorage alongside the access token.

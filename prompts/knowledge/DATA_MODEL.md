@@ -52,6 +52,7 @@ localStorage key: `speedDial_syncSettings`
   showHeaderClock: boolean,     // Show/hide header clock/date column (default: true)
   lastAutoSync: number | null,   // Timestamp (ms) of last successful auto-backup
   lastManualSync: number | null, // Timestamp (ms) of last successful manual backup (rate-limited to 24h cooldown)
+  // Note: lastBgSync is NOT stored here — it lives in its own localStorage key (see below)
   m365CalendarConfig: {
     enabled: boolean,            // Header M365 widget visibility
     icsUrl: string,              // Outlook ICS URL used as the only calendar source
@@ -63,6 +64,7 @@ localStorage key: `speedDial_syncSettings`
 ## Persistence
 - `saveData()` → `localStorage.setItem('speedDial_v2', JSON.stringify(data))`
 - `saveSyncSettings()` → `localStorage.setItem('speedDial_syncSettings', JSON.stringify({ ... }))`
+- `speedDial_lastBgSync` — standalone `number` (ms timestamp); set by `triggerSync()` in `export.js` after each successful background backup. Separate from `speedDial_syncSettings` so it survives page reloads without going through `saveSyncSettings()`. Controls the 1-hour cooldown between automatic background backups.
 - `loadData()` — migrates old `{ groups }` format automatically (no tabs wrapper); also ensures `data.tabs[0].isHome = true` if no tab has the flag yet
 - `getActiveTab()` → returns current tab object from `data.tabs`
 
