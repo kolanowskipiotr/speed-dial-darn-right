@@ -237,8 +237,8 @@ async function cleanupOldBackups(d, folderId) {
     });
 
     const files = res.data.files;
-    if (files.length > 50) {
-        const toDelete = files.slice(50);
+    if (files.length > 200) {
+        const toDelete = files.slice(200);
         for (const file of toDelete) {
             console.log(`[sync] Deleting old backup: ${file.name}`);
             await d.files.delete({ fileId: file.id });
