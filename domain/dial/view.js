@@ -74,7 +74,10 @@ function renderTabs() {
                 e.stopPropagation();
                 const srcTab = data.tabs.find(t => t.id === dragSrcTabId);
                 const tgtTab = data.tabs.find(t => t.id === tab.id);
-                if (!srcTab || !tgtTab || !tgtTab.groups.length) return;
+                if (!srcTab || !tgtTab) return;
+                if (!tgtTab.groups.length) {
+                    tgtTab.groups.push({ id: uid(), name: 'Start', emoji: ICONS.defaultGroup, dialSize: 140, dials: [] });
+                }
                 const srcGroup = srcTab.groups.find(g => g.id === dragSrcGroupId);
                 if (!srcGroup) return;
                 const srcIdx = srcGroup.dials.findIndex(d => d.id === dragSrcDialId);
