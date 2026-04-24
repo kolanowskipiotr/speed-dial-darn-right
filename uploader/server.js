@@ -268,11 +268,12 @@ function createServer(deps = {}) {
 
         if (req.url === '/api/sync' && req.method === 'POST') { // Backup
             const chunks = [];
+            const forceFull = req.headers['x-backup-full'] === 'true';
             req.on('data', chunk => chunks.push(chunk));
             req.on('end', async () => {
                 try {
                     const data = JSON.parse(Buffer.concat(chunks).toString());
-                    await performSync(data, token, folderId);
+                    await performSync(data, token, folderId, { forceFull });
                     res.writeHead(200);
                     res.end('ok');
                 } catch (e) {

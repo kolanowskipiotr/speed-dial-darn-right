@@ -274,15 +274,6 @@ async function triggerManualSync() {
         return;
     }
 
-    // Rate-limit: max jeden ręczny backup na 24h
-    const twentyFourHours = 24 * 60 * 60 * 1000;
-    if (lastManualSync && (Date.now() - lastManualSync) < twentyFourHours) {
-        const nextAt = new Date(lastManualSync + twentyFourHours)
-            .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        showToast(`${ICONS.warn} Manual backup cooldown active. Next available at ${nextAt}.`);
-        return;
-    }
-
     manualSyncBtn.disabled = true;
     backupInProgress = true;
     syncStatusSpan.textContent = 'Backing up...';
@@ -292,15 +283,18 @@ async function triggerManualSync() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentAccessToken}`, // Pass token for backend auth
+                'Authorization': `Bearer ${currentAccessToken}`,
                 'X-Access-Token': currentAccessToken,
-                'X-GDrive-Folder-Id': currentFolderId // Pass folder ID for backend
+                'X-GDrive-Folder-Id': currentFolderId,
+                'X-Backup-Full': 'true' // Manual backup is always a full backup
             },
             body: JSON.stringify(exportObj)
         });
         if (res.ok) {
             syncStatusSpan.textContent = 'Backup successful!';
-            lastManualSync = Date.now(); // FIX: używa lastManualSync, NIE lastAutoSync
+            const now = Date.now();
+            lastManualSync = now;
+            lastAutoSync = now; // Anchor auto-sync timer so next auto backup diffs from this full backup
             saveSyncSettings();
             updateSyncIndicators();
             showToast(`${ICONS.ok} Backup complete!`);

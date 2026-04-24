@@ -182,7 +182,7 @@ function hasMeaningfulDiff(diff) {
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-async function performSync(data, token, folderId) {
+async function performSync(data, token, folderId, { forceFull = false } = {}) {
     if (!token || !folderId) {
         console.warn('[sync] Missing token or folderId, skipping sync');
         return;
@@ -194,7 +194,7 @@ async function performSync(data, token, folderId) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
         const fullBackupAge = latestFull ? Date.now() - new Date(latestFull.createdTime).getTime() : Infinity;
-        const shouldDoFull = !latestFull || fullBackupAge >= SEVEN_DAYS_MS;
+        const shouldDoFull = forceFull || !latestFull || fullBackupAge >= SEVEN_DAYS_MS;
 
         if (shouldDoFull) {
             console.log('[sync] Performing full backup');
