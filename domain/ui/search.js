@@ -34,7 +34,13 @@ function initSearch() {
 
     const searchWrap = document.getElementById('headerSearchWrap');
     const isHidden = !!(searchWrap && getComputedStyle(searchWrap).display === 'none');
-    if (!isHidden) input.focus();
+    if (!isHidden) {
+        if (document.hasFocus()) {
+            input.focus();
+        } else {
+            window.addEventListener('focus', () => input.focus(), { once: true });
+        }
+    }
 }
 
 function clearSearch() {

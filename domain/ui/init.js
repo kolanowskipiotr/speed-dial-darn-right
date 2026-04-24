@@ -49,7 +49,7 @@ setInterval(updateClock, 1000);
 initLogoAnimation();
 initSizePresets();
 
-setTimeout(initSearch, 100);
+initSearch();
 
 // Initialize Sync Config
 initSyncConfig();
