@@ -164,7 +164,7 @@ function emptyTrash() {
 
 function _buildTrashPanel(container) {
     const trash = [...(data.notesTrash || [])].sort(
-        (a, b) => new Date(b.deletedAt) - new Date(a.deletedAt)
+        (a, b) => new Date(a.deletedAt) - new Date(b.deletedAt)
     );
 
     const panel = document.createElement('div');
