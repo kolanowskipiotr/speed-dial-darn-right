@@ -19,7 +19,119 @@ let _m365State = {
     icsFetchInFlight: 0,
     icsLastError: null,
     icsEverLoaded: false,
+    // Alert / sound state
+    alertWindowActive: false,
+    alertMutedForId: null,
+    alertSoundTimer: null,
+    alertCheckTimer: null,
 };
+
+// Shared AudioContext — created lazily on first play attempt
+let _m365AudioCtx = null;
+
+function _m365GetAudioContext() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!_m365AudioCtx || _m365AudioCtx.state === 'closed') {
+        try { _m365AudioCtx = new AudioCtx(); } catch (e) { return null; }
+    }
+    return _m365AudioCtx;
+}
+
+function _m365PlayBell() {
+    const ctx = _m365GetAudioContext();
+    if (!ctx) return;
+
+    function doPlay() {
+        try {
+            const now = ctx.currentTime;
+
+            function beep(startTime, freq, duration, vol) {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(vol, startTime + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                osc.start(startTime);
+                osc.stop(startTime + duration + 0.02);
+            }
+
+            // "Ding … Dong" — two tones ~500ms apart
+            beep(now,        880, 0.45, 0.28);
+            beep(now + 0.55, 660, 0.45, 0.22);
+        } catch (e) {
+            // audio unavailable — fail silently
+        }
+    }
+
+    if (ctx.state === 'suspended') {
+        ctx.resume().then(doPlay).catch(() => {});
+    } else {
+        doPlay();
+    }
+}
+
+function _m365StartAlertLoop() {
+    _m365StopAlertLoop();
+    _m365PlayBell();
+    _m365State.alertSoundTimer = setInterval(_m365PlayBell, 4000);
+}
+
+function _m365StopAlertLoop() {
+    if (_m365State.alertSoundTimer) {
+        clearInterval(_m365State.alertSoundTimer);
+        _m365State.alertSoundTimer = null;
+    }
+}
+
+function _m365ToggleBellMute() {
+    const ev = _m365State.nextEvent;
+    if (!ev) return;
+
+    if (_m365State.alertMutedForId === ev.id) {
+        // Unmute — restart sound if still in window
+        _m365State.alertMutedForId = null;
+        if (_m365State.alertWindowActive) _m365StartAlertLoop();
+    } else {
+        // Mute — stop sound for this meeting
+        _m365State.alertMutedForId = ev.id;
+        _m365StopAlertLoop();
+    }
+    _m365RenderCompact();
+}
+
+function _m365CheckAlertState() {
+    const ev = _m365State.nextEvent;
+
+    if (!ev) {
+        if (_m365State.alertWindowActive) {
+            _m365State.alertWindowActive = false;
+            _m365StopAlertLoop();
+            _m365RenderCompact();
+        }
+        return;
+    }
+
+    const now = Date.now();
+    const startTs = new Date(ev.start).getTime();
+    const WINDOW_MS = 3 * 60 * 1000; // 3 minutes
+    const inWindow = Number.isFinite(startTs) && now >= startTs - WINDOW_MS && now <= startTs + WINDOW_MS;
+    const isMuted = _m365State.alertMutedForId === ev.id;
+
+    if (inWindow && !_m365State.alertWindowActive) {
+        _m365State.alertWindowActive = true;
+        _m365RenderCompact();
+        if (!isMuted) _m365StartAlertLoop();
+    } else if (!inWindow && _m365State.alertWindowActive) {
+        _m365State.alertWindowActive = false;
+        _m365StopAlertLoop();
+        _m365RenderCompact();
+    }
+}
 
 const _M365_DEFAULT_CONFIG = {
     enabled: true,
@@ -273,6 +385,11 @@ function _m365RenderCompact() {
     const inProgress = new Date(ev.start) <= new Date() && new Date(ev.end) >= new Date();
     const countdown = !inProgress ? _m365TimeUntilStart(ev.start) : '';
     const startsSoon = inProgress || _m365IsWithinNextMinutes(ev.start, 5);
+    const isBellMuted = _m365State.alertMutedForId === ev.id;
+    const bellTitle = isBellMuted ? 'Sound muted — click to re-enable' : 'Meeting alert active — click to mute';
+    const bellHtml = _m365State.alertWindowActive
+        ? `<button class="m365-bell-btn${isBellMuted ? ' m365-bell-btn--muted' : ''}" type="button" data-bell="1" aria-label="${bellTitle}" title="${bellTitle}">${isBellMuted ? ICONS.bellMuted : ICONS.bell}</button>`
+        : '';
     target.classList.add('has-event');
     target.innerHTML = [
         `<span class="m365-compact-row">
@@ -284,6 +401,7 @@ function _m365RenderCompact() {
                  ${ev.joinUrl
                      ? `<a class="m365-join-btn${startsSoon ? ' m365-join-btn--soon' : ''}" href="${_m365Esc(ev.joinUrl)}" target="_blank" rel="noopener noreferrer">Join</a>`
                      : '<span class="m365-join-offline" aria-label="In person meeting">In person</span>'}
+                 ${bellHtml}
              </span>
          </span>`,
         _m365State.compactRefreshing ? '<span class="m365-loading-inline m365-loading-inline--compact" aria-label="Loading calendar" title="Loading calendar"></span>' : '',
@@ -405,6 +523,8 @@ async function _m365LoadNext() {
         _m365State.hasNextCache = true;
         _m365State.icsLastError = null;
         _m365State.icsEverLoaded = true;
+        // Update alert state whenever event data changes
+        _m365CheckAlertState();
     } catch (error) {
         if (!_m365State.hasNextCache) {
             _m365State.nextEvent = null;
@@ -509,6 +629,7 @@ function _m365ScheduleRefresh() {
     if (_m365State.compactTimer) clearInterval(_m365State.compactTimer);
     if (_m365State.agendaTimer) clearInterval(_m365State.agendaTimer);
     if (_m365State.countdownTimer) clearInterval(_m365State.countdownTimer);
+    if (_m365State.alertCheckTimer) clearInterval(_m365State.alertCheckTimer);
 
     if (!_m365CanLoadCalendar()) return;
 
@@ -523,6 +644,10 @@ function _m365ScheduleRefresh() {
     _m365State.agendaTimer = setInterval(() => {
         _m365LoadAgenda(false).catch((error) => console.warn('[m365] agenda refresh failed:', error.message));
     }, 5 * 60 * 1000);
+
+    // Check alert window every 10 s — drives the meeting bell/sound
+    _m365State.alertCheckTimer = setInterval(_m365CheckAlertState, 10 * 1000);
+    _m365CheckAlertState(); // immediate check
 }
 
 function _setM365EnabledToggle(active) {
@@ -667,6 +792,11 @@ function initM365Calendar() {
 
     _m365State.compact.addEventListener('click', async (event) => {
         if (event.target.closest('.m365-join-btn')) return;
+        // Bell mute toggle — stop propagation so agenda doesn't open
+        if (event.target.closest('[data-bell]')) {
+            _m365ToggleBellMute();
+            return;
+        }
         const willOpen = !_m365State.agendaPopover.classList.contains('open');
         if (!willOpen) {
             _m365HideAgenda();
@@ -721,6 +851,7 @@ function initM365Calendar() {
         if (document.visibilityState === 'visible') {
             _m365LoadNext().catch(() => {});
             _m365LoadAgenda(false).catch(() => {});
+            _m365CheckAlertState();
         }
     });
 

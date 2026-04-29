@@ -27,6 +27,10 @@ const ICONS = {
     moveTop:         '⤒',
     moveBottom:      '⤓',
 
+    // Calendar alert icons
+    bell:     '🔔',
+    bellMuted:'🔕',
+
     // Notes icons
     defaultNote: '📝',
     info:        'ℹ️',

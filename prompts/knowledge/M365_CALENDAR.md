@@ -6,10 +6,55 @@ Dotyczy: `domain/calendar/m365.js`, `domain/ui/header.css`, `uploader/m365-calen
 
 ## Architektura
 
-- **Frontend widget**: `domain/calendar/m365.js` — inicjalizacja, event listenery, renderowanie agendy i detali spotkania.
+- **Frontend widget**: `domain/calendar/m365.js` — inicjalizacja, event listenery, renderowanie agendy i detali spotkania, silnik alertów dźwiękowych.
 - **Serwer ICS**: `uploader/m365-calendar.js` — pobieranie i parsowanie feedu ICS z Outlook365, cache 60s, filtrowanie/sortowanie eventów.
 - **Endpointy**: `uploader/server.js` obsługuje `/api/m365/*` — proxy do serwera Node na porcie 3001.
 - **Testy**: `tests/uploader/m365/calendar-logic.test.js` i `server-calendar.test.js` — uruchamiać przez `node --test tests/uploader/m365/*.test.js`.
+
+---
+
+## Funkcja alertu dźwiękowego (bell notification)
+
+### Zachowanie
+- **Okno alertu**: od `start - 3 minuty` do `start + 3 minuty`.
+- W tym oknie odgrywa się dźwięk "Ding… Dong" (Web Audio API) co 4 sekundy.
+- Ikona 🔔 pojawia się obok przycisku Join w widoku compact.
+- Kliknięcie 🔔 wycisza dźwięk → ikona zmienia się na 🔕 (przezroczysta).
+- Kliknięcie 🔕 ponownie włącza dźwięk (`alertMutedForId` → `null`).
+- Po opuszczeniu okna alertu wszystko resetuje się; nowe spotkanie zaczyna od nowa bez wyciszenia.
+
+### Kluczowe funkcje w `m365.js`
+| Funkcja | Opis |
+|---------|------|
+| `_m365CheckAlertState()` | Sprawdza co 10 s czy jesteśmy w oknie alertu; uruchamia/zatrzymuje pętlę dźwięku |
+| `_m365StartAlertLoop()` | Odgrywa dźwięk natychmiast i co 4 s |
+| `_m365StopAlertLoop()` | Czyści interval dźwięku |
+| `_m365PlayBell()` | Syntezuje dwa tony (880Hz + 660Hz) przez Web Audio API |
+| `_m365ToggleBellMute()` | Przełącza wyciszenie dla bieżącego spotkania |
+| `_m365GetAudioContext()` | Leniwe tworzenie/reużywanie `AudioContext` |
+
+### Stan alertu w `_m365State`
+```js
+alertWindowActive: false,  // true gdy jesteśmy w oknie ±3min
+alertMutedForId: null,     // ID spotkania, które zostało wyciszone
+alertSoundTimer: null,     // interval dźwięku (co 4s)
+alertCheckTimer: null,     // interval sprawdzający okno alertu (co 10s)
+```
+
+### Dźwięk — Web Audio API
+- Nie wymaga zewnętrznych plików — w pełni darmowy komercyjnie.
+- Wzorzec: "Ding" (880 Hz, 450ms) → pauza 100ms → "Dong" (660 Hz, 450ms) → pauza ~3s → powtórka.
+- `AudioContext` jest tworzony leniwie przy pierwszej próbie odtworzenia.
+- Jeśli przeglądarka blokuje audio (brak gestu użytkownika), dźwięk nie gra — ikona dzwonka nadal się pojawia.
+
+### CSS (w `domain/ui/header.css`)
+- `.m365-bell-btn` — bazowy styl dzwonka z animacją dzwonienia (`@keyframes m365-bell-ring`).
+- `.m365-bell-btn--muted` — wyłącza animację, zmniejsza opacity do 0.4.
+- `@media (prefers-reduced-motion: reduce)` — wyłącza animację.
+
+### ICONS (w `domain/core/state.js`)
+- `ICONS.bell` = `'🔔'`
+- `ICONS.bellMuted` = `'🔕'`
 
 ---
 

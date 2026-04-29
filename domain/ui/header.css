@@ -810,6 +810,55 @@ body.hide-status-indicators .gdrive-indicators {
     opacity: 1;
 }
 
+/* ── M365 ALERT BELL ──────────────────────────── */
+.m365-bell-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    transition: transform var(--transition), background var(--transition), opacity var(--transition);
+    flex-shrink: 0;
+    animation: m365-bell-ring 2s ease-in-out infinite;
+}
+
+.m365-bell-btn:hover {
+    background: var(--surface3);
+    transform: scale(1.2);
+    animation-play-state: paused;
+}
+
+.m365-bell-btn--muted {
+    animation: none;
+    opacity: 0.4;
+}
+
+.m365-bell-btn--muted:hover {
+    opacity: 0.85;
+    transform: scale(1.15);
+}
+
+@keyframes m365-bell-ring {
+    0%, 55%, 100%  { transform: rotate(0deg); }
+    60%            { transform: rotate(-18deg); }
+    68%            { transform: rotate(18deg); }
+    76%            { transform: rotate(-12deg); }
+    84%            { transform: rotate(12deg); }
+    92%            { transform: rotate(-6deg); }
+    96%            { transform: rotate(6deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .m365-bell-btn { animation: none; }
+}
+
 /* ── THEME SELECTOR ──────────────────────── */
 .theme-selector {
     display: none;
