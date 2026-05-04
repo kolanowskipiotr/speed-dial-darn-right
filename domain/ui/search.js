@@ -40,6 +40,16 @@ function initSearch() {
         } else {
             window.addEventListener('focus', () => input.focus(), { once: true });
         }
+
+        // Replay any text typed before JS initialized (captured via autofocus + early browser focus).
+        // data is already loaded at this point (loadData() runs before initSearch() in init.js).
+        if (input.value) {
+            searchQuery = input.value;
+            renderSearchResults();
+        }
+    } else {
+        // Search is hidden — cancel the autofocus so focus isn't trapped on an invisible element.
+        input.blur();
     }
 }
 

@@ -64,6 +64,24 @@
 </head>
 <body>
 
+<!-- Early-init: apply stored theme + search/clock visibility before any script loads.
+     This prevents theme flash AND lets the browser honour autofocus on #searchInput
+     only when the search wrap is actually visible. -->
+<script>
+(function () {
+    try {
+        var ss = JSON.parse(localStorage.getItem('speedDial_syncSettings') || '{}');
+        if (ss.showHeaderSearch === false) document.body.classList.add('hide-header-search');
+        if (ss.showHeaderClock === false)  document.body.classList.add('hide-header-clock');
+        if (ss.showStatusIndicators === false) document.body.classList.add('hide-status-indicators');
+    } catch (e) {}
+    try {
+        var d = JSON.parse(localStorage.getItem('speedDial_data') || '{}');
+        if (d.theme) document.body.setAttribute('data-theme', d.theme);
+    } catch (e) {}
+})();
+</script>
+
 <!-- UI DOMAIN PARTIALS -->
 <!--#include virtual="/domain/ui/header.html" -->
 <!--#include virtual="/domain/ui/main.html" -->
