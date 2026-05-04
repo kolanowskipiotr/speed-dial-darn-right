@@ -3,7 +3,17 @@ function unfoldIcs(raw) {
 }
 
 function parseLine(line) {
-    const idx = line.indexOf(':');
+    // Find the first colon that is NOT inside a quoted string.
+    // This is required because TZID parameters can contain colons, e.g.:
+    //   DTSTART;TZID="(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb":20260505T113000
+    // A naive indexOf(':') would split at the colon inside the timezone name.
+    let inQuote = false;
+    let idx = -1;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { inQuote = !inQuote; }
+        else if (ch === ':' && !inQuote) { idx = i; break; }
+    }
     if (idx < 0) return null;
     const lhs = line.slice(0, idx);
     const value = line.slice(idx + 1);
@@ -16,15 +26,123 @@ function parseLine(line) {
     return { name: name.toUpperCase(), value, params };
 }
 
-function normalizeIanaTimeZone(rawTz) {
-    const value = String(rawTz || '').trim().replace(/^"|"$/g, '');
-    if (!value) return '';
+// windows-iana maps Windows KEY timezone names (e.g. "Central Europe Standard Time")
+// to IANA identifiers. Covers all ~130 Windows zones — replaces any hand-written map.
+const { findIana: _findIana } = require('windows-iana');
+
+// Return the first IANA timezone for a Windows KEY name, or '' if unknown.
+function _winKeyToIana(name) {
     try {
-        new Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date());
-        return value;
+        const results = _findIana(String(name || ''));
+        return (results && results[0]) || '';
     } catch {
         return '';
     }
+}
+
+// Parse a TZOFFSETFROM/TZOFFSETTO value like "+0200" or "-0530" into minutes.
+function _parseIcsOffsetToMinutes(raw = '') {
+    const m = String(raw).trim().match(/^([+-])(\d{2})(\d{2})$/);
+    if (!m) return null;
+    const sign = m[1] === '+' ? 1 : -1;
+    return sign * (Number(m[2]) * 60 + Number(m[3]));
+}
+
+// Try to find a valid IANA zone name from an Etc/GMT±N fixed-offset.
+// Used as last-resort fallback when VTIMEZONE is absent and TZID is a display name.
+function _offsetMinutesToEtcGmt(offsetMinutes) {
+    if (offsetMinutes === null) return '';
+    // Etc/GMT uses the POSIX sign convention (inverted): Etc/GMT-2 = UTC+2
+    const hours = offsetMinutes / 60;
+    if (!Number.isInteger(hours)) return ''; // can't express sub-hour in Etc/GMT
+    const etcSign = hours >= 0 ? '-' : '+';
+    const etcHours = Math.abs(hours);
+    const candidate = `Etc/GMT${etcSign}${etcHours}`;
+    try {
+        new Intl.DateTimeFormat('en-US', { timeZone: candidate }).format(new Date());
+        return candidate;
+    } catch {
+        return '';
+    }
+}
+
+// Parse all VTIMEZONE blocks in the ICS and return a map: tzid → { iana, stdOffsetMin }.
+// Outlook always includes VTIMEZONE for every unique timezone it uses so this
+// covers all events without a static 120-entry timezone dictionary.
+function parseVTimezones(lines) {
+    // map: tzid → { iana: string|null, stdOffsetMin: number|null }
+    const map = {};
+    let inVtz = false;
+    let subType = null; // 'std' | 'dst' | null
+    let tzid = null;
+    let stdOffsetMin = null;
+
+    for (const line of lines) {
+        const s = line.trim();
+        if (s === 'BEGIN:VTIMEZONE') { inVtz = true; tzid = null; stdOffsetMin = null; continue; }
+        if (s === 'END:VTIMEZONE') {
+            if (tzid) {
+                let iana = '';
+                try { new Intl.DateTimeFormat('en-US', { timeZone: tzid }).format(new Date()); iana = tzid; } catch { /* */ }
+                if (!iana) iana = _winKeyToIana(tzid);
+                // Store both iana (may be empty) and stdOffsetMin for fallback matching
+                map[tzid] = { iana: iana || null, stdOffsetMin };
+            }
+            inVtz = false; tzid = null; subType = null; stdOffsetMin = null;
+            continue;
+        }
+        if (!inVtz) continue;
+        if (s === 'BEGIN:STANDARD') { subType = 'std'; continue; }
+        if (s === 'BEGIN:DAYLIGHT') { subType = 'dst'; continue; }
+        if (s === 'END:STANDARD' || s === 'END:DAYLIGHT') { subType = null; continue; }
+
+        const parsed = parseLine(s);
+        if (!parsed) continue;
+        if (!subType && parsed.name === 'TZID') {
+            tzid = unescapeIcsText(parsed.value).trim();
+        } else if (subType === 'std' && parsed.name === 'TZOFFSETTO') {
+            stdOffsetMin = _parseIcsOffsetToMinutes(parsed.value);
+        }
+    }
+    return map;
+}
+
+
+function normalizeIanaTimeZone(rawTz, vtimezoneMap = {}) {
+    const value = String(rawTz || '').trim().replace(/^"|"$/g, '');
+    if (!value) return '';
+
+    // 1. Direct IANA name check
+    try {
+        new Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date());
+        return value;
+    } catch { /* not a valid IANA name */ }
+
+    // 2. Windows key name via windows-iana package (covers all ~130 Windows zones)
+    const winIana = _winKeyToIana(value);
+    if (winIana) return winIana;
+
+    // 3. VTIMEZONE map built from the ICS file itself
+    if (vtimezoneMap[value]?.iana) return vtimezoneMap[value].iana;
+
+    // 4. For Outlook display-name TZIDs like "(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb":
+    //    Extract the standard UTC offset, then find a VTIMEZONE entry with the same
+    //    standard offset and reuse its DST-aware IANA name.
+    //    This avoids fixed Etc/GMT zones which break during DST transitions.
+    const offsetMatch = value.match(/^\(UTC([+-])(\d{2}):(\d{2})\)/);
+    if (offsetMatch) {
+        const sign = offsetMatch[1] === '+' ? 1 : -1;
+        const baseMin = sign * (Number(offsetMatch[2]) * 60 + Number(offsetMatch[3]));
+        // Match to a known VTIMEZONE entry with the same standard offset
+        for (const entry of Object.values(vtimezoneMap)) {
+            if (entry.iana && entry.stdOffsetMin === baseMin) return entry.iana;
+        }
+        // Last resort: fixed Etc/GMT (no DST — 1h off in summer, but no data loss)
+        const etcGmt = _offsetMinutesToEtcGmt(baseMin);
+        if (etcGmt) return etcGmt;
+    }
+
+    return '';
 }
 
 function getTimeZoneParts(date, timezone) {
@@ -81,7 +199,7 @@ function parseIcsDate(raw, params = {}, options = {}) {
     const [, y, mo, d, h, mi, s = '00', z] = match;
     if (z === 'Z') return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)));
 
-    const tzid = normalizeIanaTimeZone(params.TZID) || normalizeIanaTimeZone(options.defaultTimeZone);
+    const tzid = normalizeIanaTimeZone(params.TZID, options.vtimezoneMap) || normalizeIanaTimeZone(options.defaultTimeZone, {});
     if (tzid) {
         return parseZonedDateTime(Number(y), Number(mo), Number(d), Number(h), Number(mi), Number(s), tzid);
     }
@@ -142,6 +260,9 @@ function extractJoinUrl(description = '', urlProp = '') {
 
 function parseIcsEvents(rawIcs, options = {}) {
     const lines = unfoldIcs(rawIcs).split(/\r?\n/);
+    // Parse VTIMEZONE blocks first — builds a tzid→IANA map from definitions
+    // embedded in the ICS itself, so external timezone dictionaries are not needed.
+    const vtimezoneMap = parseVTimezones(lines);
     const events = [];
     let current = null;
 
@@ -164,7 +285,7 @@ function parseIcsEvents(rawIcs, options = {}) {
 
     return events
         .map((event) => {
-            const parseOpts = { defaultTimeZone: options.defaultTimeZone || '' };
+            const parseOpts = { defaultTimeZone: options.defaultTimeZone || '', vtimezoneMap };
             const start = parseIcsDate(event.raw.DTSTART?.value, event.raw.DTSTART?.params, parseOpts);
             const end = parseIcsDate(event.raw.DTEND?.value, event.raw.DTEND?.params, parseOpts) || start;
             if (!start || !end) return null;
@@ -177,7 +298,7 @@ function parseIcsEvents(rawIcs, options = {}) {
                 subject: unescapeIcsText(event.raw.SUMMARY?.value || '(no subject)'),
                 start,
                 end,
-                timezone: normalizeIanaTimeZone(event.raw.DTSTART?.params?.TZID) || parseOpts.defaultTimeZone,
+                timezone: normalizeIanaTimeZone(event.raw.DTSTART?.params?.TZID, vtimezoneMap) || parseOpts.defaultTimeZone,
                 recurrenceId: parseIcsDate(event.raw['RECURRENCE-ID']?.value, event.raw['RECURRENCE-ID']?.params, parseOpts),
                 rrule: parseRRule(event.raw.RRULE?.value || ''),
                 exdates: parseExDates(event.raw.EXDATE?.value || '', event.raw.EXDATE?.params || {}, parseOpts),

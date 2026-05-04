@@ -7,7 +7,8 @@
     "test": "node --test ../tests/uploader/sync/*.test.js ../tests/uploader/m365/*.test.js ../tests/domain/persistence/sync-backup/*.test.js ../tests/domain/note/tasks-sync/*.test.js"
   },
   "dependencies": {
+    "google-auth-library": "^9.0.0",
     "googleapis": "^126.0.0",
-    "google-auth-library": "^9.0.0"
+    "windows-iana": "^5.1.0"
   }
 }

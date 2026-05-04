@@ -170,12 +170,44 @@ function pickNextNotCanceled(events, nowMs = Date.now()) {
 
 ---
 
+### 5. Brakujące spotkania z TZID w cudzysłowach zawierającym dwukropek
+
+**Symptom**: Spotkania widoczne w kalendarzu Outlook nie pojawiają się w agendzie widgetu. Żadnego błędu w konsoli.
+
+**Przyczyna**: `parseLine()` używał `line.indexOf(':')` — trafiał w dwukropek **wewnątrz** nazwy strefy czasowej w cudzysłowiu, np.:
+```
+DTSTART;TZID="(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb":20260505T113000
+```
+Pierwszym dwukropkiem był ten w `UTC+01:00`, więc wartość daty była śmieciem → `parseIcsDate()` zwracał `null` → event był odrzucany bez błędu.
+
+**Naprawa** (`parseLine` w `uploader/m365-calendar.js`):
+```javascript
+// Znaleź pierwszy dwukropek NIE wewnątrz cudzysłowu
+let inQuote = false;
+let idx = -1;
+for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuote = !inQuote; }
+    else if (ch === ':' && !inQuote) { idx = i; break; }
+}
+```
+
+**Ponadto** — dodano `parseVTimezones()` i zależność `windows-iana` (npm). Outlook eksportuje TZID w dwóch formatach:
+- **Windows KEY name** (`Central Europe Standard Time` w bloku VTIMEZONE) → mapowane przez `windows-iana` (`findIana()`)
+- **Display name** (`(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb` w DTSTART) → wyciągany base offset, dopasowywany do wpisu VTIMEZONE z tym samym offsetem → DST-aware IANA
+
+Nie wymaga ręcznej mapy stref czasowych.
+
+**Zasada ogólna**: W ICS parametry mogą zawierać cytowane wartości z dwukropkami. Zawsze parsuj pierwszy **niecytowany** dwukropek jako separator name:value.
+
+---
+
 ## Struktura danych ICS z Outlook
 
 - Outlook eksportuje cykliczne spotkania jako **osobne VEVENT** dla każdej instancji (nie jako jeden event z RRULE).
 - Wyjątek: niektóre eventy mogą mieć RRULE — parser musi obsługiwać oba formaty.
 - `RECURRENCE-ID` wskazuje, że dany VEVENT jest konkretną instancją (np. zmienioną) serii cyklicznej.
-- Strefy czasowe: Outlook używa nazw takich jak `W. Europe Standard Time` — parser mapuje je na strefy IANA.
+- Strefy czasowe: Outlook używa **Windows display names** (np. `(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb`) zamiast IANA. Parser mapuje je przez `_WINDOWS_TZ_MAP` na strefy IANA.
 - W przypadku podejrzenia złych dat: sprawdź mapowanie stref czasowych w parserze.
 
 ---
