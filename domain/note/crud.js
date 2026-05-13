@@ -1,9 +1,16 @@
 // ─── CRUD ─────────────────────────────────────────────────────────
 
 function openNoteTab(noteId) {
+    // If trash is open: clicking any tab (even the active one) should close trash
+    if (_notesTrashOpen) {
+        _notesTrashOpen = false;
+        activeNoteId = noteId;
+        const container = _getNotesContainer();
+        if (container) renderNotesPanel(container);
+        return;
+    }
     if (noteId === activeNoteId) return;
-    _notesTrashOpen = false;
-    // Save current editor content before switching
+    // Save current editor content before switching (only when editor is actually mounted)
     if (window.NotesCM && activeNoteId) {
         const cur = findNote(activeNoteId);
         if (cur) {
