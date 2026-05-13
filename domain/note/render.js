@@ -219,6 +219,15 @@ function renderNotesPanel(container) {
         trashBtn.appendChild(badge);
     }
     trashBtn.onclick = () => {
+        // Save current editor content before destroying the CM instance
+        if (window.NotesCM && activeNoteId) {
+            const cur = findNote(activeNoteId);
+            if (cur) {
+                cur.content = NotesCM.getValue();
+                cur.updatedAt = new Date().toISOString();
+                saveData();
+            }
+        }
         _notesTrashOpen = !_notesTrashOpen;
         _notesTrashPreviewId = null;
         const c = _getNotesContainer();
