@@ -66,29 +66,30 @@ function _offsetMinutesToEtcGmt(offsetMinutes) {
     }
 }
 
-// Parse all VTIMEZONE blocks in the ICS and return a map: tzid → { iana, stdOffsetMin }.
+// Parse all VTIMEZONE blocks in the ICS and return a map: tzid → { iana, stdOffsetMin, dstOffsetMin }.
 // Outlook always includes VTIMEZONE for every unique timezone it uses so this
 // covers all events without a static 120-entry timezone dictionary.
 function parseVTimezones(lines) {
-    // map: tzid → { iana: string|null, stdOffsetMin: number|null }
+    // map: tzid → { iana: string|null, stdOffsetMin: number|null, dstOffsetMin: number|null }
     const map = {};
     let inVtz = false;
     let subType = null; // 'std' | 'dst' | null
     let tzid = null;
     let stdOffsetMin = null;
+    let dstOffsetMin = null;
 
     for (const line of lines) {
         const s = line.trim();
-        if (s === 'BEGIN:VTIMEZONE') { inVtz = true; tzid = null; stdOffsetMin = null; continue; }
+        if (s === 'BEGIN:VTIMEZONE') { inVtz = true; tzid = null; stdOffsetMin = null; dstOffsetMin = null; continue; }
         if (s === 'END:VTIMEZONE') {
             if (tzid) {
                 let iana = '';
                 try { new Intl.DateTimeFormat('en-US', { timeZone: tzid }).format(new Date()); iana = tzid; } catch { /* */ }
                 if (!iana) iana = _winKeyToIana(tzid);
-                // Store both iana (may be empty) and stdOffsetMin for fallback matching
-                map[tzid] = { iana: iana || null, stdOffsetMin };
+                // Store iana (may be empty), stdOffsetMin and dstOffsetMin for fallback matching
+                map[tzid] = { iana: iana || null, stdOffsetMin, dstOffsetMin };
             }
-            inVtz = false; tzid = null; subType = null; stdOffsetMin = null;
+            inVtz = false; tzid = null; subType = null; stdOffsetMin = null; dstOffsetMin = null;
             continue;
         }
         if (!inVtz) continue;
@@ -102,13 +103,27 @@ function parseVTimezones(lines) {
             tzid = unescapeIcsText(parsed.value).trim();
         } else if (subType === 'std' && parsed.name === 'TZOFFSETTO') {
             stdOffsetMin = _parseIcsOffsetToMinutes(parsed.value);
+        } else if (subType === 'dst' && parsed.name === 'TZOFFSETTO') {
+            dstOffsetMin = _parseIcsOffsetToMinutes(parsed.value);
         }
     }
     return map;
 }
 
+// Return the UTC offset in minutes for iana timezone at a given UTC date.
+// Positive = east of UTC (e.g. Europe/Warsaw in summer → +120).
+function _getTimezoneOffsetMin(iana, utcDate) {
+    try {
+        const p = getTimeZoneParts(utcDate, iana);
+        const localMs = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+        return Math.round((localMs - utcDate.getTime()) / 60000);
+    } catch {
+        return null;
+    }
+}
 
-function normalizeIanaTimeZone(rawTz, vtimezoneMap = {}) {
+
+function normalizeIanaTimeZone(rawTz, vtimezoneMap = {}, defaultTimeZone = '') {
     const value = String(rawTz || '').trim().replace(/^"|"$/g, '');
     if (!value) return '';
 
@@ -136,6 +151,24 @@ function normalizeIanaTimeZone(rawTz, vtimezoneMap = {}) {
         // Match to a known VTIMEZONE entry with the same standard offset
         for (const entry of Object.values(vtimezoneMap)) {
             if (entry.iana && entry.stdOffsetMin === baseMin) return entry.iana;
+        }
+        // Try the user-configured defaultTimeZone when the VTIMEZONE entry for this display name
+        // exists but has no resolvable IANA name (common for Outlook Windows display-name TZIDs).
+        // Validate by comparing both standard and DST UTC offsets.
+        if (defaultTimeZone) {
+            const thisEntry = vtimezoneMap[value];
+            if (thisEntry && thisEntry.stdOffsetMin === baseMin) {
+                // Reference dates: mid-January (standard time) and mid-July (DST)
+                const winterRef = new Date(Date.UTC(2026, 0, 15, 12, 0, 0));
+                const summerRef = new Date(Date.UTC(2026, 6, 15, 12, 0, 0));
+                const dtStdOffset = _getTimezoneOffsetMin(defaultTimeZone, winterRef);
+                if (dtStdOffset === baseMin) {
+                    // DST check: skip if no DAYLIGHT block captured, otherwise verify
+                    if (thisEntry.dstOffsetMin === null) return defaultTimeZone;
+                    const dtDstOffset = _getTimezoneOffsetMin(defaultTimeZone, summerRef);
+                    if (dtDstOffset === thisEntry.dstOffsetMin) return defaultTimeZone;
+                }
+            }
         }
         // Last resort: fixed Etc/GMT (no DST — 1h off in summer, but no data loss)
         const etcGmt = _offsetMinutesToEtcGmt(baseMin);
@@ -199,7 +232,7 @@ function parseIcsDate(raw, params = {}, options = {}) {
     const [, y, mo, d, h, mi, s = '00', z] = match;
     if (z === 'Z') return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)));
 
-    const tzid = normalizeIanaTimeZone(params.TZID, options.vtimezoneMap) || normalizeIanaTimeZone(options.defaultTimeZone, {});
+    const tzid = normalizeIanaTimeZone(params.TZID, options.vtimezoneMap, options.defaultTimeZone) || normalizeIanaTimeZone(options.defaultTimeZone, {});
     if (tzid) {
         return parseZonedDateTime(Number(y), Number(mo), Number(d), Number(h), Number(mi), Number(s), tzid);
     }
@@ -298,7 +331,7 @@ function parseIcsEvents(rawIcs, options = {}) {
                 subject: unescapeIcsText(event.raw.SUMMARY?.value || '(no subject)'),
                 start,
                 end,
-                timezone: normalizeIanaTimeZone(event.raw.DTSTART?.params?.TZID, vtimezoneMap) || parseOpts.defaultTimeZone,
+                timezone: normalizeIanaTimeZone(event.raw.DTSTART?.params?.TZID, vtimezoneMap, parseOpts.defaultTimeZone) || parseOpts.defaultTimeZone,
                 recurrenceId: parseIcsDate(event.raw['RECURRENCE-ID']?.value, event.raw['RECURRENCE-ID']?.params, parseOpts),
                 rrule: parseRRule(event.raw.RRULE?.value || ''),
                 exdates: parseExDates(event.raw.EXDATE?.value || '', event.raw.EXDATE?.params || {}, parseOpts),

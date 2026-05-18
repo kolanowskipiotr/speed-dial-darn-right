@@ -101,6 +101,46 @@ test('m365 calendar logic', async (t) => {
         assert.strictEqual(parsed[0].end.toISOString(), '2026-04-13T07:50:00.000Z');
     });
 
+    await t.test('Outlook Windows display-name TZID with DST is parsed correctly (regression: 1h off in summer)', () => {
+        // Reproduces the real Outlook ICS format:
+        //   VTIMEZONE TZID uses escaped commas: "(UTC+01:00) Sarajevo\, Skopje\, Warsaw\, Zagreb"
+        //   DTSTART TZID is quoted with real commas: TZID="(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb"
+        // Bug: parser fell back to Etc/GMT-1 (fixed UTC+1, no DST) instead of Europe/Warsaw (DST-aware UTC+2 in summer).
+        // Result: 13:30 local was treated as 12:30 UTC → displayed as 14:30 Warsaw. Correct: 13:30 Warsaw = 11:30 UTC.
+        const rawIcs = [
+            'BEGIN:VCALENDAR',
+            'BEGIN:VTIMEZONE',
+            'TZID:(UTC+01:00) Sarajevo\\, Skopje\\, Warsaw\\, Zagreb',
+            'BEGIN:STANDARD',
+            'DTSTART:16010101T030000',
+            'TZOFFSETFROM:+0200',
+            'TZOFFSETTO:+0100',
+            'RRULE:FREQ=YEARLY;INTERVAL=1;BYDAY=-1SU;BYMONTH=10',
+            'END:STANDARD',
+            'BEGIN:DAYLIGHT',
+            'DTSTART:16010101T020000',
+            'TZOFFSETFROM:+0100',
+            'TZOFFSETTO:+0200',
+            'RRULE:FREQ=YEARLY;INTERVAL=1;BYDAY=-1SU;BYMONTH=3',
+            'END:DAYLIGHT',
+            'END:VTIMEZONE',
+            'BEGIN:VEVENT',
+            'UID:dst-regression-1',
+            'SUMMARY:Stability of Nexus PSC',
+            'DTSTART;TZID="(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb":20260518T133000',
+            'DTEND;TZID="(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb":20260518T143000',
+            'STATUS:CONFIRMED',
+            'END:VEVENT',
+            'END:VCALENDAR',
+        ].join('\r\n');
+
+        const parsed = parseIcsEvents(rawIcs, { defaultTimeZone: 'Europe/Warsaw' });
+        assert.strictEqual(parsed.length, 1);
+        // 13:30 Warsaw CEST (UTC+2 in May) = 11:30 UTC — NOT 12:30 UTC (which Etc/GMT-1 would give)
+        assert.strictEqual(parsed[0].start.toISOString(), '2026-05-18T11:30:00.000Z');
+        assert.strictEqual(parsed[0].end.toISOString(), '2026-05-18T12:30:00.000Z');
+    });
+
     await t.test('SafeLinks are decoded to Teams URL', () => {
         const safeLink = 'https://nam01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fteams.microsoft.com%2Fl%2Fmeetup-join%2Fabc';
         const decoded = decodeSafeLink(safeLink);

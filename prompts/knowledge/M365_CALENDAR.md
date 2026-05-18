@@ -202,6 +202,59 @@ Nie wymaga ręcznej mapy stref czasowych.
 
 ---
 
+### 6. Spotkanie pokazuje czas o 1 godzinę za późno (błąd DST przy Windows display-name TZID)
+
+**Symptom**: Widget pokazuje spotkanie o 14:30-15:30, podczas gdy w Outlooku (i w ICS) jest 13:30-14:30. Błąd pojawia się tylko latem (podczas DST).
+
+**Przyczyna**: Outlook eksportuje dwa formaty TZID dla tej samej strefy:
+- W bloku VTIMEZONE: `TZID:(UTC+01:00) Sarajevo\, Skopje\, Warsaw\, Zagreb` (z escaped przecinkami)
+- W DTSTART: `TZID="(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb"` (z prawdziwymi przecinkami w cudzysłowiu)
+
+Funkcja `parseVTimezones()` budowała vtimezoneMap z kluczem `(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb` (po unescapowaniu), ale nie znajdowała dla niego prawidłowej nazwy IANA (bo to nie jest ani nazwa IANA, ani Windows KEY name). Zapisywała `iana: null`.
+
+Następnie `normalizeIanaTimeZone()` w kroku 4 szukała wpisu vtimezoneMap z `entry.iana !== null && entry.stdOffsetMin === 60`. Nie znajdowała żadnego → fallback do `Etc/GMT-1` (UTC+1 stały, **bez DST**).
+
+Wynik: 13:30 local → 12:30 UTC (z offsetem +01:00) zamiast 11:30 UTC (z offsetem +02:00 CEST). Widget wyświetlał 14:30 Warsaw zamiast 13:30.
+
+**Naprawa** (`uploader/m365-calendar.js`):
+
+1. **`parseVTimezones()`** — przechowuje teraz również `dstOffsetMin` (offset z bloku `BEGIN:DAYLIGHT`):
+```javascript
+map[tzid] = { iana: iana || null, stdOffsetMin, dstOffsetMin };
+```
+
+2. Dodano helper `_getTimezoneOffsetMin(iana, utcDate)` — zwraca offset UTC w minutach dla danej strefy IANA o zadanym czasie UTC.
+
+3. **`normalizeIanaTimeZone(rawTz, vtimezoneMap, defaultTimeZone = '')`** — nowy 3. parametr. W kroku 4, gdy nie znaleziono wpisu z `iana !== null`, sprawdza `defaultTimeZone`:
+```javascript
+if (defaultTimeZone) {
+    const thisEntry = vtimezoneMap[value]; // wpis dla display-name TZID
+    if (thisEntry && thisEntry.stdOffsetMin === baseMin) {
+        const winterRef = new Date(Date.UTC(2026, 0, 15, 12, 0, 0));
+        const dtStdOffset = _getTimezoneOffsetMin(defaultTimeZone, winterRef);
+        if (dtStdOffset === baseMin) {
+            if (thisEntry.dstOffsetMin === null) return defaultTimeZone;
+            const summerRef = new Date(Date.UTC(2026, 6, 15, 12, 0, 0));
+            if (_getTimezoneOffsetMin(defaultTimeZone, summerRef) === thisEntry.dstOffsetMin) {
+                return defaultTimeZone; // ✅ np. "Europe/Warsaw"
+            }
+        }
+    }
+}
+```
+
+4. Wywołania `normalizeIanaTimeZone` zaktualizowane, żeby przekazywały `defaultTimeZone`:
+   - W `parseIcsDate()`: `normalizeIanaTimeZone(params.TZID, options.vtimezoneMap, options.defaultTimeZone)`
+   - W `parseIcsEvents()`: `normalizeIanaTimeZone(event.raw.DTSTART?.params?.TZID, vtimezoneMap, parseOpts.defaultTimeZone)`
+
+**Wynik**: `(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb` → szuka, czy `Europe/Warsaw` ma std=+01:00 i DST=+02:00 → tak → zwraca `Europe/Warsaw` → 13:30 Warsaw CEST = **11:30 UTC** ✓.
+
+**Test regresyjny**: `'Outlook Windows display-name TZID with DST is parsed correctly (regression: 1h off in summer)'` w `tests/uploader/m365/calendar-logic.test.js`.
+
+**Zasada ogólna**: Gdy VTIMEZONE blok istnieje dla display-name TZID, ale nie da się go zmapować na IANA, użyj `defaultTimeZone` skonfigurowanego przez użytkownika jako DST-aware fallback — pod warunkiem że oba offsety (std i DST) pasują do wartości z VTIMEZONE.
+
+---
+
 ## Struktura danych ICS z Outlook
 
 - Outlook eksportuje cykliczne spotkania jako **osobne VEVENT** dla każdej instancji (nie jako jeden event z RRULE).
