@@ -82,6 +82,7 @@ function loadSyncSettings() {
         enabled: settings.m365CalendarConfig?.enabled !== false,
         icsUrl: settings.m365CalendarConfig?.icsUrl || '',
         timezone: settings.m365CalendarConfig?.timezone || '',
+        notificationsEnabled: settings.m365CalendarConfig?.notificationsEnabled || false,
     };
 
     // Don't fetch folders/backups here — wait for the token to be confirmed

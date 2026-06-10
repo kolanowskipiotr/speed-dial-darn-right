@@ -7,7 +7,7 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 ### core
 - `domain/core/state.js` — Single source of truth for emojis, icons, and **all** mutable global state. Includes dial/tab vars (`activeTabId`, `editMode`, `editingDialId`, …), todo vars (`activeTodoListId`, `editingTodoListId`, `editingTodoItemId`), and note vars (`activeNoteId`, `notesFullScreen`, `_notesSearchHighlight`). Domain-level `helpers.js` files declare only their own module-private state.
 - `domain/core/themes.js` — Theme definitions, loading, and application logic.
-- `domain/core/utils.js` — Shared utility functions (UID, image resizing, uploads, toasts, confirms).
+- `domain/core/utils.js` — Shared utility functions (UID, image resizing, uploads, toasts, confirms). Also exposes `requestNotificationPermission()` (wraps `Notification.requestPermission()`) and `showNotification(title, body, opts)` (creates a browser system notification when permission is granted — usable by any domain).
 
 ### persistence
 - `domain/persistence/domain.js` — Data loading, saving, and format migration.
@@ -49,7 +49,7 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 - `domain/weather/weather.js` — Weather widget. Config CRUD (`_loadWeatherConfig`, `_saveWeatherCfg`), Open-Meteo API calls (`_geocodeCity`, `_doFetchWeather`), inline display update (`_updateInline`), popup management (`toggleWeatherPopup`, `_openWeatherPopup`, `_closeWeatherPopup`, `_renderPopup`), forecast view builder (`_buildForecastView`, `_makeDayCard`), config form builder (`_buildConfigView`), init (`initWeather`). Config stored in `localStorage` key `speedDial_weather`; includes `enabled` (default `true`) to show/hide the header weather column without deleting saved location.
 
 ### calendar
-- `domain/calendar/m365.js` — Header M365 meeting widget (`initM365Calendar`) with 3-level UX: compact next meeting, agenda popover for next working days, and details popover for selected meeting. Includes edit-mode configuration modal (`openM365ConfigModal`) for ICS URL, timezone, and enable/disable state. Runtime config is persisted as `m365CalendarConfig` via `speedDial_syncSettings` in `domain/persistence/sync.js`.
+- `domain/calendar/m365.js` — Header M365 meeting widget (`initM365Calendar`) with 3-level UX: compact next meeting, agenda popover for next working days, and details popover for selected meeting. Includes edit-mode configuration modal (`openM365ConfigModal`) for ICS URL, timezone, enable/disable state, and **meeting notifications** (`notificationsEnabled`). Runtime config is persisted as `m365CalendarConfig` via `speedDial_syncSettings` in `domain/persistence/sync.js`. Meeting bell alert fires a Web Notification (via `showNotification()` in `utils.js`) 3 minutes before a meeting when `notificationsEnabled=true` and `Notification.permission==='granted'` — even if the tab is in the background. `_m365State.alertNotificationSentForId` prevents duplicate notifications for the same event.
 
 ### ui
 - `domain/ui/init.js` — Bootstrap logic, global event listeners, and Safari focus fix.

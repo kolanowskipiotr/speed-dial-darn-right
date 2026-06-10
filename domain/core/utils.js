@@ -151,6 +151,40 @@ function closeModal(id) {
     if (m) m.classList.remove('open');
 }
 
+// ─── WEB NOTIFICATIONS ────────────────────────────────────────
+/**
+ * Request browser notification permission.
+ * Returns a Promise resolving to 'granted' | 'denied' | 'default'.
+ */
+function requestNotificationPermission() {
+    if (!('Notification' in window)) return Promise.resolve('denied');
+    return Notification.requestPermission();
+}
+
+/**
+ * Show a browser (system) notification. Works even when the tab is in the background.
+ * @param {string} title
+ * @param {string} body
+ * @param {object} [opts]  — passed to Notification constructor (icon, tag, silent, …)
+ * @returns {Notification|null}
+ */
+function showNotification(title, body, opts = {}) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return null;
+    try {
+        const n = new Notification(title, {
+            body,
+            icon: opts.icon || '/favicon.ico',
+            tag: opts.tag,
+            silent: opts.silent || false,
+            ...opts,
+        });
+        return n;
+    } catch (e) {
+        console.warn('[notifications] Could not show notification:', e);
+        return null;
+    }
+}
+
 function showConfirm(title, message, onConfirm, opts = {}) {
     document.getElementById('confirmTitle').textContent = title;
     document.getElementById('confirmMessage').textContent = message;

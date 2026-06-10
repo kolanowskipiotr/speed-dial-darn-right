@@ -24,6 +24,7 @@ let _m365State = {
     alertMutedForId: null,
     alertSoundTimer: null,
     alertCheckTimer: null,
+    alertNotificationSentForId: null,
 };
 
 // Shared AudioContext — created lazily on first play attempt
@@ -126,6 +127,16 @@ function _m365CheckAlertState() {
         _m365State.alertWindowActive = true;
         _m365RenderCompact();
         if (!isMuted) _m365StartAlertLoop();
+
+        // Fire a browser notification when the tab is in the background
+        const cfg = _m365GetConfig();
+        if (cfg.notificationsEnabled && _m365State.alertNotificationSentForId !== ev.id) {
+            _m365State.alertNotificationSentForId = ev.id;
+            const timeStr = _m365FmtTime(ev.start);
+            const title = `${ICONS.bell} Spotkanie za chwilę`;
+            const body = `${ev.title || 'Bez tytułu'} · ${timeStr}`;
+            showNotification(title, body, { tag: `m365-meeting-${ev.id}`, icon: '/favicon.ico' });
+        }
     } else if (!inWindow && _m365State.alertWindowActive) {
         _m365State.alertWindowActive = false;
         _m365StopAlertLoop();
@@ -137,6 +148,7 @@ const _M365_DEFAULT_CONFIG = {
     enabled: true,
     icsUrl: '',
     timezone: '',
+    notificationsEnabled: false,
 };
 
 function _m365GetConfig() {
@@ -145,6 +157,7 @@ function _m365GetConfig() {
         enabled: raw.enabled !== false,
         icsUrl: raw.icsUrl || '',
         timezone: raw.timezone || '',
+        notificationsEnabled: raw.notificationsEnabled || false,
     };
 }
 
@@ -674,6 +687,58 @@ function _m365PopulateTimezoneList() {
     }
 }
 
+function _setM365NotificationsToggle(active) {
+    const toggle = document.getElementById('m365NotificationsToggle');
+    if (!toggle) return;
+    toggle.classList.toggle('active', !!active);
+}
+
+function _m365UpdateNotificationsPermissionUI() {
+    const statusEl = document.getElementById('m365NotificationsPermStatus');
+    if (!statusEl) return;
+    if (!('Notification' in window)) {
+        statusEl.textContent = `${ICONS.warn} Ten browser nie obsługuje powiadomień`;
+        statusEl.dataset.state = 'unsupported';
+        return;
+    }
+    const perm = Notification.permission;
+    if (perm === 'granted') {
+        statusEl.textContent = `${ICONS.ok} Zgoda udzielona — powiadomienia działają`;
+        statusEl.dataset.state = 'granted';
+    } else if (perm === 'denied') {
+        statusEl.textContent = `${ICONS.error} Dostęp zablokowany — odblokuj w ustawieniach przeglądarki`;
+        statusEl.dataset.state = 'denied';
+    } else {
+        statusEl.textContent = `Kliknij „Zezwól" aby włączyć powiadomienia systemowe`;
+        statusEl.dataset.state = 'default';
+    }
+}
+
+async function _m365RequestNotificationPermission() {
+    const perm = await requestNotificationPermission();
+    _m365UpdateNotificationsPermissionUI();
+    if (perm === 'granted') {
+        _setM365NotificationsToggle(true);
+        const cfg = _m365GetConfig();
+        _m365SetConfig({ ...cfg, notificationsEnabled: true });
+    }
+}
+
+function toggleM365Notifications() {
+    const current = _m365GetConfig();
+    const toggle = document.getElementById('m365NotificationsToggle');
+    if (!toggle) return;
+    const willEnable = !current.notificationsEnabled;
+
+    if (willEnable && Notification.permission !== 'granted') {
+        // Need to request permission first — toggle stays off until granted
+        _m365RequestNotificationPermission();
+        return;
+    }
+    _m365SetConfig({ ...current, notificationsEnabled: willEnable });
+    _setM365NotificationsToggle(willEnable);
+}
+
 function openM365ConfigModal() {
     const cfg = _m365GetConfig();
     const icsInput = document.getElementById('m365IcsUrlInput');
@@ -686,6 +751,8 @@ function openM365ConfigModal() {
     timezone.value = cfg.timezone;
     status.textContent = '';
     _setM365EnabledToggle(cfg.enabled);
+    _setM365NotificationsToggle(cfg.notificationsEnabled);
+    _m365UpdateNotificationsPermissionUI();
     openModal('m365ConfigModal');
 }
 
@@ -700,6 +767,7 @@ async function _saveM365ConfigFromModal() {
         enabled: cfg.enabled,
         icsUrl: _m365NormalizeUrl(icsInput.value),
         timezone: timezone.value.trim(),
+        notificationsEnabled: document.getElementById('m365NotificationsToggle')?.classList.contains('active') || false,
     };
 
     const icsValidation = _m365ValidateHttpUrl(nextConfig.icsUrl);
