@@ -154,35 +154,60 @@ function closeModal(id) {
 // ─── WEB NOTIFICATIONS ────────────────────────────────────────
 /**
  * Request browser notification permission.
+ * Also registers the service worker (needed for reliable OS notifications on Chrome).
  * Returns a Promise resolving to 'granted' | 'denied' | 'default'.
  */
 function requestNotificationPermission() {
     if (!('Notification' in window)) return Promise.resolve('denied');
+    // Register SW early so it is ready before the first notification fires.
+    _ensureSwRegistered();
     return Notification.requestPermission();
 }
 
+let _swRegistrationPromise = null;
+function _ensureSwRegistered() {
+    if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+    if (_swRegistrationPromise) return _swRegistrationPromise;
+    _swRegistrationPromise = navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(reg => { console.log('[sw] registered, scope:', reg.scope); return reg; })
+        .catch(e  => { console.warn('[sw] registration failed:', e.message); return null; });
+    return _swRegistrationPromise;
+}
+
 /**
- * Show a browser (system) notification. Works even when the tab is in the background.
- * @param {string} title
- * @param {string} body
- * @param {object} [opts]  — passed to Notification constructor (icon, tag, silent, …)
- * @returns {Notification|null}
+ * Show an OS-level notification via Service Worker (Chrome/macOS reliable)
+ * with a fallback to the legacy Notification constructor.
  */
 function showNotification(title, body, opts = {}) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return null;
-    try {
-        const n = new Notification(title, {
-            body,
-            icon: opts.icon || '/favicon.ico',
-            tag: opts.tag,
-            silent: opts.silent || false,
-            ...opts,
-        });
-        return n;
-    } catch (e) {
-        console.warn('[notifications] Could not show notification:', e);
-        return null;
+
+    const payload = {
+        body,
+        icon:   opts.icon || '/favicon.ico',
+        badge:  '/favicon.ico',
+        tag:    opts.tag  || 'speed-dial-monitor',
+        silent: opts.silent || false,
+        ...opts,
+    };
+
+    // Prefer Service Worker notification — goes through the OS pipeline on Chrome/macOS.
+    // navigator.serviceWorker.ready resolves only when the SW is fully *active*, which is
+    // required for reg.showNotification() to work (the earlier registration promise may
+    // resolve while the SW is still installing, causing silent failures).
+    if ('serviceWorker' in navigator) {
+        _ensureSwRegistered(); // kick off registration if not already started
+        navigator.serviceWorker.ready
+            .then(reg => reg.showNotification(title, payload))
+            .catch(() => {
+                // SW ready but showNotification failed — fall back to constructor.
+                try { new Notification(title, payload); } catch (_) {}
+            });
+    } else {
+        // Fallback: direct Notification constructor (Firefox, Safari, non-SW environments).
+        try { new Notification(title, payload); } catch (_) {}
     }
+
+    return true; // indicates the attempt was made
 }
 
 function showConfirm(title, message, onConfirm, opts = {}) {

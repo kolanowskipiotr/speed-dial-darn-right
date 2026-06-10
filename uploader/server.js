@@ -142,6 +142,97 @@ function createServer(deps = {}) {
         return;
     }
 
+    // --- Page Monitor: fetch page, return content + SHA-256 hash (server-side, no CORS) ---
+    if (req.url === '/api/monitor/check' && req.method === 'POST') {
+        const chunks = [];
+        req.on('data', chunk => chunks.push(chunk));
+        req.on('end', async () => {
+            try {
+                const { url, useHeadless } = JSON.parse(Buffer.concat(chunks).toString());
+                if (!url || !/^https?:\/\//i.test(url)) {
+                    json(res, 400, { error: 'A valid http(s) URL is required' });
+                    return;
+                }
+                const crypto = require('crypto');
+
+                // Preserve line structure: trim each line, drop blanks
+                function normaliseLines(raw) {
+                    return raw.split('\n')
+                        .map(l => l.trim())
+                        .filter(l => l.length > 0)
+                        .join('\n');
+                }
+
+                if (useHeadless) {
+                    let browser;
+                    try {
+                        const puppeteer = require('puppeteer-core');
+                        const execPath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
+                        browser = await puppeteer.launch({
+                            executablePath: execPath,
+                            headless: true,
+                            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
+                        });
+                        const page = await browser.newPage();
+                        await page.setUserAgent('Mozilla/5.0 (compatible; SpeedDialMonitor/1.0)');
+                        // 'load' waits for window.onload (JS has executed, images loaded).
+                        // We avoid 'networkidle2' because pages that poll continuously
+                        // (clocks, live-price feeds, etc.) never reach networkidle state
+                        // and would always hit the 30-second timeout.
+                        await page.goto(url, { waitUntil: 'load', timeout: 30000 });
+                        // innerText preserves visual newlines from the rendered DOM
+                        const raw = await page.evaluate(() => document.body.innerText || '');
+                        const content = normaliseLines(raw);
+                        const hash = crypto.createHash('sha256').update(content).digest('hex');
+                        json(res, 200, { ok: true, hash, content });
+                    } catch (headlessErr) {
+                        console.error('[monitor] Headless check failed:', headlessErr.message);
+                        json(res, 200, { ok: false, error: headlessErr.message });
+                    } finally {
+                        if (browser) { try { await browser.close(); } catch (_) {} }
+                    }
+                    return;
+                }
+
+                // Plain fetch — block-level tags become newlines for a structured diff
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 15000);
+                try {
+                    const pageRes = await fetch(url, {
+                        signal: controller.signal,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (compatible; SpeedDialMonitor/1.0)',
+                            'Accept': 'text/html,application/xhtml+xml,*/*;q=0.9',
+                        },
+                        redirect: 'follow',
+                    });
+                    clearTimeout(timeout);
+                    if (!pageRes.ok) { json(res, 200, { ok: false, error: `HTTP ${pageRes.status}` }); return; }
+                    const html = await pageRes.text();
+                    const raw = html
+                        .replace(/<script[\s\S]*?<\/script>/gi, '')
+                        .replace(/<style[\s\S]*?<\/style>/gi, '')
+                        .replace(/<!--[\s\S]*?-->/g, '')
+                        .replace(/<\/(p|div|li|h[1-6]|tr|section|article|header|footer|nav|main)>/gi, '\n')
+                        .replace(/<br\s*\/?>/gi, '\n')
+                        .replace(/<[^>]+>/g, ' ')
+                        .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                        .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+                        .replace(/&#\d+;/g, '');
+                    const content = normaliseLines(raw);
+                    const hash = crypto.createHash('sha256').update(content).digest('hex');
+                    json(res, 200, { ok: true, hash, content });
+                } catch (fetchErr) {
+                    clearTimeout(timeout);
+                    json(res, 200, { ok: false, error: fetchErr.message });
+                }
+            } catch (e) {
+                json(res, 400, { error: 'invalid_json' });
+            }
+        });
+        return;
+    }
+
     // --- M365 Calendar API ---
     if (req.url.startsWith('/api/m365/calendar') && (req.method === 'GET' || req.method === 'POST')) {
         const requestUrl = new URL(req.url, `http://${req.headers.host}`);

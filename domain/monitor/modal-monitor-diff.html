@@ -1,0 +1,38 @@
+<!-- Monitor: change report / diff modal -->
+<div class="modal-backdrop" id="monitorDiffModal" style="z-index: 260;">
+    <div class="modal" style="max-width: 780px;">
+        <div class="modal-title" id="monitorDiffTitle">Change report</div>
+
+        <!-- Diff view -->
+        <div class="monitor-diff-container">
+            <div class="monitor-diff-legend">
+                <span class="monitor-diff-badge monitor-diff-badge--added">Added / new</span>
+                <span class="monitor-diff-badge monitor-diff-badge--removed">Removed / old</span>
+                <span style="font-size:11px;color:var(--text-dimmer);margin-left:8px;">
+                    Click <strong>Ignore</strong> next to a line to suppress that change in future checks.
+                </span>
+            </div>
+            <div class="monitor-diff-body" id="monitorDiffBody"></div>
+        </div>
+
+        <!-- Ignored phrases -->
+        <details class="monitor-ignored-section" id="monitorIgnoredSection">
+            <summary class="monitor-ignored-summary">🚫 Ignored phrases</summary>
+            <div id="monitorIgnoredList" class="monitor-ignored-body"></div>
+            <div class="monitor-ignored-add-row">
+                <input type="text" id="monitorIgnoredInput" class="form-input"
+                       placeholder="Add phrase to ignore…" style="flex:1;">
+                <button class="btn-secondary" onclick="monitorAddIgnorePhrase()">+ Ignore</button>
+            </div>
+        </details>
+
+        <div class="modal-actions" style="margin-top: 20px;">
+            <button class="btn-secondary" onclick="closeModal('monitorDiffModal')">Close</button>
+            <button class="btn-primary" id="monitorDiffAckBtn"
+                    onclick="monitorAcknowledgeDiff(_monitorDiffPageId)">
+                ✓ Mark as seen
+            </button>
+        </div>
+    </div>
+</div>
+

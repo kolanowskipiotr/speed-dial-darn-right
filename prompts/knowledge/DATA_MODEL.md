@@ -153,6 +153,56 @@ localStorage key: `speedDial_weather`
 
 Weather data is fetched from Open-Meteo (no API key required) and cached in `_weatherData` (module var in `domain/weather/weather.js`). Cache TTL: 30 minutes.
 
+## Monitored Pages
+
+`data.monitoredPages` — top-level array alongside `tabs`, `todoLists`, and `notes`:
+
+```js
+monitoredPages: [
+    {
+        id:             string,         // uid()
+        name:           string,         // display name (defaults to URL if blank)
+        url:            string,         // full https:// URL to monitor
+        interval:       number,         // check interval in minutes (15/30/60/180/360/1440)
+        enabled:        boolean,        // false = monitoring paused
+        useHeadless:    boolean,        // true = use headless Chromium (for JS-rendered SPAs)
+        ignoredPhrases: string[],       // exact lines/phrases stripped before hashing
+        lastChecked:    string | null,  // ISO timestamp of last successful check
+        lastHash:       string | null,  // SHA-256 of cleaned content at last check; null before first check
+        changed:        boolean,        // true if change detected since last acknowledgement
+        lastChangedAt:  string | null,  // ISO timestamp when change was first detected
+    }
+]
+```
+
+**Per-page content** (separate localStorage keys, NOT in `speedDial_v2`):
+- `speedDial_monCon_<id>_current` — cleaned page text from the last successful check
+- `speedDial_monCon_<id>_prev` — cleaned text before the last detected change (used to build the diff view); cleared on acknowledge
+
+**Migration:** `loadData()` ensures `data.monitoredPages` is an array (defaults to `[]`). `initMonitor()` also guards against missing array.
+
+**Checking flow:**
+1. Sidecar `POST /api/monitor/check { url, useHeadless }` returns `{ ok, hash, content }` where `content` is line-structured text (preserved newlines from `innerText` or block-tag conversion).
+2. Frontend applies `_monitorApplyIgnored(content, ignoredPhrases)` — strips each phrase case-insensitively.
+3. Hashes cleaned content with `crypto.subtle.digest('SHA-256', …)`.
+4. If hash changed: saves prev content (`_prev`), updates current (`_current`), sets `changed = true`, fires `showNotification()`.
+
+**Check intervals** (configurable per page):
+- 15 minutes, 30 minutes, 1 hour, 3 hours, 6 hours, once a day
+- Each page has its own `setInterval` timer managed by `_monitorTimers` (Map in `helpers.js`)
+- Timers are rebuilt by `_rescheduleAllMonitors()` on app init and individually on add/edit/delete
+
+**Export / Import / Backup:**
+- `monitoredPages` is a top-level key in `data` → included automatically in **full JSON export** (`...data` spread in `getExportObject()`) and **full import** (`data = imported` in `_doImport()`).
+- **Diff backups** (Google Drive): `calculateDiff()` in `uploader/sync.js` computes `monitoredPages_patch` using `buildArrayPatch()`. `applyDiff()` in `domain/persistence/sync-backup.js` applies `monitoredPages_patch` via `applyArrayPatch()`.
+- The per-page content localStorage keys (`speedDial_monCon_<id>_*`) are NOT exported — they are ephemeral state rebuilt on the next check.
+
+**Ignore workflow:**
+- On change: user clicks 📋 to open the diff modal → sees added/removed lines.
+- Clicking **Ignore** next to a line adds it to `ignoredPhrases`.
+- `_monitorReapplyIgnored()` immediately re-strips stored content and auto-clears `changed` if the remaining diff is empty.
+- Ignored phrases can be removed in the diff modal's "Ignored phrases" section.
+
 ---
 
 ## IDs

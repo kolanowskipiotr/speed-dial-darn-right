@@ -51,6 +51,13 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 ### calendar
 - `domain/calendar/m365.js` — Header M365 meeting widget (`initM365Calendar`) with 3-level UX: compact next meeting, agenda popover for next working days, and details popover for selected meeting. Includes edit-mode configuration modal (`openM365ConfigModal`) for ICS URL, timezone, enable/disable state, and **meeting notifications** (`notificationsEnabled`). Runtime config is persisted as `m365CalendarConfig` via `speedDial_syncSettings` in `domain/persistence/sync.js`. Meeting bell alert fires a Web Notification (via `showNotification()` in `utils.js`) 3 minutes before a meeting when `notificationsEnabled=true` and `Notification.permission==='granted'` — even if the tab is in the background. `_m365State.alertNotificationSentForId` prevents duplicate notifications for the same event.
 
+### monitor
+- `domain/monitor/helpers.js` — Module state vars: `_monitorCheckInFlight` (Set of page IDs being checked), `_monitorTimers` (Map of page ID → setInterval handle), `_monitorPopoverOpen`, `_editingMonitorPageId`. Helpers: `_findMonitoredPage(id)`, `_monitorChangedCount()`. Content storage: `_monitorSaveContent(pageId, type, text)` / `_monitorLoadContent(pageId, type)` / `_monitorDeleteContent(pageId)` write to separate localStorage keys (`speedDial_monCon_<id>_current` / `_prev`) to keep the main data object lean. `_monitorApplyIgnored(text, ignoredPhrases)` strips all ignored phrases before hashing.
+- `domain/monitor/monitor.js` — Background polling logic. `_monitorCheckPage(page)` POSTs to `/api/monitor/check` (sidecar), receives `{ ok, hash, content }`. Applies `ignoredPhrases` via `_monitorApplyIgnored`, recomputes hash with `crypto.subtle.digest`, stores prev/current content in localStorage, sets `changed = true` and fires `_monitorNotify()` on first change. `_monitorSchedulePage(page)` sets up a `setInterval` per page. `_rescheduleAllMonitors()` rebuilds all timers. `initMonitor()` called from `domain/ui/init.js`.
+- `domain/monitor/render.js` — `_renderMonitorIndicator()` updates the `#monitorIndicator` button's `connected`/`conflict` class. `_renderMonitorPopover()` builds the status popover; changed pages show a 📋 button that opens the diff modal. `toggleMonitorPopover(e)` / `_closeMonitorPopover()`. `_monitorRelTime(iso)`.
+- `domain/monitor/diff.js` — `_monitorLineDiff(oldText, newText)` → `{ removed[], added[], hasChanges }` (line-level set-diff). `openMonitorDiffModal(pageId)` opens `#monitorDiffModal` and renders the diff. `_renderMonitorDiff(pageId)` builds the before/after view with per-line "Ignore" buttons. `_renderMonitorIgnoredList(pageId)` shows and allows removing ignored phrases. `monitorIgnoreLine(pageId, line)` adds a phrase to `ignoredPhrases`, calls `_monitorReapplyIgnored`. `monitorRemoveIgnoredPhrase(pageId, index)` removes one. `_monitorReapplyIgnored(page)` re-strips stored content and auto-clears `changed` if the diff becomes empty. `monitorAddIgnorePhrase()` reads the manual input.
+- `domain/monitor/crud.js` — `openMonitorManageModal()` / `_renderMonitorPagesList()`. `openMonitorPageModal(id?)` / `saveMonitorPage()` — persists `ignoredPhrases: []` on new pages. `monitorAcknowledge(id)` clears `changed` + `prev` content. `monitorCheckNow(id)`. `deleteMonitorPage(id)` removes timers + localStorage content keys.
+
 ### ui
 - `domain/ui/init.js` — Bootstrap logic, global event listeners, and Safari focus fix.
 - `domain/ui/search.js` — Global search functionality across dials, todos, and notes.
@@ -91,7 +98,12 @@ The application is organized into domains following Domain-Driven Design (DDD) p
 27. `domain/dial/drag-drop.js`
 28. `domain/weather/weather.js`
 29. `domain/calendar/m365.js`
-30. `domain/ui/init.js`
+30. `domain/monitor/helpers.js`
+31. `domain/monitor/monitor.js`
+32. `domain/monitor/render.js`
+33. `domain/monitor/diff.js`
+34. `domain/monitor/crud.js`
+35. `domain/ui/init.js`
 
 ---
 

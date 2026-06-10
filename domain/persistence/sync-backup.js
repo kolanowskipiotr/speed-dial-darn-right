@@ -187,8 +187,9 @@ function applyDiff(fullData, diff) {
                 diff.todoItems_patch
             );
         }
-        if (diff.notes_patch)      result.notes      = applyArrayPatch(fullData.notes      || [], diff.notes_patch);
-        if (diff.notesTrash_patch) result.notesTrash = applyArrayPatch(fullData.notesTrash || [], diff.notesTrash_patch);
+        if (diff.notes_patch)           result.notes           = applyArrayPatch(fullData.notes           || [], diff.notes_patch);
+        if (diff.notesTrash_patch)      result.notesTrash      = applyArrayPatch(fullData.notesTrash      || [], diff.notesTrash_patch);
+        if (diff.monitoredPages_patch)  result.monitoredPages  = applyArrayPatch(fullData.monitoredPages  || [], diff.monitoredPages_patch);
     } else {
         // Format 1 (stary): section-level overwrite — zachowane dla backupów historycznych
         if (diff.tabs !== undefined)       result.tabs = diff.tabs;

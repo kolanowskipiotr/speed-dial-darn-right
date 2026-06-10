@@ -43,6 +43,10 @@
                     <button class="gdrive-indicator" id="gdriveNotesSyncIndicator"  onclick="openDataModal()" data-label="Notes Tasks sync: off"        aria-label="Notes Tasks sync status"><span class="gdrive-dot"></span><span class="gdrive-abbr">NT</span></button>
                     <button class="gdrive-indicator" id="weatherIndicator" onclick="openWeatherConfigModal()" data-label="Weather integration: disabled" aria-label="Weather integration status"><span class="gdrive-dot"></span><span class="gdrive-abbr">W</span></button>
                     <button class="gdrive-indicator" id="icsIndicator" onclick="openM365ConfigModal()" data-label="ICS Calendar integration: not configured" aria-label="ICS Calendar integration status"><span class="gdrive-dot"></span><span class="gdrive-abbr">ICS</span></button>
+                    <div class="monitor-indicator-wrap">
+                        <button class="gdrive-indicator" id="monitorIndicator" onclick="toggleMonitorPopover(event)" data-label="Page Monitor" aria-label="Page monitor status"><span class="gdrive-dot"></span><span class="gdrive-abbr">MON</span></button>
+                        <div class="monitor-popover" id="monitorPopover"></div>
+                    </div>
                 </div>
             </div>
             <div class="edit-toggle" id="editToggle" onclick="toggleEditMode()">
@@ -115,6 +119,7 @@
         <div class="theme-sep"></div>
         <button class="btn-secondary" onclick="openWeatherConfigModal()">Weather Config</button>
         <button class="btn-secondary" onclick="openM365ConfigModal()">M365 Config</button>
+        <button class="btn-secondary" onclick="openMonitorManageModal()">📡 Monitor</button>
         <button class="btn-primary" style="margin-left: 10px;" onclick="openDataModal()">Manage Data</button>
     </div>
     <div class="tabs-bar" id="tabsBar"></div>

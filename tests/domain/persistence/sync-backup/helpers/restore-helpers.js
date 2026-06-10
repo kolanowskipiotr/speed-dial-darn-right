@@ -20,6 +20,7 @@ function applyDiff(fullData, diff) {
         todoLists: fullData.todoLists || [],
         notes: fullData.notes || [],
         notesTrash: fullData.notesTrash || [],
+        monitoredPages: fullData.monitoredPages || [],
         _config: fullData._config,
         _images: fullData._images || {},
         _exportMeta: fullData._exportMeta
@@ -33,13 +34,15 @@ function applyDiff(fullData, diff) {
         if (diff.todoLists_patch || diff.todoItems_patch) {
             result.todoLists = applyTodoListsDiffPatch(result.todoLists, diff.todoLists_patch, diff.todoItems_patch);
         }
-        if (diff.notes_patch) result.notes = applyArrayPatch(result.notes, diff.notes_patch);
-        if (diff.notesTrash_patch) result.notesTrash = applyArrayPatch(result.notesTrash, diff.notesTrash_patch);
+        if (diff.notes_patch)          result.notes          = applyArrayPatch(result.notes,          diff.notes_patch);
+        if (diff.notesTrash_patch)     result.notesTrash     = applyArrayPatch(result.notesTrash,     diff.notesTrash_patch);
+        if (diff.monitoredPages_patch) result.monitoredPages = applyArrayPatch(result.monitoredPages, diff.monitoredPages_patch);
     } else {
-        if (diff.tabs !== undefined) result.tabs = diff.tabs;
-        if (diff.todoLists !== undefined) result.todoLists = diff.todoLists;
-        if (diff.notes !== undefined) result.notes = diff.notes;
-        if (diff.notesTrash !== undefined) result.notesTrash = diff.notesTrash;
+        if (diff.tabs !== undefined)         result.tabs         = diff.tabs;
+        if (diff.todoLists !== undefined)    result.todoLists    = diff.todoLists;
+        if (diff.notes !== undefined)        result.notes        = diff.notes;
+        if (diff.notesTrash !== undefined)   result.notesTrash   = diff.notesTrash;
+        if (diff.monitoredPages !== undefined) result.monitoredPages = diff.monitoredPages;
     }
 
     if (diff._config !== undefined) result._config = diff._config;

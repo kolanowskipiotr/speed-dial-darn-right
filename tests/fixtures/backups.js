@@ -79,6 +79,21 @@ const fullBackupFixture = {
         }
     ],
     notesTrash: [],
+    monitoredPages: [
+        {
+            id: 'mon-001',
+            name: 'Steam Deck Stock',
+            url: 'https://store.steampowered.com/sale/steamdeckrefurbished/',
+            interval: 60,
+            enabled: true,
+            useHeadless: true,
+            ignoredPhrases: ['Featured deal'],
+            lastChecked: '2026-04-11T09:00:00.000Z',
+            lastHash: 'abc123',
+            changed: false,
+            lastChangedAt: null
+        }
+    ],
     _config: {
         theme: 'dark-yellow',
         logoAnim: true,
@@ -97,7 +112,7 @@ const fullBackupFixture = {
 };
 
 /**
- * Modified version — one note edited, one item added to todo
+ * Modified version — one note edited, one item added to todo, one monitored page updated
  */
 const fullBackupModified = JSON.parse(JSON.stringify(fullBackupFixture));
 fullBackupModified._exportMeta.exportedAt = '2026-04-11T11:00:00.000Z';
@@ -112,6 +127,9 @@ fullBackupModified.todoLists[0].items.push({
     doneAt: null,
     order: 2
 });
+// Monitored page: a new ignored phrase was added
+fullBackupModified.monitoredPages[0].ignoredPhrases = ['Featured deal', 'Cyberpunk'];
+fullBackupModified.monitoredPages[0].lastChecked = '2026-04-11T11:00:00.000Z';
 
 /**
  * Format 2 diff — Item-level patches
@@ -159,6 +177,24 @@ const diffFormat2 = {
             ],
             delete: []
         }
+    },
+    monitoredPages_patch: {
+        upsert: [
+            {
+                id: 'mon-001',
+                name: 'Steam Deck Stock',
+                url: 'https://store.steampowered.com/sale/steamdeckrefurbished/',
+                interval: 60,
+                enabled: true,
+                useHeadless: true,
+                ignoredPhrases: ['Featured deal', 'Cyberpunk'],
+                lastChecked: '2026-04-11T11:00:00.000Z',
+                lastHash: 'abc123',
+                changed: false,
+                lastChangedAt: null
+            }
+        ],
+        delete: []
     }
 };
 

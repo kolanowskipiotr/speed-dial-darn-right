@@ -87,6 +87,23 @@ function makeTrashedNote(overrides = {}) {
     return { ...makeNote(), deletedAt: '2026-01-15T12:00:00.000Z', ...overrides };
 }
 
+function makeMonitoredPage(overrides = {}) {
+    return {
+        id: uid(),
+        name: 'Monitored Page',
+        url: 'https://example.com',
+        interval: 60,
+        enabled: true,
+        useHeadless: false,
+        ignoredPhrases: [],
+        lastChecked: null,
+        lastHash: null,
+        changed: false,
+        lastChangedAt: null,
+        ...overrides
+    };
+}
+
 function makeConfig(overrides = {}) {
     return {
         theme: 'dark-yellow',
@@ -114,16 +131,18 @@ class SnapshotBuilder {
             todoLists: [],
             notes: [],
             notesTrash: [],
+            monitoredPages: [],
             _config: makeConfig(),
             _images: {},
             _exportMeta: makeExportMeta()
         };
     }
 
-    tab(tabObj)         { this._data.tabs.push(tabObj);           return this; }
-    todoList(listObj)   { this._data.todoLists.push(listObj);     return this; }
-    note(noteObj)       { this._data.notes.push(noteObj);         return this; }
-    trashedNote(noteObj){ this._data.notesTrash.push(noteObj);    return this; }
+    tab(tabObj)           { this._data.tabs.push(tabObj);           return this; }
+    todoList(listObj)     { this._data.todoLists.push(listObj);     return this; }
+    note(noteObj)         { this._data.notes.push(noteObj);         return this; }
+    trashedNote(noteObj)  { this._data.notesTrash.push(noteObj);    return this; }
+    monitoredPage(pageObj){ this._data.monitoredPages.push(pageObj);return this; }
 
     image(id, b64 = 'data:image/png;base64,ABC123') {
         this._data._images[id] = b64;
@@ -161,6 +180,7 @@ module.exports = {
     makeTodoList,
     makeNote,
     makeTrashedNote,
+    makeMonitoredPage,
     makeConfig,
     makeExportMeta,
     SnapshotBuilder,

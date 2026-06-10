@@ -40,6 +40,18 @@ Global scope is shared across all non-module scripts. State vars must be declare
 
 `domain/weather/weather.js` is a self-contained domain. Key globals: `toggleWeatherPopup()` (called from `header.html`), `_closeWeatherPopup()` (called from `init.js` Escape handler), `initWeather()` (called from `init.js`). Config persisted to `localStorage` key `speedDial_weather`. Weather fetched from Open-Meteo (free, no API key). WMO code tables are defined in the module — these are weather data constants, not UI icons.
 
+## Page Monitor domain
+
+`domain/monitor/` — background page-change watcher. Key globals: `initMonitor()`, `toggleMonitorPopover(e)`, `_closeMonitorPopover()`, `openMonitorManageModal()`, `openMonitorPageModal(id?)`, `saveMonitorPage()`, `monitorAcknowledge(id)`, `monitorCheckNow(id)`, `deleteMonitorPage(id)`.
+
+- Checking is **server-side** via the uploader sidecar (`POST /api/monitor/check`, no auth) to avoid browser CORS restrictions.
+  - **Plain fetch** (default): strips HTML and returns a SHA-256 of visible text. Fast, suitable for server-rendered pages.
+  - **Headless browser** (`useHeadless: true`): launches system Chromium via `puppeteer-core`, waits for `networkidle2`, extracts `document.body.innerText`. Required for JS-rendered SPAs (React, Vue, Angular, …). The uploader `Dockerfile` installs the `chromium` Alpine package and sets `PUPPETEER_EXECUTABLE_PATH`.
+- Per-page `setInterval` timers live in `_monitorTimers` (Map). Timers are rebuilt by `_rescheduleAllMonitors()` on init, and updated individually on add/edit.
+- The header indicator (`#monitorIndicator`) uses the same `.gdrive-indicator` + `.connected`/`.conflict` class pattern as the other status dots.
+- The popover (`#monitorPopover`) is inside `.monitor-indicator-wrap` (position: relative). It closes on outside click (wired in `init.js`).
+- In **edit mode**, clicking the indicator opens the manage modal instead of the popover.
+
 ## Icons & emoji — single source of truth
 
 All UI icons/emojis are defined in `domain/core/state.js` (loaded first). Never hardcode emoji strings outside of data definitions:

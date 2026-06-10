@@ -7,6 +7,7 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/speed-dial.conf:ro
       - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ./sw.js:/usr/share/nginx/html/sw.js:ro
       - ./domain:/usr/share/nginx/html/domain:ro
 
   uploader:
@@ -17,4 +18,5 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
     volumes:
       - ./uploader:/app:rw
+      - /app/node_modules   # keep the Alpine-built node_modules from the image (not the host's)
       - speed_dial_uploads:/uploads:rw

@@ -36,17 +36,26 @@
 | `/data/` | alias to `/data/` volume, CORS headers |
 | `^~ /uploads/` | alias to `/uploads/` volume, no-cache; `^~` prevents jpg regex from taking priority |
 | `^~ /api/upload/` | proxy to `http://uploader:3001/upload/`, max body 10m |
+| `^~ /api/sync` | proxy to `http://uploader:3001/api/sync`, max body 20m |
+| `^~ /api/monitor` | proxy to `http://uploader:3001/api/monitor`, read timeout 90s (headless Puppeteer checks can be slow) |
+| `^~ /api/m365` | proxy to `http://uploader:3001/api/m365` |
 | `~* \.(ico|png|jpg…)$` | 7-day cache for static assets |
 
 ---
 
 ## Uploader sidecar (`uploader/server.js`)
-- Bare Node.js `http` module — no npm dependencies
+- Bare Node.js `http` module — npm dependencies: `google-auth-library`, `googleapis`, `puppeteer-core`, `windows-iana`
 - Listens on port 3001 (internal Docker network only, not exposed externally)
 - `POST /upload/<id>` → writes `<id>.jpg` to `/uploads/`
 - `DELETE /upload/<id>` → removes `<id>.jpg` from `/uploads/`
+- `POST /api/monitor/check` — server-side page fetch + SHA-256 hash for the page monitor feature. Accepts `{ url, useHeadless? }`. When `useHeadless: true`, launches system Chromium via `puppeteer-core` and waits for `networkidle2` so JS-rendered content is captured.
 - ID must match `[a-z0-9]+` (same format as `uid()` output)
 - Called from browser via `POST /api/upload/<id>` — nginx strips the `/api` prefix when proxying
+
+## Uploader Dockerfile
+- Base: `node:20-alpine`
+- Installs system packages: `chromium nss freetype harfbuzz ca-certificates ttf-freefont` for headless Chromium support
+- Sets `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true` and `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser` so `puppeteer-core` uses the system-installed browser
 
 ## Homebrew distribution (`Formula/speed-dial-darn-right.rb`)
 - Requires repo on GitHub; replace `GITHUB_USER` placeholder in formula before publishing

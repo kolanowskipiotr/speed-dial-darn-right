@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="domain/note/styles.css">
     <link rel="stylesheet" href="domain/note/tasks-sync.css">
     <link rel="stylesheet" href="domain/persistence/styles.css">
+    <link rel="stylesheet" href="domain/monitor/styles.css">
 
     <script type="importmap">
     {
@@ -98,6 +99,8 @@
 <!--#include virtual="/domain/persistence/modal-data.html" -->
 <!--#include virtual="/domain/weather/modal-weather.html" -->
 <!--#include virtual="/domain/calendar/modal-m365.html" -->
+<!--#include virtual="/domain/monitor/modal-monitor.html" -->
+<!--#include virtual="/domain/monitor/modal-monitor-diff.html" -->
 
 <div id="dial-url-tooltip"></div>
 
@@ -143,6 +146,13 @@
 
 <!-- CALENDAR DOMAIN SCRIPTS -->
 <script src="domain/calendar/m365.js"></script>
+
+<!-- MONITOR DOMAIN SCRIPTS -->
+<script src="domain/monitor/helpers.js"></script>
+<script src="domain/monitor/monitor.js"></script>
+<script src="domain/monitor/render.js"></script>
+<script src="domain/monitor/diff.js"></script>
+<script src="domain/monitor/crud.js"></script>
 
 <!-- INIT -->
 <script src="domain/ui/init.js"></script>

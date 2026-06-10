@@ -13,7 +13,7 @@ const { applyDiff } = require('../../domain/persistence/sync-backup/helpers/rest
 const {
     SnapshotBuilder, makeTab, makeGroup, makeDial,
     makeTodoList, makeTodoItem, makeNote, makeTrashedNote,
-    modify, asFullBackup
+    makeMonitoredPage, modify, asFullBackup
 } = require('../../fixtures/builders');
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -184,6 +184,45 @@ test('Backup roundtrip: calculateDiff → applyDiff', async (t) => {
         assert.strictEqual(restored.notes[0].taskSync, true);
         assert.deepStrictEqual(restored.notes[0].taskIds, ['tasks-abc']);
         assert.strictEqual(restored.notes[0].taskLastSyncedAt, '2026-04-20T10:00:00.000Z');
+    });
+
+    // ── Monitored pages roundtrip ────────────────────────────────
+
+    await t.test('monitored page ignoredPhrases update roundtrip', () => {
+        const base = new SnapshotBuilder()
+            .monitoredPage(makeMonitoredPage({ id: 'mon-1', url: 'https://steam.com', ignoredPhrases: [] }))
+            .build();
+        const modified = modify(base, s => {
+            s.monitoredPages[0].ignoredPhrases = ['Featured deal', 'Today only'];
+            s.monitoredPages[0].lastChecked = '2026-04-20T10:00:00.000Z';
+        });
+        const restored = roundtrip(base, modified);
+        assert.deepStrictEqual(restored.monitoredPages[0].ignoredPhrases, ['Featured deal', 'Today only']);
+        assert.strictEqual(restored.monitoredPages[0].lastChecked, '2026-04-20T10:00:00.000Z');
+    });
+
+    await t.test('new monitored page added roundtrip', () => {
+        const base = new SnapshotBuilder().build();
+        const modified = modify(base, s => {
+            s.monitoredPages.push(makeMonitoredPage({ id: 'mon-new', name: 'Steam Deck', url: 'https://steam.com/deck', useHeadless: true }));
+        });
+        const restored = roundtrip(base, modified);
+        assert.strictEqual(restored.monitoredPages.length, 1);
+        assert.strictEqual(restored.monitoredPages[0].name, 'Steam Deck');
+        assert.strictEqual(restored.monitoredPages[0].useHeadless, true);
+    });
+
+    await t.test('monitored page deleted roundtrip', () => {
+        const base = new SnapshotBuilder()
+            .monitoredPage(makeMonitoredPage({ id: 'mon-keep', name: 'Keep' }))
+            .monitoredPage(makeMonitoredPage({ id: 'mon-drop', name: 'Drop' }))
+            .build();
+        const modified = modify(base, s => {
+            s.monitoredPages = s.monitoredPages.filter(p => p.id !== 'mon-drop');
+        });
+        const restored = roundtrip(base, modified);
+        assert.strictEqual(restored.monitoredPages.length, 1);
+        assert.strictEqual(restored.monitoredPages[0].id, 'mon-keep');
     });
 
     // ── Config & images roundtrip ────────────────────────────────

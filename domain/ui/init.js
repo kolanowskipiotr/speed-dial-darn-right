@@ -34,7 +34,13 @@ document.addEventListener('keydown', (e) => {
         e.stopPropagation();
         return;
     }
-    // 5. Close any open modal
+    // 5. Close monitor popover if open
+    if (typeof _monitorPopoverOpen !== 'undefined' && _monitorPopoverOpen) {
+        _closeMonitorPopover();
+        e.stopPropagation();
+        return;
+    }
+    // 6. Close any open modal
     document.querySelectorAll('.modal-backdrop.open').forEach(bd => bd.classList.remove('open'));
 });
 
@@ -63,6 +69,20 @@ if (typeof initWeather === 'function') {
 if (typeof initM365Calendar === 'function') {
     initM365Calendar();
 }
+
+// Initialize Page Monitor
+if (typeof initMonitor === 'function') {
+    initMonitor();
+}
+
+// Close monitor popover when clicking outside the button or popover
+document.addEventListener('click', (e) => {
+    if (_monitorPopoverOpen &&
+        !e.target.closest('#monitorPopover') &&
+        !e.target.closest('#monitorIndicator')) {
+        _closeMonitorPopover();
+    }
+});
 
 
 const _hdr = document.querySelector('header');

@@ -28,6 +28,11 @@ The application uses **nginx SSI** (`ssi on` in `nginx.conf`) to include domain-
 ### Calendar Domain (`domain/calendar/`)
 - `modal-m365.html` — M365 widget settings modal (`#m365ConfigModal`) for edit mode: enable/disable widget, ICS URL, and optional timezone override (ICS-only integration).
 
+### Monitor Domain (`domain/monitor/`)
+- `modal-monitor.html` — Two modals in one file:
+  - `#monitorManageModal` — Management modal (list of monitored pages + "Add page" button). Rendered by `_renderMonitorPagesList()`.
+  - `#monitorPageModal` — Add/edit single monitored page (`z-index: 250` so it stacks above the manage modal). Fields: name, URL, interval select, enabled toggle. Saved by `saveMonitorPage()`.
+
 ### Weather Domain (`domain/weather/`)
 - `modal-weather.html` — Weather settings modal (`#weatherModal`) for edit mode: city/coordinates, temperature unit, and header widget visibility toggle.
 
@@ -42,7 +47,9 @@ The application uses **nginx SSI** (`ssi on` in `nginx.conf`) to include domain-
 <!--#include virtual="/domain/note/modal-conflict.html" -->
 <!--#include virtual="/domain/note/modal-import-tasks.html" -->
 <!--#include virtual="/domain/persistence/modal-data.html" -->
+<!--#include virtual="/domain/weather/modal-weather.html" -->
 <!--#include virtual="/domain/calendar/modal-m365.html" -->
+<!--#include virtual="/domain/monitor/modal-monitor.html" -->
 ```
 
 ---

@@ -158,6 +158,11 @@ function calculateDiff(fullBackup, newData) {
         diff.notesTrash_patch = notesTrashPatch;
     }
 
+    const monitoredPagesPatch = buildArrayPatch(oldData.monitoredPages || [], newData.monitoredPages || []);
+    if (monitoredPagesPatch.upsert.length > 0 || monitoredPagesPatch.delete.length > 0) {
+        diff.monitoredPages_patch = monitoredPagesPatch;
+    }
+
     if (JSON.stringify(oldData._config) !== JSON.stringify(newData._config)) {
         diff._config = newData._config;
     }

@@ -93,6 +93,12 @@ function loadData() {
         data.notesTrash = [];
         saveData();
     }
+
+    // Ensure monitoredPages exists
+    if (!Array.isArray(data.monitoredPages)) {
+        data.monitoredPages = [];
+        saveData();
+    }
 }
 
 function getActiveTab() {

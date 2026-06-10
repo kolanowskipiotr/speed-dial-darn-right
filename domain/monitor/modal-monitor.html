@@ -1,0 +1,86 @@
+<!-- Monitor: manage pages modal -->
+<div class="modal-backdrop" id="monitorManageModal">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-title">📡 Page Monitor</div>
+
+        <div id="monitorPagesList"></div>
+
+        <div class="monitor-notif-row" id="monitorNotifRow">
+            <span class="monitor-notif-status" id="monitorNotifStatus"></span>
+            <button class="btn-secondary btn-sm" id="monitorNotifBtn" onclick="monitorRequestNotifications()">
+                🔔 Enable notifications
+            </button>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 16px; justify-content: space-between;">
+            <button class="btn-secondary" onclick="closeModal('monitorManageModal')">Close</button>
+            <button class="btn-primary" onclick="openMonitorPageModal()">+ Add page</button>
+        </div>
+    </div>
+</div>
+
+<!-- Monitor: add / edit single page modal (higher z-index to appear above manage modal) -->
+<div class="modal-backdrop" id="monitorPageModal" style="z-index: 250;">
+    <div class="modal" style="max-width: 480px;">
+        <div class="modal-title" id="monitorPageModalTitle">Add Monitored Page</div>
+
+        <div class="form-group">
+            <label class="form-label" for="monitorPageName">Name <span style="color:var(--text-dimmer);font-weight:400;">(optional)</span></label>
+            <input type="text" id="monitorPageName" class="form-input" placeholder="e.g. Steam Deck stock">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="monitorPageUrl">URL</label>
+            <input type="url" id="monitorPageUrl" class="form-input" placeholder="https://example.com">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="monitorPageInterval">Check interval</label>
+            <select id="monitorPageInterval" class="form-input">
+                <option value="5">Every 5 minutes</option>
+                <option value="10">Every 10 minutes</option>
+                <option value="15">Every 15 minutes</option>
+                <option value="30">Every 30 minutes</option>
+                <option value="60">Every hour</option>
+                <option value="180">Every 3 hours</option>
+                <option value="360">Every 6 hours</option>
+                <option value="1440">Once a day</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label form-label-row" style="cursor: pointer;">
+                Monitoring enabled
+                <div class="edit-toggle active" id="monitorPageEnabledToggle" onclick="toggleMonitorPageEnabled()">
+                    <div class="toggle-track">
+                        <div class="toggle-thumb"></div>
+                    </div>
+                </div>
+            </label>
+            <div style="font-size: 11px; color: var(--text-dimmer); margin-top: 6px;">
+                The first check is performed immediately after saving and sets the baseline.
+                Notifications are sent on subsequent changes.
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label form-label-row" style="cursor: pointer;">
+                Wait for JavaScript
+                <div class="edit-toggle" id="monitorPageHeadlessToggle" onclick="toggleMonitorPageHeadless()">
+                    <div class="toggle-track">
+                        <div class="toggle-thumb"></div>
+                    </div>
+                </div>
+            </label>
+            <div style="font-size: 11px; color: var(--text-dimmer); margin-top: 6px;">
+                Uses a headless browser to load the page and wait for JavaScript to finish rendering.
+                Slower but necessary for React / Vue / Angular sites and other single-page apps.
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('monitorPageModal')">Cancel</button>
+            <button class="btn-primary" onclick="saveMonitorPage()">Save</button>
+        </div>
+    </div>
+</div>
