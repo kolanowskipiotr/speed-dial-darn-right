@@ -30,6 +30,7 @@ const ICONS = {
     // Calendar alert icons
     bell:     '🔔',
     bellMuted:'🔕',
+    allDay:   '+24h',
 
     // Notes icons
     defaultNote: '📝',

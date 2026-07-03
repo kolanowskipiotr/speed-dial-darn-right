@@ -255,6 +255,29 @@ if (defaultTimeZone) {
 
 ---
 
+### 7. Spotkanie całodniowe (all-day) pokazuje błędny zakres godzin (np. "02:00-02:00")
+
+**Symptom**: Wydarzenie całodniowe (`DTSTART;VALUE=DATE`) w Outlooku pokazuje w widgecie zerowy/dziwny zakres godzin (np. "02:00-02:00") zamiast informacji, że to wydarzenie całodniowe.
+
+**Przyczyna**: `parseIcsDate()` poprawnie parsuje `VALUE=DATE` na północ UTC (`Date.UTC(y, m-1, d)`), ale `parseIcsEvents()` nigdy nie ustawiał flagi `isAllDay` na zwracanym obiekcie eventu — `serializeEvent()` (linia z `isAllDay: !!event.isAllDay`) zawsze zwracała `false`. Front-end (`domain/calendar/m365.js`) formatował więc `start`/`end` (północ UTC) jako godzinę lokalną (np. 02:00 CEST w Europe/Warsaw) i pokazywał ją jako zwykły zakres czasu.
+
+**Naprawa**:
+1. W `parseIcsEvents()` (`uploader/m365-calendar.js`) dodano obliczanie `isAllDay`:
+```javascript
+const isAllDay = event.raw.DTSTART?.params?.VALUE === 'DATE' || /^\d{8}$/.test(event.raw.DTSTART?.value || '');
+```
+i przekazanie go do zwracanego obiektu eventu (trafia do `serializeEvent()` bez zmian).
+
+2. W `domain/calendar/m365.js` dodano helper `_m365FmtTimeRange(ev)`, który zwraca `'Full day'` gdy `ev.isAllDay`, używany we wszystkich trzech miejscach renderowania czasu (compact, agenda, details popover) zamiast bezpośredniego `_m365FmtTime(start)-_m365FmtTime(end)`.
+
+3. Alert dźwiękowy (`_m365CheckAlertState`) i liczniki "Starts in"/"Ends in" w popoverze detali są też wyłączone dla `isAllDay` — liczenie ±3min okna alertu względem północy UTC nie ma sensu dla wydarzenia całodniowego.
+
+**Test regresyjny**: `'all-day (VALUE=DATE) event is flagged isAllDay'` w `tests/uploader/m365/calendar-logic.test.js`.
+
+**Zasada ogólna**: Każde pole obliczone w `parseIcsEvents()` musi być faktycznie zwrócone w obiekcie eventu — sama poprawna logika w `parseIcsDate()` nie wystarczy, jeśli wynikowa flaga nigdy nie trafia dalej do `serializeEvent()`/front-endu.
+
+---
+
 ## Struktura danych ICS z Outlook
 
 - Outlook eksportuje cykliczne spotkania jako **osobne VEVENT** dla każdej instancji (nie jako jeden event z RRULE).

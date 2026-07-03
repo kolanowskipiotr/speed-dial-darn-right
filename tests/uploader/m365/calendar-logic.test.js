@@ -3,6 +3,7 @@ const assert = require('assert');
 
 const {
     pickNextNotCanceled,
+    pickActiveAllDay,
     buildWorkingDaysAgenda,
     __test__: {
         parseIcsEvents,
@@ -24,6 +25,35 @@ test('m365 calendar logic', async (t) => {
         const next = pickNextNotCanceled(events, now);
         assert(next);
         assert.strictEqual(next.id, 'in-progress');
+    });
+
+    await t.test('pickNextNotCanceled never picks an all-day event (regression: all-day event blocked every timed meeting)', () => {
+        // An all-day event spans midnight-to-midnight, so it always satisfies
+        // "start <= now <= end" — it must never be treated as "next" at all.
+        // Full-day events are surfaced separately via pickActiveAllDay/the agenda.
+        const allDay = { id: 'allday', isCancelled: false, isAllDay: true, start: new Date('2026-07-03T00:00:00.000Z'), end: new Date('2026-07-04T00:00:00.000Z') };
+
+        // Before the day's first meeting starts: the upcoming timed meeting wins, not the all-day event.
+        const upcoming = { id: 'upcoming', isCancelled: false, start: new Date('2026-07-03T10:30:00.000Z'), end: new Date('2026-07-03T11:00:00.000Z') };
+        let next = pickNextNotCanceled([allDay, upcoming], Date.parse('2026-07-03T08:00:00.000Z'));
+        assert.strictEqual(next.id, 'upcoming');
+
+        // Once that meeting is in progress, it still wins over the all-day event.
+        next = pickNextNotCanceled([allDay, upcoming], Date.parse('2026-07-03T10:45:00.000Z'));
+        assert.strictEqual(next.id, 'upcoming');
+
+        // With only the all-day event present, "next" is null — never the all-day event.
+        next = pickNextNotCanceled([allDay], Date.parse('2026-07-03T08:00:00.000Z'));
+        assert.strictEqual(next, null);
+    });
+
+    await t.test('pickActiveAllDay returns the all-day event covering now, and only that', () => {
+        const allDay = { id: 'allday', isCancelled: false, isAllDay: true, start: new Date('2026-07-03T00:00:00.000Z'), end: new Date('2026-07-04T00:00:00.000Z') };
+        const timed = { id: 'timed', isCancelled: false, isAllDay: false, start: new Date('2026-07-03T10:30:00.000Z'), end: new Date('2026-07-03T11:00:00.000Z') };
+
+        assert.strictEqual(pickActiveAllDay([allDay, timed], Date.parse('2026-07-03T08:00:00.000Z')).id, 'allday');
+        assert.strictEqual(pickActiveAllDay([allDay, timed], Date.parse('2026-07-04T08:00:00.000Z')), null);
+        assert.strictEqual(pickActiveAllDay([timed], Date.parse('2026-07-03T08:00:00.000Z')), null);
     });
 
     await t.test('buildWorkingDaysAgenda excludes weekend and canceled meetings', () => {
@@ -139,6 +169,28 @@ test('m365 calendar logic', async (t) => {
         // 13:30 Warsaw CEST (UTC+2 in May) = 11:30 UTC — NOT 12:30 UTC (which Etc/GMT-1 would give)
         assert.strictEqual(parsed[0].start.toISOString(), '2026-05-18T11:30:00.000Z');
         assert.strictEqual(parsed[0].end.toISOString(), '2026-05-18T12:30:00.000Z');
+    });
+
+    await t.test('all-day (VALUE=DATE) event is flagged isAllDay', () => {
+        // Regression: isAllDay was never computed, so a full-day Outlook event
+        // (DTSTART/DTEND with VALUE=DATE, UTC-midnight instants) rendered as a
+        // bogus "02:00-02:00" time range once converted to Europe/Warsaw (CEST).
+        const rawIcs = [
+            'BEGIN:VCALENDAR',
+            'BEGIN:VEVENT',
+            'UID:allday-1',
+            'SUMMARY:Save the Date – TECH Growth Day Q2',
+            'DTSTART;VALUE=DATE:20260703',
+            'DTEND;VALUE=DATE:20260704',
+            'END:VEVENT',
+            'END:VCALENDAR',
+        ].join('\n');
+
+        const parsed = parseIcsEvents(rawIcs, { defaultTimeZone: 'Europe/Warsaw' });
+        assert.strictEqual(parsed.length, 1);
+        assert.strictEqual(parsed[0].isAllDay, true);
+        assert.strictEqual(parsed[0].start.toISOString(), '2026-07-03T00:00:00.000Z');
+        assert.strictEqual(parsed[0].end.toISOString(), '2026-07-04T00:00:00.000Z');
     });
 
     await t.test('SafeLinks are decoded to Teams URL', () => {

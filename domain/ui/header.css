@@ -84,11 +84,32 @@ header {
 }
 
 .m365-label {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
     font-family: 'DM Mono', monospace;
     font-size: 9px;
     color: var(--text-dimmer);
     letter-spacing: 0.05em;
     text-transform: uppercase;
+}
+
+/* A full-day event is never shown as "Next" itself — this is just a hint that
+   one exists today, tucked under the label; full details live in the agenda. */
+.m365-allday-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
+    font-size: 8px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
 }
 
 .m365-compact .m365-compact-row .m365-label {

@@ -6,6 +6,7 @@ let _m365State = {
     detailsBody: null,
     detailsHeadActions: null,
     nextEvent: null,
+    allDayToday: null,
     agendaDays: [],
     detailsCache: {},
     hasNextCache: false,
@@ -120,7 +121,7 @@ function _m365CheckAlertState() {
     const now = Date.now();
     const startTs = new Date(ev.start).getTime();
     const WINDOW_MS = 3 * 60 * 1000; // 3 minutes
-    const inWindow = Number.isFinite(startTs) && now >= startTs - WINDOW_MS && now <= startTs + WINDOW_MS;
+    const inWindow = !ev.isAllDay && Number.isFinite(startTs) && now >= startTs - WINDOW_MS && now <= startTs + WINDOW_MS;
     const isMuted = _m365State.alertMutedForId === ev.id;
 
     if (inWindow && !_m365State.alertWindowActive) {
@@ -215,6 +216,11 @@ function _m365FmtTime(iso) {
         minute: '2-digit',
         hour12: false,
     }).format(date);
+}
+
+function _m365FmtTimeRange(ev) {
+    if (ev.isAllDay) return 'Full day';
+    return `${_m365FmtTime(ev.start)}-${_m365FmtTime(ev.end)} (${_m365Duration(ev.start, ev.end)})`;
 }
 
 function _m365Duration(startIso, endIso) {
@@ -384,11 +390,15 @@ function _m365RenderCompact() {
         return;
     }
 
+    const allDayBadge = _m365State.allDayToday
+        ? `<span class="m365-allday-badge" title="Full-day event today: ${_m365Esc(_m365State.allDayToday.subject)}">${ICONS.allDay}</span>`
+        : '';
+
     const ev = _m365State.nextEvent;
     if (!ev) {
         target.classList.remove('has-event');
         target.innerHTML = [
-            '<span class="m365-label">Next</span>',
+            `<span class="m365-label">Next${allDayBadge}</span>`,
             _m365State.compactRefreshing ? '<span class="m365-loading-inline m365-loading-inline--compact" aria-label="Loading calendar" title="Loading calendar"></span>' : '',
             '<span class="m365-empty">No meeting</span>',
         ].join('');
@@ -406,8 +416,8 @@ function _m365RenderCompact() {
     target.classList.add('has-event');
     target.innerHTML = [
         `<span class="m365-compact-row">
-             <span class="m365-label">Next</span>
-             <span class="m365-time">${_m365FmtTime(ev.start)}-${_m365FmtTime(ev.end)} (${_m365Duration(ev.start, ev.end)})</span>
+             <span class="m365-label">Next${allDayBadge}</span>
+             <span class="m365-time">${_m365FmtTimeRange(ev)}</span>
              ${countdown ? `<span class="m365-countdown">Starts in ${countdown}</span>` : ''}
              <span class="m365-actions-group">
                  ${inProgress ? '<span class="m365-state m365-state-badge">In progress</span>' : ''}
@@ -455,7 +465,7 @@ function _m365RenderAgenda() {
         const items = day.items.map((ev) => `
             <button class="m365-agenda-item" type="button" data-event-id="${_m365Esc(ev.id)}">
                 <span class="m365-agenda-row">
-                    <span class="m365-agenda-time">${_m365FmtTime(ev.start)}-${_m365FmtTime(ev.end)} (${_m365Duration(ev.start, ev.end)})</span>
+                    <span class="m365-agenda-time">${_m365FmtTimeRange(ev)}</span>
                     ${ev.joinUrl
                         ? `<a class="m365-join-btn" href="${_m365Esc(ev.joinUrl)}" target="_blank" rel="noopener noreferrer">Join</a>`
                         : '<span class="m365-join-offline" aria-label="In person meeting">In person</span>'}
@@ -476,8 +486,8 @@ function _m365RenderDetails(eventData) {
     const startTs = new Date(eventData.start).getTime();
     const endTs = new Date(eventData.end).getTime();
     const inProgress = Number.isFinite(startTs) && Number.isFinite(endTs) && startTs <= now && endTs >= now;
-    const startsIn = startTs > now ? _m365TimeUntilStart(eventData.start) : '';
-    const endsIn = inProgress ? _m365TimeUntilStart(eventData.end) : '';
+    const startsIn = !eventData.isAllDay && startTs > now ? _m365TimeUntilStart(eventData.start) : '';
+    const endsIn = !eventData.isAllDay && inProgress ? _m365TimeUntilStart(eventData.end) : '';
     const statusLabel = inProgress ? 'In progress' : (startTs > now ? 'Upcoming' : 'Finished');
     const meetingType = eventData.joinUrl ? 'Online meeting' : 'In person';
     const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local';
@@ -492,7 +502,7 @@ function _m365RenderDetails(eventData) {
     body.innerHTML = `
         <h4>${_m365Esc(eventData.subject)}</h4>
         <div class="m365-detail-row"><strong>Date:</strong> ${_m365Esc(_m365FmtDate(eventData.start))}</div>
-        <div class="m365-detail-row"><strong>Time:</strong> ${_m365FmtTime(eventData.start)}-${_m365FmtTime(eventData.end)} (${_m365Duration(eventData.start, eventData.end)})</div>
+        <div class="m365-detail-row"><strong>Time:</strong> ${_m365FmtTimeRange(eventData)}</div>
         ${startsIn ? `<div class="m365-detail-row"><strong>Starts in:</strong> ${_m365Esc(startsIn)}</div>` : ''}
         ${endsIn ? `<div class="m365-detail-row"><strong>Ends in:</strong> ${_m365Esc(endsIn)}</div>` : ''}
         <div class="m365-detail-row"><strong>Status:</strong> ${_m365Esc(statusLabel)}</div>
@@ -515,6 +525,7 @@ async function _m365LoadNext() {
     if (!_m365GetConfig().enabled) return;
     if (!_m365CanLoadCalendar()) {
         _m365State.nextEvent = null;
+        _m365State.allDayToday = null;
         _m365State.hasNextCache = false;
         _m365State.compactRefreshInFlight = 0;
         _m365State.compactRefreshing = false;
@@ -533,6 +544,7 @@ async function _m365LoadNext() {
     try {
         const payload = await _m365FetchJson('/api/m365/calendar/next');
         _m365State.nextEvent = payload.next;
+        _m365State.allDayToday = payload.allDayToday;
         _m365State.hasNextCache = true;
         _m365State.icsLastError = null;
         _m365State.icsEverLoaded = true;

@@ -323,6 +323,7 @@ function parseIcsEvents(rawIcs, options = {}) {
             const end = parseIcsDate(event.raw.DTEND?.value, event.raw.DTEND?.params, parseOpts) || start;
             if (!start || !end) return null;
 
+            const isAllDay = event.raw.DTSTART?.params?.VALUE === 'DATE' || /^\d{8}$/.test(event.raw.DTSTART?.value || '');
             const description = unescapeIcsText(event.raw.DESCRIPTION?.value || '');
             const webLink = unescapeIcsText(event.raw.URL?.value || '');
 
@@ -331,6 +332,7 @@ function parseIcsEvents(rawIcs, options = {}) {
                 subject: unescapeIcsText(event.raw.SUMMARY?.value || '(no subject)'),
                 start,
                 end,
+                isAllDay,
                 timezone: normalizeIanaTimeZone(event.raw.DTSTART?.params?.TZID, vtimezoneMap, parseOpts.defaultTimeZone) || parseOpts.defaultTimeZone,
                 recurrenceId: parseIcsDate(event.raw['RECURRENCE-ID']?.value, event.raw['RECURRENCE-ID']?.params, parseOpts),
                 rrule: parseRRule(event.raw.RRULE?.value || ''),
@@ -450,9 +452,17 @@ async function fetchIcsCalendarWindow(icsUrl, options = {}) {
 }
 
 function pickNextNotCanceled(events, nowMs = Date.now()) {
-    return events.find((event) => !event.isCancelled && event.start.getTime() <= nowMs && event.end.getTime() >= nowMs) ||
-           events.find((event) => !event.isCancelled && event.start.getTime() >= nowMs) ||
+    // All-day events are never picked as "next" — they span the whole day and
+    // would otherwise match "in progress" forever, hiding every real meeting
+    // scheduled underneath them. All-day events are shown in the agenda only.
+    const timed = events.filter((event) => !event.isCancelled && !event.isAllDay);
+    return timed.find((event) => event.start.getTime() <= nowMs && event.end.getTime() >= nowMs) ||
+           timed.find((event) => event.start.getTime() >= nowMs) ||
            null;
+}
+
+function pickActiveAllDay(events, nowMs = Date.now()) {
+    return events.find((event) => !event.isCancelled && event.isAllDay && event.start.getTime() <= nowMs && event.end.getTime() > nowMs) || null;
 }
 
 function getWorkingDayKey(date, timezone) {
@@ -522,6 +532,7 @@ function serializeEvent(event) {
 module.exports = {
     fetchIcsCalendarWindow,
     pickNextNotCanceled,
+    pickActiveAllDay,
     buildWorkingDaysAgenda,
     serializeEvent,
     __test__: {
