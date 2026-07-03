@@ -27,7 +27,7 @@ const ICONS = {
     moveTop:         '⤒',
     moveBottom:      '⤓',
 
-    // Calendar alert icons
+    // Calendar icons
     bell:     '🔔',
     bellMuted:'🔕',
     allDay:   '+24h',

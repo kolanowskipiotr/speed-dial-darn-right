@@ -278,6 +278,31 @@ i przekazanie go do zwracanego obiektu eventu (trafia do `serializeEvent()` bez 
 
 ---
 
+### 8. Spotkanie "widmo" (ghost) na starym terminie po przełożeniu cyklicznego spotkania
+
+**Symptom**: Widget pokazuje spotkanie cykliczne (np. "co 4 tygodnie w piątek") na jego **starym** terminie, mimo że organizator przełożył je na inny dzień — a w prawdziwym kalendarzu Outlook to spotkanie na starym terminie już nie istnieje. Refresh/hard-refresh nie pomaga, bo dane z serwera są poprawne — błąd jest w logice ekspansji rekurencji.
+
+**Przyczyna**: `expandRecurringEvents()` (`uploader/m365-calendar.js`) buduje `explicitKeys` — zbiór terminów, które mają już jawny VEVENT z `RECURRENCE-ID` (czyli "nie generuj tu syntetycznego wystąpienia z RRULE, bo już jest override"). Klucz był budowany z `event.start`:
+```javascript
+// ŹLE:
+const explicitKeys = new Set(explicit.map((event) => toOccurrenceKey(event.id, event.start)));
+```
+Gdy organizator przekłada spotkanie, override VEVENT ma `RECURRENCE-ID` = stary termin, ale `DTSTART` = nowy termin (to normalne w ICS — `RECURRENCE-ID` identyfikuje, które wystąpienie serii jest zastępowane, `DTSTART` mówi kiedy naprawdę się teraz odbywa). Klucz budowany z `event.start` wskazywał więc na **nowy** termin zamiast na **stary**, więc zbiór `explicitKeys` nie zawierał klucza dla starego terminu. Syntetyczna generacja z `RRULE` (dla `FREQ=WEEKLY`/`DAILY`) nie znajdowała dopasowania i tworzyła **dodatkowe, widmowe** wystąpienie na starym terminie — obok prawdziwego, przełożonego wystąpienia na nowym terminie.
+
+**Pułapka nazewnictwa**: Spotkanie nazwane "Monthly Sprints Review" może mieć w ICS `RRULE:FREQ=WEEKLY;INTERVAL=4;BYDAY=FR` (czyli "co 4 tygodnie"), a nie `FREQ=MONTHLY` — więc **jest** aktywnie ekspandowane przez `expandRecurringEvents()` (który obsługuje tylko `DAILY`/`WEEKLY`). Nie zakładaj częstotliwości cyklu na podstawie nazwy wydarzenia — zawsze sprawdź faktyczne `RRULE` w surowym ICS.
+
+**Naprawa** (`uploader/m365-calendar.js`):
+```javascript
+// DOBRZE — klucz z recurrenceId (stary termin, który override zastępuje), nie ze start (nowy termin):
+const explicitKeys = new Set(explicit.map((event) => toOccurrenceKey(event.id, event.recurrenceId)));
+```
+
+**Diagnostyka**: Użyj `__test__.parseIcsEvents()` i `__test__.expandRecurringEvents()` (eksportowane z `uploader/m365-calendar.js`) na pobranym ręcznie ICS, żeby zobaczyć wszystkie wystąpienia danego UID ze start/end/recurrenceId — widmowe wystąpienie ma `recurrenceId === start` (bo zostało wygenerowane syntetycznie z `RRULE`), podczas gdy prawdziwy override ma `recurrenceId !== start` (bo to właśnie różnica między starym a nowym terminem).
+
+**Zasada ogólna**: `RECURRENCE-ID` identyfikuje, **które** wystąpienie serii jest nadpisywane — nigdy nie używaj `event.start` (nowy, faktyczny termin) tam, gdzie potrzebny jest klucz do de-duplikacji względem oryginalnego miejsca w harmonogramie cyklu.
+
+---
+
 ## Struktura danych ICS z Outlook
 
 - Outlook eksportuje cykliczne spotkania jako **osobne VEVENT** dla każdej instancji (nie jako jeden event z RRULE).

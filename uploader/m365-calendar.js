@@ -379,7 +379,7 @@ function expandRecurringEvents(events, fromDate, horizonDays = 60) {
     const windowStart = new Date(fromDate);
     const windowEnd = addDays(windowStart, horizonDays);
     const explicit = events.filter((event) => !!event.recurrenceId);
-    const explicitKeys = new Set(explicit.map((event) => toOccurrenceKey(event.id, event.start)));
+    const explicitKeys = new Set(explicit.map((event) => toOccurrenceKey(event.id, event.recurrenceId)));
     const out = events.filter((event) => (!event.rrule || event.recurrenceId) && event.end >= windowStart);
 
     for (const master of events) {
