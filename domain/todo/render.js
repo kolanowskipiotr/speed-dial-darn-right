@@ -207,8 +207,14 @@ function _renderTodoItems(list, container) {
         if (isExpanded) {
             const doneItemsEl = document.createElement('div');
             doneItemsEl.className = 'todo-done-items';
-            doneItems.forEach(item => {
-                doneItemsEl.appendChild(_makeTodoItemRow(item, list.id));
+            _groupDoneItemsByWeek(doneItems).forEach(group => {
+                const weekHeader = document.createElement('div');
+                weekHeader.className = 'todo-done-week-header';
+                weekHeader.textContent = group.label;
+                doneItemsEl.appendChild(weekHeader);
+                group.items.forEach(item => {
+                    doneItemsEl.appendChild(_makeTodoItemRow(item, list.id));
+                });
             });
             doneSection.appendChild(doneItemsEl);
         }

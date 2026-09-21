@@ -234,14 +234,30 @@ async function uploadToDrive(d, folderId, name, content) {
     });
 }
 
-async function cleanupOldBackups(d, folderId) {
-    const res = await d.files.list({
-        q: `'${folderId}' in parents and trashed = false`,
-        orderBy: 'createdTime desc',
-        fields: 'files(id, name, createdTime)',
-    });
+/**
+ * Drive API v3 caps files.list at pageSize (default 100, max 1000) per call.
+ * Must page through nextPageToken to see the true full list.
+ */
+async function listAllFiles(d, query, fields = 'files(id, name, createdTime)') {
+    let files = [];
+    let pageToken;
+    do {
+        const res = await d.files.list({
+            q: query,
+            orderBy: 'createdTime desc',
+            fields: `nextPageToken, ${fields}`,
+            pageSize: 1000,
+            pageToken,
+        });
+        files = files.concat(res.data.files || []);
+        pageToken = res.data.nextPageToken;
+    } while (pageToken);
+    return files;
+}
 
-    const files = res.data.files;
+async function cleanupOldBackups(d, folderId) {
+    const files = await listAllFiles(d, `'${folderId}' in parents and trashed = false`);
+
     if (files.length > 200) {
         const toDelete = files.slice(200);
         for (const file of toDelete) {
@@ -262,12 +278,7 @@ async function listGDriveFolders(token) {
 
 async function listGDriveBackups(token, folderId) {
     const d = getDriveClient(token);
-    const res = await d.files.list({
-        q: `'${folderId}' in parents and trashed = false`,
-        orderBy: 'createdTime desc',
-        fields: 'files(id, name, createdTime)',
-    });
-    return res.data.files;
+    return listAllFiles(d, `'${folderId}' in parents and trashed = false`);
 }
 
 async function fetchGDriveFile(token, fileId) {

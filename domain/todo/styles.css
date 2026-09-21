@@ -478,7 +478,7 @@
 }
 
 .todo-done-header {
-    padding: 5px 8px 5px 12px;
+    padding: 5px 8px 5px 25px;
     font-size: 12px;
     color: var(--text-dimmer);
     cursor: pointer;
@@ -499,6 +499,15 @@
 
 .todo-done-items {
     border-top: 1px solid var(--border);
+}
+
+.todo-done-week-header {
+    padding: 6px 8px 4px 25px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-dimmer);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
 }
 
 /* Editor, drag, fullscreen, and responsive styles → domain/todo/editor.css */

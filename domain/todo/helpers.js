@@ -65,3 +65,41 @@ function _replaceFirstLine(content, newLine) {
 function _getTodoContainer() {
     return document.querySelector('.home-col-todo');
 }
+
+function _getWeekStart(dateInput) {
+    const d = new Date(dateInput);
+    d.setHours(0, 0, 0, 0);
+    const day = d.getDay(); // 0=Sun..6=Sat
+    d.setDate(d.getDate() + (day === 0 ? -6 : 1) - day);
+    return d;
+}
+
+function _formatWeekRangeLabel(weekStart) {
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const opts = { month: 'short', day: 'numeric' };
+    return `${weekStart.toLocaleDateString('en-US', opts)} – ${weekEnd.toLocaleDateString('en-US', opts)}, ${weekEnd.getFullYear()}`;
+}
+
+// Groups already-sorted (doneAt desc) done items into Monday–Sunday week buckets,
+// newest week first; items with no doneAt land in a trailing "No date" bucket.
+function _groupDoneItemsByWeek(doneItems) {
+    const byWeek = new Map(); // weekStart timestamp -> { weekStart, items }
+    const noDate = [];
+
+    doneItems.forEach(item => {
+        if (!item.doneAt) { noDate.push(item); return; }
+        const weekStart = _getWeekStart(item.doneAt);
+        const key = weekStart.getTime();
+        if (!byWeek.has(key)) byWeek.set(key, { weekStart, items: [] });
+        byWeek.get(key).items.push(item);
+    });
+
+    const groups = [...byWeek.values()]
+        .sort((a, b) => b.weekStart - a.weekStart)
+        .map(g => ({ label: _formatWeekRangeLabel(g.weekStart), items: g.items }));
+
+    if (noDate.length) groups.push({ label: 'No date', items: noDate });
+
+    return groups;
+}

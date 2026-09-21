@@ -113,7 +113,7 @@ function renderBackupList(backups) {
         gdriveBackupList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dimmer);">No backups found in this folder</div>';
         return;
     }
-    backups.forEach(backup => {
+    backups.forEach((backup, index) => {
         const isFull = backup.name.includes('.full.');
         const isDiff = backup.name.includes('.diff.');
         const badge = isFull
@@ -125,7 +125,7 @@ function renderBackupList(backups) {
         div.className = 'notes-trash-row';
         div.innerHTML = `
             <div class="notes-trash-info">
-                <div class="notes-trash-name">${badge}${backup.name}</div>
+                <div class="notes-trash-name"><span class="backup-index">${index + 1}.</span>${badge}${backup.name}</div>
                 <div class="notes-trash-date">${new Date(backup.createdTime).toLocaleString()}</div>
             </div>
             <div class="notes-trash-actions">

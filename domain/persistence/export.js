@@ -58,6 +58,7 @@ async function getExportObject() {
             theme: localStorage.getItem('speedDial_theme') || 'dark-yellow',
             logoAnim: logoAnimEnabled,
             weather: JSON.parse(localStorage.getItem('speedDial_weather') || 'null'),
+            m365CalendarConfig: typeof m365CalendarConfig !== 'undefined' ? m365CalendarConfig : null,
             syncConfig: {
                 autoSync: typeof gdriveSyncEnabled !== 'undefined' ? gdriveSyncEnabled : false,
                 showModalOnDisconnect: typeof showModalOnDisconnect !== 'undefined' ? showModalOnDisconnect : true,
@@ -239,6 +240,17 @@ async function _doImport(imported) {
         localStorage.setItem('speedDial_weather', JSON.stringify(config.weather));
         if (typeof _loadWeatherConfig === 'function') _loadWeatherConfig();
         if (typeof _updateInline === 'function') _updateInline();
+    }
+
+    if (config.m365CalendarConfig !== undefined && config.m365CalendarConfig !== null) {
+        if (typeof _m365SetConfig === 'function') {
+            _m365SetConfig(config.m365CalendarConfig);
+        } else {
+            m365CalendarConfig = config.m365CalendarConfig;
+            if (typeof saveSyncSettings === 'function') saveSyncSettings();
+        }
+        if (typeof _m365ApplyEnabledState === 'function') _m365ApplyEnabledState();
+        if (typeof _m365UpdateIcsIndicator === 'function') _m365UpdateIcsIndicator();
     }
 
     if (config.syncConfig) {
