@@ -118,9 +118,15 @@ function renderSearchResults() {
         const score = scoreResult([note.name, note.content], tokens);
         if (score > 0) noteResults.push({ type: 'note', note, score });
     });
+    (data.notesTrash || []).forEach(note => {
+        const score = scoreResult([note.name, note.content], tokens);
+        if (score > 0) noteResults.push({ type: 'note', note, score, isTrashed: true });
+    });
 
+    // Done todo items and trashed notes sink below all active results
+    const isInactive = r => (r.type === 'todoItem' && r.item.isDone) || !!r.isTrashed;
     const results = [...dialResults, ...todoResults, ...noteResults]
-        .sort((a, b) => b.score - a.score);
+        .sort((a, b) => (isInactive(a) - isInactive(b)) || (b.score - a.score));
 
     dropdown.innerHTML = '';
 
@@ -252,11 +258,11 @@ function renderSearchResults() {
             });
 
         } else if (result.type === 'note') {
-            const { note } = result;
+            const { note, isTrashed } = result;
 
             const iconWrap = document.createElement('div');
             iconWrap.className = 'search-result-icon';
-            iconWrap.textContent = ICONS.defaultNote;
+            iconWrap.textContent = isTrashed ? ICONS.delete : ICONS.defaultNote;
 
             const textWrap = document.createElement('div');
             textWrap.className = 'search-result-text';
@@ -270,7 +276,7 @@ function renderSearchResults() {
             // Find snippet: line containing query
             const snippet = (() => {
                 const line = (note.content || '').split('\n').find(l => l.toLowerCase().includes(q)) || '';
-                return 'Note · ' + (line.length > 60 ? line.slice(0, 60) + '…' : line);
+                return (isTrashed ? 'Note · Trash · ' : 'Note · ') + (line.length > 60 ? line.slice(0, 60) + '…' : line);
             })();
             metaEl.textContent = snippet;
 
@@ -279,9 +285,10 @@ function renderSearchResults() {
             item.appendChild(iconWrap);
             item.appendChild(textWrap);
 
-            item.addEventListener('click', () => jumpToNote(note));
+            const open = () => isTrashed ? jumpToTrashedNote(note) : jumpToNote(note);
+            item.addEventListener('click', open);
             item.addEventListener('keydown', e => {
-                if (e.key === 'Enter') jumpToNote(note);
+                if (e.key === 'Enter') open();
                 if (e.key === 'ArrowDown') { e.preventDefault(); focusSearchResult(i + 1); }
                 if (e.key === 'ArrowUp') { e.preventDefault(); i > 0 ? focusSearchResult(i - 1) : document.getElementById('searchInput').focus(); }
                 if (e.key === 'Escape') { clearSearch(); document.getElementById('searchInput').blur(); }
@@ -334,6 +341,21 @@ function jumpToNote(note) {
     }
     activeNoteId = note.id;
     _notesSearchHighlight = { noteId: note.id, query: savedQuery };
+    requestAnimationFrame(() => {
+        const container = document.querySelector('.home-col-notes');
+        if (container) renderNotesPanel(container);
+    });
+}
+
+function jumpToTrashedNote(note) {
+    clearSearch();
+    const homeTab = data.tabs.find(t => t.isHome);
+    if (homeTab && activeTabId !== homeTab.id) {
+        activeTabId = homeTab.id;
+        render();
+    }
+    _notesTrashOpen = true;
+    _notesTrashPreviewId = note.id;
     requestAnimationFrame(() => {
         const container = document.querySelector('.home-col-notes');
         if (container) renderNotesPanel(container);
