@@ -41,6 +41,16 @@ function _m365GetAudioContext() {
     return _m365AudioCtx;
 }
 
+// Browsers keep an AudioContext suspended until a user gesture (autoplay policy).
+// The bell fires from a timer, so unlock the context on any interaction beforehand.
+function _m365UnlockAudio() {
+    const ctx = _m365GetAudioContext();
+    if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+}
+['pointerdown', 'keydown', 'touchstart'].forEach(type =>
+    document.addEventListener(type, _m365UnlockAudio, { capture: true, passive: true })
+);
+
 function _m365PlayBell() {
     const ctx = _m365GetAudioContext();
     if (!ctx) return;
@@ -71,7 +81,7 @@ function _m365PlayBell() {
         }
     }
 
-    if (ctx.state === 'suspended') {
+    if (ctx.state !== 'running') {
         ctx.resume().then(doPlay).catch(() => {});
     } else {
         doPlay();
