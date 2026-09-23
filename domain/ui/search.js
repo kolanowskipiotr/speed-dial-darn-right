@@ -10,6 +10,11 @@ function initSearch() {
         renderSearchResults();
     });
 
+    // Re-show results for the existing query when the input regains focus
+    input.addEventListener('focus', () => {
+        if (searchQuery.trim()) renderSearchResults();
+    });
+
     input.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             clearSearch();
