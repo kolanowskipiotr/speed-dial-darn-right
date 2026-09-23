@@ -114,6 +114,22 @@ header {
     white-space: nowrap;
 }
 
+/* Number of meetings overlapping right now — shown only when more than one. */
+.m365-overlap-badge {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--danger);
+    background: color-mix(in srgb, var(--danger) 20%, transparent);
+    color: var(--danger);
+    font-size: 9px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+}
+
 .m365-compact .m365-compact-row .m365-label {
     flex: 0 0 var(--m365-label-col-width);
 }

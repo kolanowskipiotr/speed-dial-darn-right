@@ -6,6 +6,7 @@ let _m365State = {
     detailsBody: null,
     detailsHeadActions: null,
     nextEvent: null,
+    overlapCount: 0,
     allDayToday: null,
     agendaDays: [],
     detailsCache: {},
@@ -413,11 +414,15 @@ function _m365RenderCompact() {
     const bellHtml = _m365State.alertWindowActive
         ? `<button class="m365-bell-btn${isBellMuted ? ' m365-bell-btn--muted' : ''}" type="button" data-bell="1" aria-label="${bellTitle}" title="${bellTitle}">${isBellMuted ? ICONS.bellMuted : ICONS.bell}</button>`
         : '';
+    const overlapHtml = _m365State.overlapCount > 1
+        ? `<span class="m365-overlap-badge" title="${_m365State.overlapCount} overlapping meetings">(${_m365State.overlapCount})</span>`
+        : '';
     target.classList.add('has-event');
     target.innerHTML = [
         `<span class="m365-compact-row">
              <span class="m365-label">Next${allDayBadge}</span>
              <span class="m365-time">${_m365FmtTimeRange(ev)}</span>
+             ${overlapHtml}
              ${countdown ? `<span class="m365-countdown">Starts in ${countdown}</span>` : ''}
              <span class="m365-actions-group">
                  ${inProgress ? '<span class="m365-state m365-state-badge">In progress</span>' : ''}
@@ -545,6 +550,7 @@ async function _m365LoadNext() {
         const payload = await _m365FetchJson('/api/m365/calendar/next');
         _m365State.nextEvent = payload.next;
         _m365State.allDayToday = payload.allDayToday;
+        _m365State.overlapCount = payload.overlapCount || 0;
         _m365State.hasNextCache = true;
         _m365State.icsLastError = null;
         _m365State.icsEverLoaded = true;

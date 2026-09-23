@@ -3,6 +3,7 @@ const assert = require('assert');
 
 const {
     pickNextNotCanceled,
+    countOverlapping,
     pickActiveAllDay,
     buildWorkingDaysAgenda,
     __test__: {
@@ -45,6 +46,37 @@ test('m365 calendar logic', async (t) => {
         // With only the all-day event present, "next" is null — never the all-day event.
         next = pickNextNotCanceled([allDay], Date.parse('2026-07-03T08:00:00.000Z'));
         assert.strictEqual(next, null);
+    });
+
+    await t.test('pickNextNotCanceled shows the overlapping meeting whose start is closest to now', () => {
+        const at = (hhmm) => Date.parse(`2026-07-03T${hhmm}:00.000Z`);
+        const ev = (id, from, to) => ({ id, isCancelled: false, start: new Date(at(from)), end: new Date(at(to)) });
+        const events = [ev('s1', '10:00', '15:00'), ev('s2', '11:00', '16:00'), ev('s3', '12:00', '14:00')];
+        const pick = (hhmm) => pickNextNotCanceled(events, at(hhmm)).id;
+
+        assert.strictEqual(pick('10:30'), 's1');
+        assert.strictEqual(pick('10:56'), 's2'); // s2 starts within the 5-minute margin
+        assert.strictEqual(pick('11:30'), 's2');
+        assert.strictEqual(pick('12:00'), 's3');
+        assert.strictEqual(pick('13:30'), 's3');
+        assert.strictEqual(pick('14:30'), 's2'); // s3 ended, s2 started later than s1
+        assert.strictEqual(pick('15:30'), 's2');
+
+        assert.strictEqual(countOverlapping(events, at('10:30')), 1);
+        assert.strictEqual(countOverlapping(events, at('11:30')), 2);
+        assert.strictEqual(countOverlapping(events, at('12:00')), 3);
+        assert.strictEqual(countOverlapping(events, at('14:30')), 2);
+    });
+
+    await t.test('pickNextNotCanceled prefers the earlier meeting when starts fall within the margin', () => {
+        const at = (hhmm) => Date.parse(`2026-07-03T${hhmm}:00.000Z`);
+        const ev = (id, from, to) => ({ id, isCancelled: false, start: new Date(at(from)), end: new Date(at(to)) });
+        const events = [ev('late', '12:03', '13:00'), ev('early', '12:00', '12:30')];
+
+        assert.strictEqual(pickNextNotCanceled(events, at('11:59')).id, 'early');
+        assert.strictEqual(pickNextNotCanceled(events, at('12:10')).id, 'early');
+        assert.strictEqual(pickNextNotCanceled(events, at('12:40')).id, 'late');
+        assert.strictEqual(countOverlapping(events, at('12:10')), 2);
     });
 
     await t.test('pickActiveAllDay returns the all-day event covering now, and only that', () => {

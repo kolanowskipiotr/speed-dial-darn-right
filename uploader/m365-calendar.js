@@ -451,14 +451,39 @@ async function fetchIcsCalendarWindow(icsUrl, options = {}) {
     return expandRecurringEvents(parsed, options.fromDate || new Date(), options.horizonDays || 90);
 }
 
-function pickNextNotCanceled(events, nowMs = Date.now()) {
+// A meeting starting within this margin is already treated as "current",
+// and two meetings starting within this margin of each other count as a tie.
+const OVERLAP_MARGIN_MS = 5 * 60 * 1000;
+
+function _timedNotCanceled(events) {
     // All-day events are never picked as "next" — they span the whole day and
     // would otherwise match "in progress" forever, hiding every real meeting
     // scheduled underneath them. All-day events are shown in the agenda only.
-    const timed = events.filter((event) => !event.isCancelled && !event.isAllDay);
-    return timed.find((event) => event.start.getTime() <= nowMs && event.end.getTime() >= nowMs) ||
-           timed.find((event) => event.start.getTime() >= nowMs) ||
-           null;
+    return events
+        .filter((event) => !event.isCancelled && !event.isAllDay)
+        .sort((a, b) => a.start - b.start);
+}
+
+// Meetings in progress now, or starting within the margin.
+function _currentEvents(timed, nowMs) {
+    return timed.filter((event) => event.start.getTime() - OVERLAP_MARGIN_MS <= nowMs && event.end.getTime() > nowMs);
+}
+
+function pickNextNotCanceled(events, nowMs = Date.now()) {
+    const timed = _timedNotCanceled(events);
+    const current = _currentEvents(timed, nowMs);
+    if (current.length) {
+        // Overlapping meetings: show the one whose start is closest to now (the
+        // latest-starting one). Starts within the margin of it are a tie — the
+        // earlier one wins (current is sorted by start, so find() returns it).
+        const latestStart = current[current.length - 1].start.getTime();
+        return current.find((event) => event.start.getTime() >= latestStart - OVERLAP_MARGIN_MS);
+    }
+    return timed.find((event) => event.start.getTime() >= nowMs) || null;
+}
+
+function countOverlapping(events, nowMs = Date.now()) {
+    return _currentEvents(_timedNotCanceled(events), nowMs).length;
 }
 
 function pickActiveAllDay(events, nowMs = Date.now()) {
@@ -532,6 +557,7 @@ function serializeEvent(event) {
 module.exports = {
     fetchIcsCalendarWindow,
     pickNextNotCanceled,
+    countOverlapping,
     pickActiveAllDay,
     buildWorkingDaysAgenda,
     serializeEvent,
