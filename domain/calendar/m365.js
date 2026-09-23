@@ -45,58 +45,82 @@ function _m365GetAudioContext() {
 // The bell fires from a timer, so unlock the context on any interaction beforehand.
 function _m365UnlockAudio() {
     const ctx = _m365GetAudioContext();
-    if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+    if (!ctx) return;
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    _m365LoadBell(ctx).catch(() => {}); // preload so the first knock plays instantly
 }
 ['pointerdown', 'keydown', 'touchstart'].forEach(type =>
     document.addEventListener(type, _m365UnlockAudio, { capture: true, passive: true })
 );
 
+const M365_BELL_URL = 'domain/calendar/bell.mp3';
+const M365_BELL_KNOCKS = 2;          // knocks per burst
+const M365_BELL_KNOCK_GAP_MS = 150;  // silence between knocks within a burst
+// Silence after each burst — backs off so a forgotten alert annoys less; last value repeats
+const M365_BELL_PAUSES_MS = [
+    ...Array(6).fill(5000),
+    ...Array(6).fill(10000),
+    ...Array(6).fill(20000),
+    30000,
+];
+let _m365BellBuffer = null;
+let _m365BellLoading = null;
+
+// Decode once through the shared (gesture-unlocked) AudioContext — a plain
+// <audio> element would be blocked by autoplay policy when fired from a timer.
+function _m365LoadBell(ctx) {
+    if (_m365BellBuffer) return Promise.resolve(_m365BellBuffer);
+    if (!_m365BellLoading) {
+        _m365BellLoading = fetch(M365_BELL_URL)
+            .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+            .then(buf => ctx.decodeAudioData(buf))
+            .then(decoded => (_m365BellBuffer = decoded))
+            .catch(e => { _m365BellLoading = null; throw e; });
+    }
+    return _m365BellLoading;
+}
+
+// Plays one burst; resolves with its length in ms so the loop can schedule the next one
 function _m365PlayBell() {
     const ctx = _m365GetAudioContext();
-    if (!ctx) return;
+    if (!ctx) return Promise.resolve(0);
 
-    function doPlay() {
-        try {
-            const now = ctx.currentTime;
-
-            function beep(startTime, freq, duration, vol) {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.type = 'sine';
-                osc.frequency.value = freq;
-                gain.gain.setValueAtTime(0, startTime);
-                gain.gain.linearRampToValueAtTime(vol, startTime + 0.015);
-                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-                osc.start(startTime);
-                osc.stop(startTime + duration + 0.02);
+    const ready = ctx.state !== 'running' ? ctx.resume() : Promise.resolve();
+    return ready
+        .then(() => _m365LoadBell(ctx))
+        .then(buffer => {
+            const step = buffer.duration + M365_BELL_KNOCK_GAP_MS / 1000;
+            for (let i = 0; i < M365_BELL_KNOCKS; i++) {
+                const src = ctx.createBufferSource();
+                src.buffer = buffer;
+                src.connect(ctx.destination);
+                src.start(ctx.currentTime + i * step);
             }
-
-            // "Ding … Dong" — two tones ~500ms apart
-            beep(now,        880, 0.45, 0.28);
-            beep(now + 0.55, 660, 0.45, 0.22);
-        } catch (e) {
-            // audio unavailable — fail silently
-        }
-    }
-
-    if (ctx.state !== 'running') {
-        ctx.resume().then(doPlay).catch(() => {});
-    } else {
-        doPlay();
-    }
+            return (step * (M365_BELL_KNOCKS - 1) + buffer.duration) * 1000;
+        })
+        .catch(() => 0); // audio unavailable — fail silently
 }
 
 function _m365StartAlertLoop() {
     _m365StopAlertLoop();
-    _m365PlayBell();
-    _m365State.alertSoundTimer = setInterval(_m365PlayBell, 4000);
+    const token = {};
+    _m365State.alertSoundTimer = token;
+    let burst = 0;
+
+    function tick() {
+        if (_m365State.alertSoundTimer !== token) return;
+        _m365PlayBell().then(durationMs => {
+            if (_m365State.alertSoundTimer !== token) return;
+            const pause = M365_BELL_PAUSES_MS[Math.min(burst++, M365_BELL_PAUSES_MS.length - 1)];
+            token.timeout = setTimeout(tick, durationMs + pause);
+        });
+    }
+    tick();
 }
 
 function _m365StopAlertLoop() {
     if (_m365State.alertSoundTimer) {
-        clearInterval(_m365State.alertSoundTimer);
+        clearTimeout(_m365State.alertSoundTimer.timeout);
         _m365State.alertSoundTimer = null;
     }
 }
