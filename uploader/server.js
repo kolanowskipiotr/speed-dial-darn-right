@@ -63,6 +63,7 @@ function createServer(deps = {}) {
     const _getFreshToken = deps.getFreshToken || getFreshToken;
     const _fetchIcsCalendarWindow = deps.fetchIcsCalendarWindow || fetchIcsCalendarWindow;
     const _now = deps.now || (() => Date.now());
+    const _performSync = deps.performSync || performSync;
     const m365Config = getM365Config(deps.config || {});
     const icsCache = new Map();
     const ICS_CACHE_TTL_MS = 60 * 1000;
@@ -370,12 +371,12 @@ function createServer(deps = {}) {
             req.on('end', async () => {
                 try {
                     const data = JSON.parse(Buffer.concat(chunks).toString());
-                    await performSync(data, token, folderId, { forceFull });
+                    await _performSync(data, token, folderId, { forceFull });
                     res.writeHead(200);
                     res.end('ok');
                 } catch (e) {
-                    console.error('[sync] POST /api/sync failed:', e);
-                    res.writeHead(500);
+                    console.error('[sync] POST /api/sync failed:', e.message);
+                    res.writeHead(e.statusCode || 500);
                     res.end('error');
                 }
             });
@@ -423,7 +424,7 @@ function createServer(deps = {}) {
     }
 
     // --- File Uploads ---
-    const match = req.url.match(/^\/upload\/([a-z0-9]+(?:\.[a-z0-9]{2,5})?)$/);
+    const match = req.url.match(/^\/upload\/([a-z0-9][a-z0-9-]*(?:\.[a-z0-9]{2,5})?)$/);
     if (!match) { res.writeHead(404); res.end('not found'); return; }
 
     const id       = match[1];

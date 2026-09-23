@@ -187,6 +187,7 @@ function applyDiff(fullData, diff) {
                 diff.todoItems_patch
             );
         }
+        if (diff.todoListOrder !== undefined) result.todoListOrder = diff.todoListOrder;
         if (diff.notes_patch)           result.notes           = applyArrayPatch(fullData.notes           || [], diff.notes_patch);
         if (diff.notesTrash_patch)      result.notesTrash      = applyArrayPatch(fullData.notesTrash      || [], diff.notesTrash_patch);
         if (diff.monitoredPages_patch)  result.monitoredPages  = applyArrayPatch(fullData.monitoredPages  || [], diff.monitoredPages_patch);

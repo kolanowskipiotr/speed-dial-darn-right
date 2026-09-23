@@ -94,7 +94,7 @@ test('Backup roundtrip: calculateDiff → applyDiff', async (t) => {
             .todoList(makeTodoList({ id: 'list-1' }, [makeTodoItem({ id: 'item-1', content: 'Existing' })]))
             .build();
         const modified = modify(base, s => {
-            s.todoLists[0].items.push(makeTodoItem({ id: 'item-2', content: 'New task', order: 2 }));
+            s.todoLists[0].items.push(makeTodoItem({ id: 'item-2', content: 'New task' }));
         });
         const restored = roundtrip(base, modified);
         assert.strictEqual(restored.todoLists[0].items.length, 2);
@@ -265,7 +265,7 @@ test('Backup roundtrip: calculateDiff → applyDiff', async (t) => {
             s.tabs[0].groups[0].dials.push(makeDial({ id: 'dial-new', url: 'https://b.com' }));
             // Todo: new item + rename list
             s.todoLists[0].name = 'Sprint Tasks';
-            s.todoLists[0].items.push(makeTodoItem({ id: 'item-2', content: 'Do B', order: 2 }));
+            s.todoLists[0].items.push(makeTodoItem({ id: 'item-2', content: 'Do B' }));
             // Note: enable taskSync
             s.notes[0].taskSync = true;
             s.notes[0].taskIds = ['task-xyz'];

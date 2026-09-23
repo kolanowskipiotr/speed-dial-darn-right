@@ -24,6 +24,75 @@ function findTodoItem(itemId) {
     return null;
 }
 
+// ─── ORDERING ────────────────────────────────────────────────────
+// Order lives apart from the records, so reordering never rewrites list/item data:
+//   data.todoListOrder — list ids, top to bottom
+//   list.itemOrder     — ids of active (not done) items, top to bottom
+// Done items are not ordered — they sort by doneAt.
+
+function getOrderedTodoLists() {
+    const byId = new Map((data.todoLists || []).map(l => [l.id, l]));
+    return (data.todoListOrder || []).map(id => byId.get(id)).filter(Boolean);
+}
+
+function getOrderedActiveItems(list) {
+    const byId = new Map((list.items || []).filter(i => !i.isDone).map(i => [i.id, i]));
+    return (list.itemOrder || []).map(id => byId.get(id)).filter(Boolean);
+}
+
+function _removeOrderId(arr, id) {
+    const idx = arr.indexOf(id);
+    if (idx !== -1) arr.splice(idx, 1);
+}
+
+// Puts `id` at the 'top' or bottom of `arr`, removing any earlier occurrence
+function _placeOrderId(arr, id, position) {
+    _removeOrderId(arr, id);
+    if (position === 'top') arr.unshift(id);
+    else arr.push(id);
+}
+
+// Moves `dragId` right before/after `targetId` within `arr`
+function _moveOrderIdRelative(arr, dragId, targetId, insertBefore) {
+    if (dragId === targetId || !arr.includes(dragId) || !arr.includes(targetId)) return false;
+    _removeOrderId(arr, dragId);
+    const idx = arr.indexOf(targetId);
+    arr.splice(insertBefore ? idx : idx + 1, 0, dragId);
+    return true;
+}
+
+// Keeps ids of `order` still present in `records`, then appends the missing ones in records' order
+function _reconcileOrder(order, records) {
+    const ids = new Set(records.map(r => r.id));
+    const kept = [...new Set((Array.isArray(order) ? order : []).filter(id => ids.has(id)))];
+    const keptSet = new Set(kept);
+    return kept.concat(records.filter(r => !keptSet.has(r.id)).map(r => r.id));
+}
+
+// Brings order arrays in line with the records (after load/import): drops stale or
+// duplicate ids and appends missing ones. Returns true if data changed.
+function normalizeTodoOrder() {
+    const lists = data.todoLists || [];
+    let changed = false;
+
+    const listOrder = _reconcileOrder(data.todoListOrder, lists);
+    if (JSON.stringify(listOrder) !== JSON.stringify(data.todoListOrder)) {
+        data.todoListOrder = listOrder;
+        changed = true;
+    }
+
+    for (const list of lists) {
+        const active = (list.items || []).filter(i => !i.isDone);
+        const itemOrder = _reconcileOrder(list.itemOrder, active);
+        if (JSON.stringify(itemOrder) !== JSON.stringify(list.itemOrder)) {
+            list.itemOrder = itemOrder;
+            changed = true;
+        }
+    }
+
+    return changed;
+}
+
 function extractUploadIds(content) {
     const re = /\/uploads\/([\w.\-]+)/g;
     const ids = [];

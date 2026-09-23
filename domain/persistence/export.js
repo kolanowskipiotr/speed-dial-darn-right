@@ -100,9 +100,13 @@ async function exportData() {
 // ─── SYNC ────────────────────────────────────────────────────────
 
 const _BG_SYNC_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between background backups
+// Set while changes are not yet in a backup; survives reloads so a closed tab doesn't lose them
+const _BG_SYNC_PENDING_KEY = 'speedDial_bgSyncPending';
 
 let _syncTimer = null;
+let _deferredSyncTimer = null;
 async function triggerSync() {
+    localStorage.setItem(_BG_SYNC_PENDING_KEY, '1');
     if (_syncTimer) clearTimeout(_syncTimer);
     _syncTimer = setTimeout(async () => {
         try {
@@ -114,8 +118,16 @@ async function triggerSync() {
             // Rate-limit: at most one background backup per hour.
             // Persisted in localStorage so page reloads don't reset the clock.
             const lastBg = parseInt(localStorage.getItem('speedDial_lastBgSync') || '0', 10);
-            if (Date.now() - lastBg < _BG_SYNC_COOLDOWN_MS) {
-                console.log('[sync] skipped — background backup cooldown active (1h)');
+            const cooldownLeft = _BG_SYNC_COOLDOWN_MS - (Date.now() - lastBg);
+            if (cooldownLeft > 0) {
+                // Back the changes up as soon as the cooldown ends instead of waiting for the next edit
+                if (!_deferredSyncTimer) {
+                    _deferredSyncTimer = setTimeout(() => {
+                        _deferredSyncTimer = null;
+                        triggerSync();
+                    }, cooldownLeft + 1000);
+                }
+                console.log(`[sync] deferred — background backup cooldown active (${Math.ceil(cooldownLeft / 60000)} min left)`);
                 return;
             }
 
@@ -151,6 +163,7 @@ async function triggerSync() {
 
             if (res.ok) {
                 localStorage.setItem('speedDial_lastBgSync', String(Date.now()));
+                localStorage.removeItem(_BG_SYNC_PENDING_KEY);
                 console.log('[sync] successful');
             } else {
                 if (res.status === 401 && typeof handleSyncError === 'function') {
@@ -162,6 +175,11 @@ async function triggerSync() {
             console.error('[sync] error:', e);
         }
     }, 5000); // Debounce sync by 5s
+}
+
+// Called once the session has a token on page load: backs up changes left unsynced last time
+function resumePendingSync() {
+    if (localStorage.getItem(_BG_SYNC_PENDING_KEY)) triggerSync();
 }
 
 // ─── IMPORT ──────────────────────────────────────────────────────
@@ -229,6 +247,8 @@ async function _doImport(imported) {
 
     // Update data and config
     data = imported;
+    if (!Array.isArray(data.todoLists)) data.todoLists = [];
+    normalizeTodoOrder();
     if (config.theme) applyTheme(config.theme);
     if (config.logoAnim !== undefined) {
         logoAnimEnabled = config.logoAnim;

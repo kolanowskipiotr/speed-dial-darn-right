@@ -15,17 +15,17 @@ function diff(base, modified) {
 
 function baseWithList(listOverrides = {}, items = []) {
     return new SnapshotBuilder()
-        .todoList(makeTodoList({ id: 'list-1', name: 'Tasks', emoji: '✅', order: 1, ...listOverrides }, items))
+        .todoList(makeTodoList({ id: 'list-1', name: 'Tasks', emoji: '✅', ...listOverrides }, items))
         .build();
 }
 
 function baseWithTwoLists() {
     return new SnapshotBuilder()
-        .todoList(makeTodoList({ id: 'list-1', name: 'Work', order: 1 }, [
-            makeTodoItem({ id: 'item-1', content: 'First task', order: 1 })
+        .todoList(makeTodoList({ id: 'list-1', name: 'Work' }, [
+            makeTodoItem({ id: 'item-1', content: 'First task' })
         ]))
-        .todoList(makeTodoList({ id: 'list-2', name: 'Personal', order: 2 }, [
-            makeTodoItem({ id: 'item-p1', content: 'Buy groceries', order: 1 })
+        .todoList(makeTodoList({ id: 'list-2', name: 'Personal' }, [
+            makeTodoItem({ id: 'item-p1', content: 'Buy groceries' })
         ]))
         .build();
 }
@@ -65,15 +65,13 @@ test('calculateDiff — todo lists and items', async (t) => {
         assert.strictEqual(result.todoLists_patch.upsert[0].emoji, '📝');
     });
 
-    await t.test('list order change → todoLists_patch', () => {
+    await t.test('list order change → todoListOrder only, no list records', () => {
         const base = baseWithTwoLists();
-        const modified = modify(base, s => {
-            s.todoLists[0].order = 2;
-            s.todoLists[1].order = 1;
-        });
+        const modified = modify(base, s => { s.todoListOrder = ['list-2', 'list-1']; });
         const result = diff(base, modified);
-        assert(result.todoLists_patch);
-        assert.strictEqual(result.todoLists_patch.upsert.length, 2);
+        assert.deepStrictEqual(result.todoListOrder, ['list-2', 'list-1']);
+        assert(!result.todoLists_patch);
+        assert(!result.todoItems_patch);
     });
 
     await t.test('list deleted → todoLists_patch.delete', () => {
@@ -88,7 +86,7 @@ test('calculateDiff — todo lists and items', async (t) => {
     await t.test('new list without items → full list in todoLists_patch.upsert', () => {
         const base = baseWithList();
         const modified = modify(base, s => {
-            s.todoLists.push(makeTodoList({ id: 'list-new', name: 'New List', order: 2 }));
+            s.todoLists.push(makeTodoList({ id: 'list-new', name: 'New List' }));
         });
         const result = diff(base, modified);
         assert(result.todoLists_patch);
@@ -119,7 +117,7 @@ test('calculateDiff — todo lists and items', async (t) => {
     await t.test('new item in existing list → todoItems_patch', () => {
         const base = baseWithList({}, [makeTodoItem({ id: 'item-1' })]);
         const modified = modify(base, s => {
-            s.todoLists[0].items.push(makeTodoItem({ id: 'item-2', content: 'New task', order: 2 }));
+            s.todoLists[0].items.push(makeTodoItem({ id: 'item-2', content: 'New task' }));
         });
         const result = diff(base, modified);
         assert(result.todoItems_patch, 'todoItems_patch should exist');
@@ -175,18 +173,17 @@ test('calculateDiff — todo lists and items', async (t) => {
         assert.strictEqual(patched.doneAt, null);
     });
 
-    await t.test('item order change → todoItems_patch', () => {
+    await t.test('item order change → list itemOrder in metadata patch, no item records', () => {
         const base = baseWithList({}, [
-            makeTodoItem({ id: 'item-1', order: 1 }),
-            makeTodoItem({ id: 'item-2', order: 2 })
+            makeTodoItem({ id: 'item-1' }),
+            makeTodoItem({ id: 'item-2' })
         ]);
-        const modified = modify(base, s => {
-            s.todoLists[0].items[0].order = 2;
-            s.todoLists[0].items[1].order = 1;
-        });
+        const modified = modify(base, s => { s.todoLists[0].itemOrder = ['item-2', 'item-1']; });
         const result = diff(base, modified);
-        assert(result.todoItems_patch?.['list-1']);
-        assert.strictEqual(result.todoItems_patch['list-1'].upsert.length, 2, 'Both reordered items in patch');
+        assert(!result.todoItems_patch, 'reorder must not upsert item records');
+        assert.strictEqual(result.todoLists_patch.upsert.length, 1);
+        assert.deepStrictEqual(result.todoLists_patch.upsert[0].itemOrder, ['item-2', 'item-1']);
+        assert(!result.todoLists_patch.upsert[0].items);
     });
 
     await t.test('item deleted → todoItems_patch.delete', () => {

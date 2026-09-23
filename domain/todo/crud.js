@@ -52,17 +52,16 @@ function saveTodoList() {
         list.name = name;
         list.emoji = currentTodoListEmoji;
     } else {
-        const maxOrder = data.todoLists.length
-            ? Math.max(...data.todoLists.map(l => l.order))
-            : -1;
+        const id = uid();
         data.todoLists.push({
-            id: uid(),
+            id,
             name,
             emoji: currentTodoListEmoji,
             createdAt: now,
-            order: maxOrder + 1,
+            itemOrder: [],
             items: [],
         });
+        data.todoListOrder.push(id);
     }
 
     saveData();
@@ -87,8 +86,9 @@ function deleteTodoListFromModal() {
                 }).catch(() => {});
             }
             data.todoLists = data.todoLists.filter(l => l.id !== editingTodoListId);
+            _removeOrderId(data.todoListOrder, editingTodoListId);
             if (activeTodoListId === editingTodoListId) {
-                activeTodoListId = data.todoLists.length ? data.todoLists[0].id : null;
+                activeTodoListId = data.todoListOrder[0] || null;
             }
             saveData();
             closeTodoListModal();
@@ -131,28 +131,17 @@ function addTodoItem(listId, position) {
         }
 
         const now = new Date().toISOString();
-        const activeItems = list.items.filter(i => !i.isDone);
-
-        let order;
-        if (position === 'top') {
-            order = activeItems.length
-                ? Math.min(...activeItems.map(i => i.order)) - 1
-                : 0;
-        } else {
-            order = activeItems.length
-                ? Math.max(...activeItems.map(i => i.order)) + 1
-                : 0;
-        }
+        const id = uid();
 
         list.items.push({
-            id: uid(),
+            id,
             content,
             isDone: false,
             createdAt: now,
             updatedAt: now,
             doneAt: null,
-            order,
         });
+        _placeOrderId(list.itemOrder, id, position);
 
         _handled = true;
         saveData();
@@ -236,11 +225,14 @@ function saveTodoItem(id, content) {
 function toggleTodoDone(id) {
     const result = findTodoItem(id);
     if (!result) return;
-    const { item } = result;
+    const { item, list } = result;
     const now = new Date().toISOString();
     item.isDone = !item.isDone;
     item.doneAt = item.isDone ? now : null;
     item.updatedAt = now;
+    // Done items leave the ordering; a reopened item goes back to the top
+    if (item.isDone) _removeOrderId(list.itemOrder, id);
+    else _placeOrderId(list.itemOrder, id, 'top');
     // If we're expanding this item, collapse it when marking done
     if (item.isDone && expandedItemId === id) expandedItemId = null;
     saveData();
@@ -264,6 +256,7 @@ function deleteTodoItem(id) {
     }
 
     list.items = list.items.filter(i => i.id !== id);
+    _removeOrderId(list.itemOrder, id);
     if (expandedItemId === id) expandedItemId = null;
 
     saveData();
@@ -274,21 +267,9 @@ function deleteTodoItem(id) {
 function moveTodoItemToPosition(id, listId, position) {
     const list = findTodoList(listId);
     if (!list) return;
-    const result = findTodoItem(id);
-    if (!result) return;
-    const { item } = result;
+    if (!findTodoItem(id)) return;
 
-    const activeItems = list.items.filter(i => !i.isDone && i.id !== id);
-
-    if (position === 'top') {
-        item.order = activeItems.length
-            ? Math.min(...activeItems.map(i => i.order)) - 1
-            : 0;
-    } else {
-        item.order = activeItems.length
-            ? Math.max(...activeItems.map(i => i.order)) + 1
-            : 0;
-    }
+    _placeOrderId(list.itemOrder, id, position);
 
     saveData();
     renderTodoPanel(_getTodoContainer());
@@ -307,9 +288,7 @@ function openTodoMoveModal(itemId) {
     const optionsEl = document.getElementById('todoMoveListOptions');
     optionsEl.innerHTML = '';
 
-    const otherLists = (data.todoLists || [])
-        .filter(l => l.id !== sourceList.id)
-        .sort((a, b) => a.order - b.order);
+    const otherLists = getOrderedTodoLists().filter(l => l.id !== sourceList.id);
 
     if (!otherLists.length) {
         optionsEl.innerHTML = '<p style="color:var(--text-dim);font-size:13px;padding:8px 0">No other lists available</p>';
@@ -348,13 +327,11 @@ function moveTodoItem(id, targetListId) {
 
     // Remove from source
     sourceList.items = sourceList.items.filter(i => i.id !== id);
+    _removeOrderId(sourceList.itemOrder, id);
 
-    // Add to top of target
-    const minOrder = targetList.items.length
-        ? Math.min(...targetList.items.map(i => i.order)) - 1
-        : 0;
-    item.order = minOrder;
+    // Add to top of target (done items stay unordered)
     targetList.items.push(item);
+    if (!item.isDone) _placeOrderId(targetList.itemOrder, id, 'top');
 
     activeTodoListId = targetListId;
 

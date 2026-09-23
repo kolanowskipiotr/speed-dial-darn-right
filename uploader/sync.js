@@ -147,6 +147,10 @@ function calculateDiff(fullBackup, newData) {
     if (Object.keys(itemsPatchByListId).length > 0) {
         diff.todoItems_patch = itemsPatchByListId;
     }
+    // List order is a plain id array — store it whole when it changes
+    if (JSON.stringify(oldData.todoListOrder || []) !== JSON.stringify(newData.todoListOrder || [])) {
+        diff.todoListOrder = newData.todoListOrder || [];
+    }
 
     const notesPatch = buildArrayPatch(oldData.notes, newData.notes);
     if (notesPatch.upsert.length > 0 || notesPatch.delete.length > 0) {
@@ -187,12 +191,22 @@ function hasMeaningfulDiff(diff) {
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-async function performSync(data, token, folderId, { forceFull = false } = {}) {
+function _syncError(message, statusCode, cause) {
+    const err = new Error(message, cause ? { cause } : undefined);
+    err.statusCode = statusCode;
+    return err;
+}
+
+/**
+ * Uploads a full or diff backup. Throws on failure (err.statusCode: 400 missing
+ * token/folder, 401 rejected Google credentials, 500 otherwise) so the client
+ * does not treat a failed backup as done.
+ */
+async function performSync(data, token, folderId, { forceFull = false, drive } = {}) {
     if (!token || !folderId) {
-        console.warn('[sync] Missing token or folderId, skipping sync');
-        return;
+        throw _syncError('Missing token or folderId', 400);
     }
-    const d = getDriveClient(token);
+    const d = drive || getDriveClient(token);
 
     try {
         const latestFull = await getLatestFullBackup(d, folderId);
@@ -213,10 +227,17 @@ async function performSync(data, token, folderId, { forceFull = false } = {}) {
             }
             await uploadToDrive(d, folderId, `backup_${timestamp}.diff.json`, JSON.stringify(diff, null, 2));
         }
-
-        await cleanupOldBackups(d, folderId);
     } catch (e) {
         console.error('[sync] Sync failed:', e);
+        const status = Number(e.response?.status || e.code);
+        throw _syncError(`Backup failed: ${e.message}`, status === 401 ? 401 : 500, e);
+    }
+
+    // Backup is already stored — a cleanup failure must not report it as failed
+    try {
+        await cleanupOldBackups(d, folderId);
+    } catch (e) {
+        console.error('[sync] Cleanup of old backups failed:', e);
     }
 }
 
@@ -255,15 +276,56 @@ async function listAllFiles(d, query, fields = 'files(id, name, createdTime)') {
     return files;
 }
 
-async function cleanupOldBackups(d, folderId) {
-    const files = await listAllFiles(d, `'${folderId}' in parents and trashed = false`);
+const MAX_BACKUP_FILES = 200;
 
-    if (files.length > 200) {
-        const toDelete = files.slice(200);
-        for (const file of toDelete) {
-            console.log(`[sync] Deleting old backup: ${file.name}`);
-            await d.files.delete({ fileId: file.id });
-        }
+/**
+ * Picks backup files to delete. `files` must be newest first.
+ *
+ * A full backup plus the diffs newer than it (up to the next full) form a chain.
+ * Diffs are differential (each against the chain's full), so a chain's newest diff
+ * alone restores the chain's final state. While over `max` files:
+ *   1. older chains, oldest first, are flattened to their full + newest diff
+ *   2. flattened chains are deleted, oldest first
+ *   3. the newest chain keeps its full + its newest diffs
+ * Diffs older than the oldest full have no base and are always deleted.
+ * Files that are not backups are never touched.
+ */
+function planBackupCleanup(files, max = MAX_BACKUP_FILES) {
+    const isFull = f => f.name.includes('.full.');
+    const backups = files.filter(f => isFull(f) || f.name.includes('.diff.'));
+
+    const chains = []; // newest first; each: [newest diff, …, oldest diff, full]
+    let pending = [];
+    for (const f of backups) {
+        pending.push(f);
+        if (isFull(f)) { chains.push(pending); pending = []; }
+    }
+    const toDelete = [...pending]; // orphaned diffs
+    let total = chains.reduce((n, c) => n + c.length, 0);
+
+    for (let i = chains.length - 1; i >= 1 && total > max; i--) {
+        const middle = chains[i].slice(1, -1);
+        toDelete.push(...middle);
+        total -= middle.length;
+    }
+    while (chains.length > 1 && total > max) {
+        const oldest = chains.pop();
+        const kept = oldest.length > 1 ? [oldest[0], oldest[oldest.length - 1]] : oldest;
+        toDelete.push(...kept);
+        total -= kept.length;
+    }
+    if (chains.length === 1 && total > max) {
+        const diffs = chains[0].slice(0, -1);
+        toDelete.push(...diffs.slice(diffs.length - (total - max)));
+    }
+    return toDelete;
+}
+
+async function cleanupOldBackups(d, folderId) {
+    const files = await listAllFiles(d, `'${folderId}' in parents and trashed = false`); // newest first
+    for (const file of planBackupCleanup(files)) {
+        console.log(`[sync] Deleting old backup: ${file.name}`);
+        await d.files.delete({ fileId: file.id });
     }
 }
 
@@ -306,5 +368,5 @@ module.exports = {
     fetchGDriveFile,
     createGDriveFolder,
     // Test exports
-    __test__: { buildArrayPatch, calculateDiff, hasMeaningfulDiff }
+    __test__: { buildArrayPatch, calculateDiff, hasMeaningfulDiff, planBackupCleanup }
 };

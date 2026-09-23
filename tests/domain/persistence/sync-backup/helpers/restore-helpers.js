@@ -18,6 +18,7 @@ function applyDiff(fullData, diff) {
     const result = {
         tabs: fullData.tabs || [],
         todoLists: fullData.todoLists || [],
+        todoListOrder: fullData.todoListOrder,
         notes: fullData.notes || [],
         notesTrash: fullData.notesTrash || [],
         monitoredPages: fullData.monitoredPages || [],
@@ -34,6 +35,7 @@ function applyDiff(fullData, diff) {
         if (diff.todoLists_patch || diff.todoItems_patch) {
             result.todoLists = applyTodoListsDiffPatch(result.todoLists, diff.todoLists_patch, diff.todoItems_patch);
         }
+        if (diff.todoListOrder !== undefined) result.todoListOrder = diff.todoListOrder;
         if (diff.notes_patch)          result.notes          = applyArrayPatch(result.notes,          diff.notes_patch);
         if (diff.notesTrash_patch)     result.notesTrash     = applyArrayPatch(result.notesTrash,     diff.notesTrash_patch);
         if (diff.monitoredPages_patch) result.monitoredPages = applyArrayPatch(result.monitoredPages, diff.monitoredPages_patch);

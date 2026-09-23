@@ -30,11 +30,12 @@ function loadData() {
             name: 'TODO',
             emoji: '✅',
             createdAt: now,
-            order: 0,
+            itemOrder: [],
             items: [],
         }];
         saveData();
     }
+    if (normalizeTodoOrder()) saveData();
 
     // Ensure notes exists — create default note on first run
     if (!Array.isArray(data.notes)) {

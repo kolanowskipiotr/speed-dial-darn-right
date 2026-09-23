@@ -48,7 +48,6 @@ function makeTodoItem(overrides = {}) {
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
         doneAt: null,
-        order: 1,
         ...overrides
     };
 }
@@ -59,7 +58,7 @@ function makeTodoList(overrides = {}, items = []) {
         name: 'List',
         emoji: '✅',
         createdAt: '2026-01-01T00:00:00.000Z',
-        order: 1,
+        itemOrder: items.filter(i => !i.isDone).map(i => i.id),
         items,
         ...overrides
     };
@@ -129,6 +128,7 @@ class SnapshotBuilder {
         this._data = {
             tabs: [],
             todoLists: [],
+            todoListOrder: [],
             notes: [],
             notesTrash: [],
             monitoredPages: [],
@@ -139,7 +139,7 @@ class SnapshotBuilder {
     }
 
     tab(tabObj)           { this._data.tabs.push(tabObj);           return this; }
-    todoList(listObj)     { this._data.todoLists.push(listObj);     return this; }
+    todoList(listObj)     { this._data.todoLists.push(listObj); this._data.todoListOrder.push(listObj.id); return this; }
     note(noteObj)         { this._data.notes.push(noteObj);         return this; }
     trashedNote(noteObj)  { this._data.notesTrash.push(noteObj);    return this; }
     monitoredPage(pageObj){ this._data.monitoredPages.push(pageObj);return this; }

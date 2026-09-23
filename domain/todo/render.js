@@ -31,7 +31,7 @@ function renderTodoPanel(container) {
 
 function _renderTodoAccordion(container) {
     container.innerHTML = '';
-    const lists = [...(data.todoLists || [])].sort((a, b) => a.order - b.order);
+    const lists = getOrderedTodoLists();
 
     if (!lists.length) {
         container.innerHTML = '<div class="todo-empty-panel">No lists yet — click ＋ to add one</div>';
@@ -168,8 +168,7 @@ function _renderTodoAccordion(container) {
 function _renderTodoItems(list, container) {
     container.innerHTML = '';
 
-    const activeItems = [...(list.items || []).filter(i => !i.isDone)]
-        .sort((a, b) => a.order - b.order);
+    const activeItems = getOrderedActiveItems(list);
     const doneItems = [...(list.items || []).filter(i => i.isDone)]
         .sort((a, b) => {
             if (!a.doneAt && !b.doneAt) return 0;

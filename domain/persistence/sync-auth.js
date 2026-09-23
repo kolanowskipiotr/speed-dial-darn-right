@@ -73,6 +73,7 @@ function initGis() {
                     }
                 });
                 checkAutoSync();
+                resumePendingSync();
                 // Re-render notes panel so sync/import buttons appear now that we have a token.
                 const notesContainer = _getNotesContainer?.();
                 if (notesContainer && typeof renderNotesPanel === 'function') {
