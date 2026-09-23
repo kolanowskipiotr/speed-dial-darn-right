@@ -134,9 +134,11 @@ function _m365CheckAlertState() {
         const cfg = _m365GetConfig();
         if (cfg.notificationsEnabled && _m365State.alertNotificationSentForId !== ev.id) {
             _m365State.alertNotificationSentForId = ev.id;
-            const timeStr = _m365FmtTime(ev.start);
-            const title = `${ICONS.bell} Spotkanie za chwilę`;
-            const body = `${ev.title || 'Bez tytułu'} · ${timeStr}`;
+            const title = `${ICONS.bell} ${ev.subject || 'Bez tytułu'}`;
+            const body = _m365EventDetailRows(ev)
+                .filter(r => r.label !== 'Status' && r.label !== 'Time left')
+                .map(r => `${r.label}: ${r.value}`)
+                .join('\n');
             showNotification(title, body, { tag: `m365-meeting-${ev.id}`, icon: '/favicon.ico' });
         }
     } else if (!inWindow && _m365State.alertWindowActive) {
@@ -482,21 +484,35 @@ function _m365RenderAgenda() {
     }).join('');
 }
 
+// Label/value rows shared by the details popover and the OS notification
+function _m365EventDetailRows(ev) {
+    const now = Date.now();
+    const startTs = new Date(ev.start).getTime();
+    const endTs = new Date(ev.end).getTime();
+    const inProgress = Number.isFinite(startTs) && Number.isFinite(endTs) && startTs <= now && endTs >= now;
+    const startsIn = !ev.isAllDay && startTs > now ? _m365TimeUntilStart(ev.start) : '';
+    const timeLeft = !ev.isAllDay && inProgress ? _m365TimeUntilStart(ev.end) : '';
+    const statusLabel = inProgress ? 'In progress' : (startTs > now ? 'Upcoming' : 'Finished');
+    const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local';
+
+    return [
+        { label: 'Date', value: _m365FmtDate(ev.start) },
+        { label: 'Time', value: _m365FmtTimeRange(ev) },
+        startsIn && { label: 'Starts in', value: startsIn },
+        timeLeft && { label: 'Time left', value: timeLeft },
+        { label: 'Status', value: statusLabel },
+        { label: 'Type', value: ev.joinUrl ? 'Online meeting' : 'In person' },
+        { label: 'Timezone', value: _m365GetConfig().timezone || localTz },
+        { label: 'Location', value: ev.location || '-' },
+        { label: 'Organizer', value: ev.organizer || '-' },
+    ].filter(Boolean);
+}
+
 function _m365RenderDetails(eventData) {
     const body = _m365State.detailsBody;
     const headActions = _m365State.detailsHeadActions;
     if (!body || !eventData) return;
     const preview = _m365NormalizeBodyPreview(eventData.bodyPreview);
-    const now = Date.now();
-    const startTs = new Date(eventData.start).getTime();
-    const endTs = new Date(eventData.end).getTime();
-    const inProgress = Number.isFinite(startTs) && Number.isFinite(endTs) && startTs <= now && endTs >= now;
-    const startsIn = !eventData.isAllDay && startTs > now ? _m365TimeUntilStart(eventData.start) : '';
-    const endsIn = !eventData.isAllDay && inProgress ? _m365TimeUntilStart(eventData.end) : '';
-    const statusLabel = inProgress ? 'In progress' : (startTs > now ? 'Upcoming' : 'Finished');
-    const meetingType = eventData.joinUrl ? 'Online meeting' : 'In person';
-    const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local';
-    const tzLabel = _m365GetConfig().timezone || localTz;
 
     if (headActions) {
         headActions.innerHTML = eventData.joinUrl
@@ -506,15 +522,9 @@ function _m365RenderDetails(eventData) {
 
     body.innerHTML = `
         <h4>${_m365Esc(eventData.subject)}</h4>
-        <div class="m365-detail-row"><strong>Date:</strong> ${_m365Esc(_m365FmtDate(eventData.start))}</div>
-        <div class="m365-detail-row"><strong>Time:</strong> ${_m365FmtTimeRange(eventData)}</div>
-        ${startsIn ? `<div class="m365-detail-row"><strong>Starts in:</strong> ${_m365Esc(startsIn)}</div>` : ''}
-        ${endsIn ? `<div class="m365-detail-row"><strong>Ends in:</strong> ${_m365Esc(endsIn)}</div>` : ''}
-        <div class="m365-detail-row"><strong>Status:</strong> ${_m365Esc(statusLabel)}</div>
-        <div class="m365-detail-row"><strong>Type:</strong> ${_m365Esc(meetingType)}</div>
-        <div class="m365-detail-row"><strong>Timezone:</strong> ${_m365Esc(tzLabel)}</div>
-        <div class="m365-detail-row"><strong>Location:</strong> ${_m365Esc(eventData.location || '-')}</div>
-        <div class="m365-detail-row"><strong>Organizer:</strong> ${_m365Esc(eventData.organizer || '-')}</div>
+        ${_m365EventDetailRows(eventData).map(r =>
+            `<div class="m365-detail-row"><strong>${r.label}:</strong> ${_m365Esc(r.value)}</div>`
+        ).join('')}
         ${preview.text
             ? `<div class="m365-body-preview-wrap${preview.hasSeparator ? ' has-separator' : ''}">
                 ${preview.hasSeparator ? '<div class="m365-body-separator" aria-hidden="true"></div>' : ''}
