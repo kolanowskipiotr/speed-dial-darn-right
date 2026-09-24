@@ -20,7 +20,7 @@ COPY nginx.conf /etc/nginx/conf.d/speed-dial.conf
 # Copy the app
 WORKDIR /usr/share/nginx/html
 COPY index.html ./
-COPY favicon.ico icon.png icon.svg ./
+COPY favicon.ico icon.svg ./
 COPY domain ./domain/
 
 # Copy the vendored dependencies from the build stage

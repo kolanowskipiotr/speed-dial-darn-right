@@ -6,10 +6,13 @@ function initLogoAnimation() {
     // Split logo text into individual character spans
     const logo = document.getElementById('logoText');
     if (!logo) return;
-    const chars = [...logo.textContent];
-    logo.innerHTML = chars.map(ch =>
-        `<span class="logo-char">${ch === ' ' ? '&nbsp;' : ch.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>`
-    ).join('');
+    // The app icon <img> animates as the first "character"
+    const icon = logo.querySelector('.logo-icon');
+    const chars = [...logo.textContent.trim()];
+    logo.innerHTML = (icon ? `<span class="logo-char">${icon.outerHTML}</span><span class="logo-char">&nbsp;</span>` : '') +
+        chars.map(ch =>
+            `<span class="logo-char">${ch === ' ' ? '&nbsp;' : ch.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>`
+        ).join('');
 
     updateAnimToggleUI();
     if (logoAnimEnabled) setTimeout(runLogoAnimation, 250);

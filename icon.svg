@@ -1,16 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-    <path d="M66 25 L96 65 M126 25 L96 65" stroke="#4B4B4B" stroke-width="6" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 8 517 517">
+    <defs>
+        <linearGradient id="bg" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0"   stop-color="#04687F"/>
+            <stop offset="0.5" stop-color="#0B82B8"/>
+            <stop offset="1"   stop-color="#1472D4"/>
+        </linearGradient>
+        <linearGradient id="fin" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#E6EDF0"/>
+            <stop offset="1" stop-color="#CBD7DE"/>
+        </linearGradient>
+        <clipPath id="tile"><rect x="0" y="8" width="517" height="517" rx="115"/></clipPath>
+    </defs>
+    <rect x="0" y="8" width="517" height="517" rx="115" fill="url(#bg)"/>
 
-    <rect x="20" y="60" width="152" height="112" rx="12" fill="#2D2D2D"/>
+    <!-- background: blue orb top-right + faint diagonal light bands -->
+    <g clip-path="url(#tile)">
+        <circle cx="520" cy="40" r="260" fill="#1472D4" opacity="0.75"/>
+        <path d="M-40 330 L330 -40 L380 -40 L-40 380 Z" fill="#FFFFFF" opacity="0.05"/>
+        <path d="M-40 470 L470 -40 L500 -40 L-40 500 Z" fill="#FFFFFF" opacity="0.04"/>
+        <path d="M60 560 L560 60 L560 110 L110 560 Z" fill="#FFFFFF" opacity="0.05"/>
+    </g>
 
-    <rect x="34" y="74" width="94" height="74" rx="6" fill="#121212"/>
+    <!-- fins (behind the body) -->
+    <path d="M143 308 L170 315 L250 207 L212 194 L130 211 Q120 214 111 225 L49 309 Z" fill="url(#fin)"/>
+    <path d="M230 387 L220 360 L320 270 L336 306 L328 390 Q326 400 316 410 L238 480 Z" fill="url(#fin)"/>
 
-    <rect x="44" y="84" width="16" height="16" rx="2" fill="#00F2FF"/> <rect x="70" y="84" width="16" height="16" rx="2" fill="#FF3D00"/> <rect x="44" y="110" width="16" height="16" rx="2" fill="#76FF03"/> <rect x="70" y="110" width="16" height="16" rx="2" fill="#D500F9"/> <circle cx="148" cy="90" r="10" fill="#424242"/>
-    <path d="M148 80 L148 90" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    <!-- body -->
+    <path d="M428 80 C434 150 416 222 378 262 C340 302 290 346 230 387 L143 308 C177 244 216 190 252 148 C288 106 358 81 428 80 Z" fill="#FFFFFF"/>
 
-    <circle cx="148" cy="118" r="10" fill="#424242"/>
-    <path d="M148 118 L156 124" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    <!-- lightning bolt -->
+    <path d="M378 137 L275 191 L303 213 L248 276 L368 213 L343 193 Z" fill="#05E4F3"/>
 
-    <rect x="138" y="142" width="20" height="4" rx="2" fill="#1A1A1A"/>
-    <rect x="138" y="150" width="20" height="4" rx="2" fill="#1A1A1A"/>
+    <!-- exhaust flame -->
+    <path d="M93 451 L101 388 Q104 366 118 351 L141 326 L156 340 L141 356 Q131 367 130 382 L128 412 L158 407 Q172 404 182 393 L197 377 L212 390 L190 416 Q176 431 155 436 L93 451 Z" fill="#05F0F3"/>
 </svg>

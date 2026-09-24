@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+    <rect width="192" height="192" rx="42" fill="#1A1A1A"/>
+
+    <!-- TV: antenna + outline -->
+    <path d="M64 26 L96 58 L128 26" fill="none" stroke="#00F5FF" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="28" y="62" width="136" height="98" rx="28" fill="none" stroke="#00F5FF" stroke-width="14"/>
+
+    <!-- lightning bolt, cut out of the outline by a background-coloured halo -->
+    <path id="bolt" d="M102 40 H130 L110 90 H136 L78 178 L90 112 H60 Z" fill="none" stroke="#1A1A1A" stroke-width="14" stroke-linejoin="round"/>
+    <path d="M102 40 H130 L110 90 H136 L78 178 L90 112 H60 Z" fill="#00F5FF" stroke="#00F5FF" stroke-width="2" stroke-linejoin="round"/>
+</svg>

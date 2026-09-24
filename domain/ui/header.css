@@ -43,6 +43,13 @@ header {
     text-transform: uppercase;
 }
 
+.logo-icon {
+    width: 1.35em;
+    height: 1.35em;
+    vertical-align: -0.3em;
+    border-radius: 22%;
+}
+
 .header-tagline {
     font-family: 'DM Mono', monospace;
     font-size: 10px;
