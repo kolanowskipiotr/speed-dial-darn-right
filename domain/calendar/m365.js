@@ -56,12 +56,16 @@ function _m365UnlockAudio() {
 const M365_BELL_URL = 'domain/calendar/bell.mp3';
 const M365_BELL_KNOCKS = 2;          // knocks per burst
 const M365_BELL_KNOCK_GAP_MS = 150;  // silence between knocks within a burst
-// Silence after each burst — backs off so a forgotten alert annoys less; last value repeats
-const M365_BELL_PAUSES_MS = [
-    ...Array(6).fill(5000),
-    ...Array(6).fill(10000),
-    ...Array(6).fill(20000),
-    30000,
+const M365_ALERT_WINDOW_MS = 3 * 60 * 1000; // alert runs from start − 3 min to start + 3 min
+// Silence after each burst, by time relative to meeting start. Faster repetition reads as
+// more urgent, so it peaks just before start (time to join), then tapers fast so a forgotten
+// alert doesn't nag the room. `until` is the phase end offset from start in ms.
+const M365_BELL_PHASES = [
+    { until: -90 * 1000, pauseMs: 30 * 1000 },
+    { until: -30 * 1000, pauseMs: 15 * 1000 },
+    { until:  15 * 1000, pauseMs:  5 * 1000 },
+    { until:  60 * 1000, pauseMs: 15 * 1000 },
+    { until: Infinity,   pauseMs: 60 * 1000 },
 ];
 let _m365BellBuffer = null;
 let _m365BellLoading = null;
@@ -101,18 +105,23 @@ function _m365PlayBell() {
         .catch(() => 0); // audio unavailable — fail silently
 }
 
-function _m365StartAlertLoop() {
+// startTs defaults to the next event; pass one from the console to preview a phase,
+// e.g. _m365StartAlertLoop(Date.now() + 20000) lands in the peak.
+function _m365StartAlertLoop(startTs) {
     _m365StopAlertLoop();
+    if (startTs === undefined) startTs = new Date(_m365State.nextEvent?.start).getTime();
+    if (!Number.isFinite(startTs)) return;
     const token = {};
     _m365State.alertSoundTimer = token;
-    let burst = 0;
 
     function tick() {
         if (_m365State.alertSoundTimer !== token) return;
+        if (Date.now() - startTs > M365_ALERT_WINDOW_MS) { _m365StopAlertLoop(); return; }
         _m365PlayBell().then(durationMs => {
             if (_m365State.alertSoundTimer !== token) return;
-            const pause = M365_BELL_PAUSES_MS[Math.min(burst++, M365_BELL_PAUSES_MS.length - 1)];
-            token.timeout = setTimeout(tick, durationMs + pause);
+            const offset = Date.now() - startTs;
+            const { pauseMs } = M365_BELL_PHASES.find(p => offset < p.until);
+            token.timeout = setTimeout(tick, durationMs + pauseMs);
         });
     }
     tick();
@@ -155,8 +164,7 @@ function _m365CheckAlertState() {
 
     const now = Date.now();
     const startTs = new Date(ev.start).getTime();
-    const WINDOW_MS = 3 * 60 * 1000; // 3 minutes
-    const inWindow = !ev.isAllDay && Number.isFinite(startTs) && now >= startTs - WINDOW_MS && now <= startTs + WINDOW_MS;
+    const inWindow = !ev.isAllDay && Number.isFinite(startTs) && now >= startTs - M365_ALERT_WINDOW_MS && now <= startTs + M365_ALERT_WINDOW_MS;
     const isMuted = _m365State.alertMutedForId === ev.id;
 
     if (inWindow && !_m365State.alertWindowActive) {

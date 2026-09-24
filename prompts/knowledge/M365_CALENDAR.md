@@ -17,19 +17,36 @@ Dotyczy: `domain/calendar/m365.js`, `domain/ui/header.css`, `uploader/m365-calen
 
 ### Zachowanie
 - **Okno alertu**: od `start - 3 minuty` do `start + 3 minuty`.
-- W tym oknie odgrywa się dźwięk "Ding… Dong" (Web Audio API) co 4 sekundy.
+- W tym oknie gra seria 2 stuków (`domain/calendar/bell.mp3`) z przerwami zależnymi od czasu do startu (patrz „Harmonogram”).
 - Ikona 🔔 pojawia się obok przycisku Join w widoku compact.
 - Kliknięcie 🔔 wycisza dźwięk → ikona zmienia się na 🔕 (przezroczysta).
 - Kliknięcie 🔕 ponownie włącza dźwięk (`alertMutedForId` → `null`).
 - Po opuszczeniu okna alertu wszystko resetuje się; nowe spotkanie zaczyna od nowa bez wyciszenia.
 
+### Harmonogram (`M365_BELL_PHASES`, T = start spotkania)
+| Faza | Przerwa po serii |
+|------|------------------|
+| T-3:00 → T-1:30 | 30 s |
+| T-1:30 → T-0:30 | 15 s |
+| T-0:30 → T+0:15 | 5 s ← szczyt |
+| T+0:15 → T+1:00 | 15 s |
+| T+1:00 → T+3:00 | 60 s |
+
+Uzasadnienie (ustalone z użytkownikiem): krótsza przerwa = większa odczuwana pilność (badania nad ostrzeżeniami dźwiękowymi — Edworthy/Hellier), zmiana tempa ogranicza habituację. Szczyt jest **przed** startem, bo dołączenie trwa ~30–60 s. Po starcie szybkie wygaszanie — jeśli brak reakcji, użytkownik prawdopodobnie jest poza biurkiem, a dźwięk tylko przeszkadza otoczeniu (alarm fatigue). Łącznie ~20 serii w 6 min.
+
+- Przerwa jest wybierana **wg zegara** (offset od `ev.start`) przed każdą serią, nie wg licznika serii — reload strony / odciszenie w środku okna od razu trafia we właściwą fazę.
+- Pętla to łańcuch `setTimeout` (długość serii + przerwa), nie `setInterval`. Sama się kończy po `T + M365_ALERT_WINDOW_MS`.
+- Stałe: `M365_BELL_KNOCKS` (2), `M365_BELL_KNOCK_GAP_MS` (150), `M365_BELL_PHASES`, `M365_ALERT_WINDOW_MS` (3 min, współdzielone z `_m365CheckAlertState`).
+
 ### Kluczowe funkcje w `m365.js`
 | Funkcja | Opis |
 |---------|------|
 | `_m365CheckAlertState()` | Sprawdza co 10 s czy jesteśmy w oknie alertu; uruchamia/zatrzymuje pętlę dźwięku |
-| `_m365StartAlertLoop()` | Odgrywa dźwięk natychmiast i co 4 s |
-| `_m365StopAlertLoop()` | Czyści interval dźwięku |
-| `_m365PlayBell()` | Syntezuje dwa tony (880Hz + 660Hz) przez Web Audio API |
+| `_m365StartAlertLoop(startTs?)` | Gra serię od razu, kolejne wg `M365_BELL_PHASES`. `startTs` domyślnie z `_m365State.nextEvent` |
+| `_m365StopAlertLoop()` | Czyści timeout i unieważnia token pętli |
+| `_m365PlayBell()` | Gra jedną serię (`M365_BELL_KNOCKS` stuków); zwraca Promise z długością serii w ms (0 przy błędzie) |
+| `_m365LoadBell(ctx)` | Jednorazowy `fetch` + `decodeAudioData` mp3, cache w `_m365BellBuffer` |
+| `_m365UnlockAudio()` | Na pierwszy pointerdown/keydown/touchstart: `ctx.resume()` + preload mp3 |
 | `_m365ToggleBellMute()` | Przełącza wyciszenie dla bieżącego spotkania |
 | `_m365GetAudioContext()` | Leniwe tworzenie/reużywanie `AudioContext` |
 
@@ -37,15 +54,24 @@ Dotyczy: `domain/calendar/m365.js`, `domain/ui/header.css`, `uploader/m365-calen
 ```js
 alertWindowActive: false,  // true gdy jesteśmy w oknie ±3min
 alertMutedForId: null,     // ID spotkania, które zostało wyciszone
-alertSoundTimer: null,     // interval dźwięku (co 4s)
+alertSoundTimer: null,     // token pętli dźwięku { timeout } — porównywany w tick(), by stare pętle nie grały
 alertCheckTimer: null,     // interval sprawdzający okno alertu (co 10s)
 ```
 
-### Dźwięk — Web Audio API
-- Nie wymaga zewnętrznych plików — w pełni darmowy komercyjnie.
-- Wzorzec: "Ding" (880 Hz, 450ms) → pauza 100ms → "Dong" (660 Hz, 450ms) → pauza ~3s → powtórka.
-- `AudioContext` jest tworzony leniwie przy pierwszej próbie odtworzenia.
-- Jeśli przeglądarka blokuje audio (brak gestu użytkownika), dźwięk nie gra — ikona dzwonka nadal się pojawia.
+### Dźwięk — Web Audio API + mp3
+- Plik: `domain/calendar/bell.mp3` (glass knock, ~0,19 s, 6 KB). Serwowany statycznie z `domain/` (dev mount + `COPY domain` w Dockerfile).
+- Odtwarzany przez `AudioBufferSource` we wspólnym `AudioContext`, **nie** przez `<audio>` — element `<audio>` odpalany z timera byłby blokowany przez autoplay policy.
+- Zapisywanie zdekodowanej wersji (WAV/próbki) nie ma sensu: dekodowanie jest jednorazowe i trwa ułamek ms, WAV byłby ~5× większy.
+- Jeśli przeglądarka blokuje audio (brak gestu użytkownika) lub plik się nie załaduje, dźwięk nie gra (brak fallbacku) — ikona dzwonka nadal się pojawia.
+
+### Test z konsoli DevTools
+Najpierw kliknąć na stronie (odblokowanie audio), potem:
+```js
+_m365PlayBell()                           // jedna seria
+_m365StartAlertLoop(Date.now() + 20000)   // szczyt (start za 20 s)
+_m365StartAlertLoop(Date.now() + 170000)  // początek okna, co 30 s
+_m365StopAlertLoop()
+```
 
 ### CSS (w `domain/ui/header.css`)
 - `.m365-bell-btn` — bazowy styl dzwonka z animacją dzwonienia (`@keyframes m365-bell-ring`).
