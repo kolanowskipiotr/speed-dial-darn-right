@@ -6,6 +6,7 @@ const { exchangeCode, getFreshToken } = require('./auth');
 const {
     fetchIcsCalendarWindow,
     pickNextNotCanceled,
+    pickUpcomingNotCanceled,
     countOverlapping,
     pickActiveAllDay,
     buildWorkingDaysAgenda,
@@ -261,11 +262,13 @@ function createServer(deps = {}) {
 
             if (requestUrl.pathname === '/api/m365/calendar/next') {
                 const next = pickNextNotCanceled(calendarData.events, _now());
+                const upcoming = pickUpcomingNotCanceled(calendarData.events, _now());
                 const allDayToday = pickActiveAllDay(calendarData.events, _now());
                 const overlapCount = countOverlapping(calendarData.events, _now());
                 json(res, 200, {
                     source: calendarData.source,
                     next: serializeEvent(next),
+                    upcoming: serializeEvent(upcoming),
                     allDayToday: serializeEvent(allDayToday),
                     overlapCount,
                     cache: calendarData.cache,

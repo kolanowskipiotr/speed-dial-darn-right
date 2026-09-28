@@ -3,6 +3,7 @@ const assert = require('assert');
 
 const {
     pickNextNotCanceled,
+    pickUpcomingNotCanceled,
     countOverlapping,
     pickActiveAllDay,
     buildWorkingDaysAgenda,
@@ -26,6 +27,21 @@ test('m365 calendar logic', async (t) => {
         const next = pickNextNotCanceled(events, now);
         assert(next);
         assert.strictEqual(next.id, 'in-progress');
+    });
+
+    await t.test('pickUpcomingNotCanceled skips in-progress, cancelled and all-day events', () => {
+        const at = (hhmm) => Date.parse(`2026-07-03T${hhmm}:00.000Z`);
+        const ev = (id, from, to, extra = {}) => ({ id, isCancelled: false, start: new Date(at(from)), end: new Date(at(to)), ...extra });
+        const events = [
+            ev('current', '10:00', '11:00'),
+            ev('allday', '00:00', '23:59', { isAllDay: true }),
+            ev('cancelled', '10:30', '11:00', { isCancelled: true }),
+            ev('later', '12:00', '12:30'),
+        ];
+
+        assert.strictEqual(pickUpcomingNotCanceled(events, at('10:20')).id, 'later');
+        assert.strictEqual(pickUpcomingNotCanceled(events, at('09:00')).id, 'current');
+        assert.strictEqual(pickUpcomingNotCanceled(events, at('12:10')), null);
     });
 
     await t.test('pickNextNotCanceled never picks an all-day event (regression: all-day event blocked every timed meeting)', () => {

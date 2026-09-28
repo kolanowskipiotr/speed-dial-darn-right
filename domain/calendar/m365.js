@@ -6,6 +6,7 @@ let _m365State = {
     detailsBody: null,
     detailsHeadActions: null,
     nextEvent: null,
+    upcomingEvent: null,     // first not-yet-started meeting (favicon/title after current runs 15m)
     overlapCount: 0,
     allDayToday: null,
     agendaDays: [],
@@ -23,6 +24,7 @@ let _m365State = {
     icsEverLoaded: false,
     // Alert / sound state
     alertWindowActive: false,
+    alertEventId: null,      // event the active alert window belongs to
     alertMutedForId: null,
     alertSoundTimer: null,
     alertCheckTimer: null,
@@ -156,6 +158,7 @@ function _m365CheckAlertState() {
     if (!ev) {
         if (_m365State.alertWindowActive) {
             _m365State.alertWindowActive = false;
+            _m365State.alertEventId = null;
             _m365StopAlertLoop();
             _m365RenderCompact();
         }
@@ -167,10 +170,15 @@ function _m365CheckAlertState() {
     const inWindow = !ev.isAllDay && Number.isFinite(startTs) && now >= startTs - M365_ALERT_WINDOW_MS && now <= startTs + M365_ALERT_WINDOW_MS;
     const isMuted = _m365State.alertMutedForId === ev.id;
 
-    if (inWindow && !_m365State.alertWindowActive) {
+    // New window, or a different meeting took over while a window was active
+    const isNewAlert = !_m365State.alertWindowActive || _m365State.alertEventId !== ev.id;
+
+    if (inWindow && isNewAlert) {
         _m365State.alertWindowActive = true;
+        _m365State.alertEventId = ev.id;
         _m365RenderCompact();
-        if (!isMuted) _m365StartAlertLoop();
+        if (isMuted) _m365StopAlertLoop();
+        else _m365StartAlertLoop();
 
         // Fire a browser notification when the tab is in the background
         const cfg = _m365GetConfig();
@@ -185,6 +193,7 @@ function _m365CheckAlertState() {
         }
     } else if (!inWindow && _m365State.alertWindowActive) {
         _m365State.alertWindowActive = false;
+        _m365State.alertEventId = null;
         _m365StopAlertLoop();
         _m365RenderCompact();
     }
@@ -290,6 +299,161 @@ function _m365TimeUntilStart(startIso) {
     if (h && m) return `${h}h ${m}m`;
     if (h) return `${h}h`;
     return `${m}m`;
+}
+
+// Badge shown only when the next meeting starts within this many minutes
+const M365_FAVICON_HORIZON_MIN = 4 * 60;
+
+// Once the current meeting has run this long, favicon/title move on to the next one
+const M365_FAVICON_ELAPSED_MAX_MIN = 15;
+
+// Meeting the favicon/title count towards: current one for its first 15 min, then upcoming
+function _m365IndicatorEvent() {
+    const pick = (ev) => (ev && !ev.isAllDay ? ev : null);
+    const ev = pick(_m365State.nextEvent);
+    if (!ev) return null;
+    const now = Date.now();
+    const startTs = new Date(ev.start).getTime();
+    const ended = new Date(ev.end).getTime() < now;
+    const elapsedMin = Math.floor((now - startTs) / 60000);
+    if (ended || elapsedMin > M365_FAVICON_ELAPSED_MAX_MIN) {
+        const up = pick(_m365State.upcomingEvent);
+        return up && up.id !== ev.id ? up : null;
+    }
+    return ev;
+}
+
+// Favicon badge: digits + unit letter; level drives colour (far → soon → urgent)
+// In progress: 0m, -1m … -15m
+function _m365FaviconBadge(ev) {
+    const now = Date.now();
+    const startTs = new Date(ev.start).getTime();
+    if (!Number.isFinite(startTs)) return null;
+    if (startTs <= now) {
+        const elapsed = Math.floor((now - startTs) / 60000);
+        return { text: elapsed ? `-${elapsed}` : '0', unit: 'm', level: 'urgent' };
+    }
+
+    const mins = Math.ceil((startTs - now) / 60000);
+    if (mins >= M365_FAVICON_HORIZON_MIN) return null;
+    if (mins >= 60) return { text: String(Math.floor(mins / 60)), unit: 'h', level: 'far' };
+    return { text: String(mins), unit: 'm', level: mins <= 5 ? 'urgent' : 'soon' };
+}
+
+// Badge fill per level: green ≥1h, orange <1h, red ≤5m / in progress
+const _M365_FAVICON_FILL = { far: '--success', soon: '--warning', urgent: '--danger' };
+
+let _m365DefaultFaviconHref = null;
+let _m365FaviconImg = null;
+
+function _m365LoadFaviconImg(src) {
+    if (!_m365FaviconImg) {
+        _m365FaviconImg = new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = src;
+        });
+    }
+    return _m365FaviconImg;
+}
+
+// Gmail-style: original icon + countdown badge in the bottom-right corner
+async function _m365UpdateFavicon() {
+    const link = document.querySelector('link[rel="icon"]');
+    if (!link) return;
+    if (_m365DefaultFaviconHref === null) _m365DefaultFaviconHref = link.getAttribute('href');
+
+    const ev = _m365GetConfig().enabled ? _m365IndicatorEvent() : null;
+    const badge = ev ? _m365FaviconBadge(ev) : null;
+
+    let href = _m365DefaultFaviconHref;
+    if (badge) {
+        try {
+            const img = await _m365LoadFaviconImg(_m365DefaultFaviconHref);
+            const size = 64;
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, size, size);
+
+            const css = getComputedStyle(document.body);
+            const bgVar = _M365_FAVICON_FILL[badge.level];
+            const fgVar = '--bg';
+
+            // <1h: badge covers the whole icon; otherwise Gmail-style corner badge
+            const big = badge.level !== 'far';
+            const numPx = big ? 46 : 36;
+            const numFont = `900 ${numPx}px Arial, Helvetica, sans-serif`;
+            const unitFont = `900 ${big ? 32 : 26}px Arial, Helvetica, sans-serif`;
+            ctx.font = numFont;
+            const numW = ctx.measureText(badge.text).width;
+            ctx.font = unitFont;
+            const unitW = badge.unit ? ctx.measureText(badge.unit).width : 0;
+            const pad = 4;
+            const h = big ? size : 38;
+            const w = big ? size : Math.min(size, Math.max(h, numW + unitW + pad * 2));
+            const x = size - w;
+            const y = size - h;
+            ctx.fillStyle = css.getPropertyValue(bgVar).trim();
+            ctx.strokeStyle = css.getPropertyValue('--bg').trim();
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.roundRect(x + 2, y + 2, w - 4, h - 4, 10);
+            ctx.stroke();
+            ctx.fill();
+
+            // Squeeze horizontally if text is wider than the icon
+            const scale = Math.min(1, (w - pad * 2) / (numW + unitW));
+            const baseline = y + h / 2 + numPx * 0.36;
+            ctx.save();
+            ctx.translate(x + w / 2 - ((numW + unitW) * scale) / 2, baseline);
+            ctx.scale(scale, 1);
+            ctx.fillStyle = css.getPropertyValue(fgVar).trim();
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+            ctx.font = numFont;
+            ctx.fillText(badge.text, 0, 0);
+            ctx.font = unitFont;
+            ctx.fillText(badge.unit, numW, 0);
+            ctx.restore();
+            href = canvas.toDataURL('image/png');
+        } catch {
+            href = _m365DefaultFaviconHref;
+        }
+    }
+    if (link.getAttribute('href') !== href) link.setAttribute('href', href);
+}
+
+let _m365DefaultTitle = null;
+
+// Title countdown, no horizon: '1d 3h', '2h 15m', '6m' ('' when not upcoming)
+function _m365TitleCountdown(ev) {
+    const startTs = new Date(ev.start).getTime();
+    if (!Number.isFinite(startTs)) return '';
+    const mins = Math.ceil((startTs - Date.now()) / 60000);
+    if (mins <= 0) return '';
+    const d = Math.floor(mins / 1440);
+    const h = Math.floor((mins % 1440) / 60);
+    const m = mins % 60;
+    if (d) return h ? `${d}d ${h}h` : `${d}d`;
+    if (h) return m ? `${h}h ${m}m` : `${h}h`;
+    return `${m}m`;
+}
+
+// Tab title countdown (Arc shows it on favourite hover): 'in 6m · Speed Dial…'
+function _m365UpdateTitle() {
+    if (_m365DefaultTitle === null) _m365DefaultTitle = document.title;
+
+    const ev = _m365GetConfig().enabled ? _m365IndicatorEvent() : null;
+    let title = _m365DefaultTitle;
+    if (ev) {
+        const elapsed = Math.floor((Date.now() - new Date(ev.start).getTime()) / 60000);
+        const countdown = _m365TitleCountdown(ev);
+        if (countdown) title = `in ${countdown} · ${_m365DefaultTitle}`;
+        else if (elapsed >= 0) title = `${elapsed ? `started ${elapsed}m ago` : 'now'} · ${_m365DefaultTitle}`;
+    }
+    if (document.title !== title) document.title = title;
 }
 
 function _m365IsWithinNextMinutes(iso, minutes) {
@@ -419,6 +583,8 @@ function _m365ApplyEnabledState() {
 }
 
 function _m365RenderCompact() {
+    _m365UpdateFavicon();
+    _m365UpdateTitle();
     const target = _m365State.compact;
     if (!target) return;
 
@@ -582,6 +748,7 @@ async function _m365LoadNext() {
     if (!_m365GetConfig().enabled) return;
     if (!_m365CanLoadCalendar()) {
         _m365State.nextEvent = null;
+        _m365State.upcomingEvent = null;
         _m365State.allDayToday = null;
         _m365State.hasNextCache = false;
         _m365State.compactRefreshInFlight = 0;
@@ -601,6 +768,7 @@ async function _m365LoadNext() {
     try {
         const payload = await _m365FetchJson('/api/m365/calendar/next');
         _m365State.nextEvent = payload.next;
+        _m365State.upcomingEvent = payload.upcoming || null;
         _m365State.allDayToday = payload.allDayToday;
         _m365State.overlapCount = payload.overlapCount || 0;
         _m365State.hasNextCache = true;

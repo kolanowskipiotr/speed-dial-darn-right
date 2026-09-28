@@ -482,6 +482,12 @@ function pickNextNotCanceled(events, nowMs = Date.now()) {
     return timed.find((event) => event.start.getTime() >= nowMs) || null;
 }
 
+// First meeting that has not started yet — lets the UI move on to the next
+// meeting while the current one is still in progress.
+function pickUpcomingNotCanceled(events, nowMs = Date.now()) {
+    return _timedNotCanceled(events).find((event) => event.start.getTime() > nowMs) || null;
+}
+
 function countOverlapping(events, nowMs = Date.now()) {
     return _currentEvents(_timedNotCanceled(events), nowMs).length;
 }
@@ -557,6 +563,7 @@ function serializeEvent(event) {
 module.exports = {
     fetchIcsCalendarWindow,
     pickNextNotCanceled,
+    pickUpcomingNotCanceled,
     countOverlapping,
     pickActiveAllDay,
     buildWorkingDaysAgenda,

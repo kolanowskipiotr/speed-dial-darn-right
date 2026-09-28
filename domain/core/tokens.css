@@ -22,6 +22,7 @@ body {
     --text-dim: #8b90a8;
     --text-dimmer: #555a72;
     --danger: #e05555;
+    --warning: #f59e0b;
     --success: #4caf88;
     --shadow: 0 4px 24px rgba(0,0,0,0.4);
     --shadow-hover: 0 8px 32px rgba(0,0,0,0.5);
@@ -75,6 +76,7 @@ body[data-theme="light-blue"] {
     --text-dim: #5a6279;
     --text-dimmer: #9097b0;
     --danger: #dc2626;
+    --warning: #d97706;
     --success: #16a34a;
     --shadow: 0 4px 24px rgba(0,0,0,0.08);
     --shadow-hover: 0 8px 32px rgba(0,0,0,0.12);
@@ -95,6 +97,7 @@ body[data-theme="light-warm"] {
     --text-dim: #7a6845;
     --text-dimmer: #b0996f;
     --danger: #dc2626;
+    --warning: #d97706;
     --success: #16a34a;
     --shadow: 0 4px 24px rgba(0,0,0,0.08);
     --shadow-hover: 0 8px 32px rgba(0,0,0,0.12);
