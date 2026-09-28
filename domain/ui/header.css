@@ -889,6 +889,11 @@ body.hide-status-indicators .gdrive-indicators {
     transform: scale(1.15);
 }
 
+/* Browser autoplay policy still blocks audio — a click anywhere unlocks it */
+.m365-bell-btn--blocked {
+    box-shadow: 0 0 0 2px var(--warning);
+}
+
 @keyframes m365-bell-ring {
     0%, 55%, 100%  { transform: rotate(0deg); }
     60%            { transform: rotate(-18deg); }

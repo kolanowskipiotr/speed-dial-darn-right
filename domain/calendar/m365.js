@@ -25,6 +25,7 @@ let _m365State = {
     // Alert / sound state
     alertWindowActive: false,
     alertEventId: null,      // event the active alert window belongs to
+    alertAudioBlocked: false, // AudioContext still locked by autoplay policy
     alertMutedForId: null,
     alertSoundTimer: null,
     alertCheckTimer: null,
@@ -86,25 +87,45 @@ function _m365LoadBell(ctx) {
     return _m365BellLoading;
 }
 
-// Plays one burst; resolves with its length in ms so the loop can schedule the next one
+const M365_AUDIO_RESUME_TIMEOUT_MS = 1000;
+const M365_AUDIO_RETRY_MS = 2000;
+
+function _m365SetAudioBlocked(blocked) {
+    if (_m365State.alertAudioBlocked === blocked) return;
+    _m365State.alertAudioBlocked = blocked;
+    _m365RenderCompact();
+}
+
+// Plays one burst; resolves with its length in ms so the loop can schedule the next one,
+// or -1 when autoplay policy still blocks audio (resume() stays pending until a gesture,
+// so it is raced against a timeout instead of stalling the loop forever)
 function _m365PlayBell() {
     const ctx = _m365GetAudioContext();
     if (!ctx) return Promise.resolve(0);
 
-    const ready = ctx.state !== 'running' ? ctx.resume() : Promise.resolve();
+    const ready = ctx.state === 'running'
+        ? Promise.resolve()
+        : Promise.race([ctx.resume().catch(() => {}), new Promise(r => setTimeout(r, M365_AUDIO_RESUME_TIMEOUT_MS))]);
     return ready
-        .then(() => _m365LoadBell(ctx))
-        .then(buffer => {
-            const step = buffer.duration + M365_BELL_KNOCK_GAP_MS / 1000;
-            for (let i = 0; i < M365_BELL_KNOCKS; i++) {
-                const src = ctx.createBufferSource();
-                src.buffer = buffer;
-                src.connect(ctx.destination);
-                src.start(ctx.currentTime + i * step);
-            }
-            return (step * (M365_BELL_KNOCKS - 1) + buffer.duration) * 1000;
+        .then(() => {
+            const blocked = ctx.state !== 'running';
+            _m365SetAudioBlocked(blocked);
+            if (blocked) return -1;
+            return _m365LoadBell(ctx).then(buffer => _m365PlayBurst(ctx, buffer));
         })
         .catch(() => 0); // audio unavailable — fail silently
+}
+
+// Schedules M365_BELL_KNOCKS knocks; returns the burst length in ms
+function _m365PlayBurst(ctx, buffer) {
+    const step = buffer.duration + M365_BELL_KNOCK_GAP_MS / 1000;
+    for (let i = 0; i < M365_BELL_KNOCKS; i++) {
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+        src.connect(ctx.destination);
+        src.start(ctx.currentTime + i * step);
+    }
+    return (step * (M365_BELL_KNOCKS - 1) + buffer.duration) * 1000;
 }
 
 // startTs defaults to the next event; pass one from the console to preview a phase,
@@ -121,6 +142,8 @@ function _m365StartAlertLoop(startTs) {
         if (Date.now() - startTs > M365_ALERT_WINDOW_MS) { _m365StopAlertLoop(); return; }
         _m365PlayBell().then(durationMs => {
             if (_m365State.alertSoundTimer !== token) return;
+            // Audio still locked — retry soon so sound starts right after any click/keypress
+            if (durationMs < 0) { token.timeout = setTimeout(tick, M365_AUDIO_RETRY_MS); return; }
             const offset = Date.now() - startTs;
             const { pauseMs } = M365_BELL_PHASES.find(p => offset < p.until);
             token.timeout = setTimeout(tick, durationMs + pauseMs);
@@ -134,11 +157,19 @@ function _m365StopAlertLoop() {
         clearTimeout(_m365State.alertSoundTimer.timeout);
         _m365State.alertSoundTimer = null;
     }
+    _m365SetAudioBlocked(false);
 }
 
 function _m365ToggleBellMute() {
     const ev = _m365State.nextEvent;
     if (!ev) return;
+
+    if (_m365State.alertAudioBlocked && _m365State.alertMutedForId !== ev.id) {
+        // Click only unlocks audio (gesture) — play now instead of muting
+        _m365UnlockAudio();
+        if (_m365State.alertWindowActive) _m365StartAlertLoop();
+        return;
+    }
 
     if (_m365State.alertMutedForId === ev.id) {
         // Unmute — restart sound if still in window
@@ -620,9 +651,14 @@ function _m365RenderCompact() {
     const countdown = !inProgress ? _m365TimeUntilStart(ev.start) : '';
     const startsSoon = inProgress || _m365IsWithinNextMinutes(ev.start, 5);
     const isBellMuted = _m365State.alertMutedForId === ev.id;
-    const bellTitle = isBellMuted ? 'Sound muted — click to re-enable' : 'Meeting alert active — click to mute';
+    const isAudioBlocked = !isBellMuted && _m365State.alertAudioBlocked;
+    const bellTitle = isBellMuted
+        ? 'Sound muted — click to re-enable'
+        : isAudioBlocked
+            ? 'Sound blocked by browser — click to enable'
+            : 'Meeting alert active — click to mute';
     const bellHtml = _m365State.alertWindowActive
-        ? `<button class="m365-bell-btn${isBellMuted ? ' m365-bell-btn--muted' : ''}" type="button" data-bell="1" aria-label="${bellTitle}" title="${bellTitle}">${isBellMuted ? ICONS.bellMuted : ICONS.bell}</button>`
+        ? `<button class="m365-bell-btn${isBellMuted ? ' m365-bell-btn--muted' : ''}${isAudioBlocked ? ' m365-bell-btn--blocked' : ''}" type="button" data-bell="1" aria-label="${bellTitle}" title="${bellTitle}">${isBellMuted ? ICONS.bellMuted : ICONS.bell}</button>`
         : '';
     const overlapHtml = _m365State.overlapCount > 1
         ? `<span class="m365-overlap-badge" title="${_m365State.overlapCount} overlapping meetings">(${_m365State.overlapCount})</span>`
