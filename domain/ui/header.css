@@ -33,8 +33,6 @@ header {
 }
 
 .logo {
-    position: relative;
-    z-index: 150;
     font-family: 'DM Mono', monospace;
     font-size: 13px;
     font-weight: 500;
