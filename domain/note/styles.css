@@ -87,7 +87,7 @@
     display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
-    flex: 1;
+    flex: 0 1 auto; /* hug tabs so + button sits right after the last tab */
     min-width: 0; /* allow flexbox to shrink below tab content width so pinned buttons stay visible */
     scrollbar-width: none;
     position: relative; /* Ensure child offsetLeft is relative to this container */
@@ -102,8 +102,9 @@
     align-items: center;
     gap: 4px;
     padding: 5px 10px 5px 12px;
-    max-width: 140px;
-    flex-shrink: 0;
+    /* natural width = full name; shrink (ellipsis) to share space, scroll below min-width */
+    flex: 0 1 auto;
+    min-width: 80px;
     cursor: pointer;
     border-right: 1px solid var(--border);
     background: transparent;
@@ -168,8 +169,13 @@
     color: var(--text);
     font-size: 13px;
     padding: 1px 4px;
-    width: 100px;
+    min-width: 0;
     outline: none;
+}
+
+/* while renaming: tab grows with the input (width set in JS) instead of shrinking */
+.notes-tab.renaming {
+    flex-shrink: 0;
 }
 
 /* ── Add-tab button (after scroll area, before trash) ───────── */
@@ -199,6 +205,7 @@
 /* ── Trash button (anchored to the right) ──────────────────── */
 .notes-trash-btn {
     flex-shrink: 0;
+    margin-left: auto;
     background: var(--surface);
     border-left: 1px solid var(--border);
     border-radius: 0;

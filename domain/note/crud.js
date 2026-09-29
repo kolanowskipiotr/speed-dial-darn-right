@@ -551,6 +551,10 @@ function startNoteTabRename(noteId) {
     const input = document.createElement('input');
     input.className = 'notes-tab-rename-input';
     input.value = originalName;
+    const fitInput = () => { input.style.width = `${Math.max(input.value.length, 4) + 1}ch`; };
+    fitInput();
+    input.addEventListener('input', fitInput);
+    tab.classList.add('renaming');
     nameSpan.replaceWith(input);
     input.focus();
     input.select();
