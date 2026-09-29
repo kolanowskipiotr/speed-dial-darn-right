@@ -29,6 +29,7 @@ document.addEventListener('keydown', (e) => {
     // 4. Collapse inline-expanded item
     if (typeof expandedItemId !== 'undefined' && expandedItemId) {
         expandedItemId = null;
+        editingFirstLineItemId = null;
         const todoCol = document.querySelector('.home-col-todo');
         if (todoCol) renderTodoPanel(todoCol);
         e.stopPropagation();

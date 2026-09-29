@@ -3,7 +3,9 @@
 
 let todoFullScreen = false;
 let doneExpandedListId = null;  // id of list whose Done section is expanded; JS-only, resets on load
-let expandedItemId = null;      // id of item shown inline-expanded
+let expandedItemId = null;      // id of item shown inline-expanded (preview)
+let editingFirstLineItemId = null; // id of expanded item whose first line is an input (dblclick)
+let _todoTitleClickTimer = null;   // delays single-click toggle so dblclick can cancel it
 
 // Drag state — all JS-only, no persistence
 let _todoDragItemId  = null;  // id of item being dragged

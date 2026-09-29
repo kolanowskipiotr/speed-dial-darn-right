@@ -225,6 +225,7 @@ function _renderTodoItems(list, container) {
 function _makeTodoItemRow(item, listId) {
     const row = document.createElement('div');
     const isExpanded = expandedItemId === item.id;
+    const isEditingFirstLine = isExpanded && editingFirstLineItemId === item.id;
     row.className = 'todo-item'
         + (item.isDone ? ' done' : '')
         + (isExpanded ? ' inline-expanded' : '');
@@ -248,9 +249,9 @@ function _makeTodoItemRow(item, listId) {
     check.textContent = item.isDone ? ICONS.check : ICONS.uncheck;
     check.onclick = (e) => { e.stopPropagation(); toggleTodoDone(item.id); };
 
-    // First-line: editable input when expanded, plain span when collapsed
+    // First-line: editable input after dblclick, plain span otherwise
     let titleEl;
-    if (isExpanded) {
+    if (isEditingFirstLine) {
         titleEl = document.createElement('input');
         titleEl.type = 'text';
         titleEl.className = 'todo-item-first-line todo-item-first-line-edit';
@@ -267,10 +268,12 @@ function _makeTodoItemRow(item, listId) {
                 e.preventDefault();
                 _commitEdit();
                 expandedItemId = null;
+                editingFirstLineItemId = null;
                 renderTodoPanel(_getTodoContainer());
             } else if (e.key === 'Escape') {
                 e.stopPropagation();
                 expandedItemId = null;
+                editingFirstLineItemId = null;
                 renderTodoPanel(_getTodoContainer());
             }
         };
@@ -286,10 +289,22 @@ function _makeTodoItemRow(item, listId) {
             titleEl.textContent = '(empty)';
             titleEl.classList.add('todo-item-empty-fallback');
         }
+        // Single click toggles preview; double click edits first line.
+        // Single click is delayed so the second click of a dblclick can cancel it.
         titleEl.onclick = (e) => {
             e.stopPropagation();
-            expandedItemId = item.id;
-            renderTodoPanel(_getTodoContainer());
+            clearTimeout(_todoTitleClickTimer);
+            if (e.detail >= 2) {
+                expandedItemId = item.id;
+                editingFirstLineItemId = item.id;
+                renderTodoPanel(_getTodoContainer());
+                return;
+            }
+            _todoTitleClickTimer = setTimeout(() => {
+                expandedItemId = isExpanded ? null : item.id;
+                editingFirstLineItemId = null;
+                renderTodoPanel(_getTodoContainer());
+            }, 250);
         };
     }
 
@@ -393,7 +408,7 @@ function _makeTodoItemRow(item, listId) {
         row.appendChild(inlineContent);
     }
 
-    if (isExpanded) {
+    if (isEditingFirstLine) {
         setTimeout(() => {
             const inp = row.querySelector('.todo-item-first-line-edit');
             if (inp) inp.focus();
