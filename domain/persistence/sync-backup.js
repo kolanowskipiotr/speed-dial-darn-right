@@ -125,7 +125,7 @@ function renderBackupList(backups) {
         div.className = 'notes-trash-row';
         div.innerHTML = `
             <div class="notes-trash-info">
-                <div class="notes-trash-name"><span class="backup-index">${index + 1}.</span>${badge}${backup.name}</div>
+                <div class="notes-trash-name"><span class="backup-index">${backups.length - index}.</span>${badge}${backup.name}</div>
                 <div class="notes-trash-date">${new Date(backup.createdTime).toLocaleString()}</div>
             </div>
             <div class="notes-trash-actions">
