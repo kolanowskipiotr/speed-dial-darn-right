@@ -421,7 +421,7 @@ async function _m365UpdateFavicon() {
             const numW = ctx.measureText(badge.text).width;
             ctx.font = unitFont;
             const unitW = badge.unit ? ctx.measureText(badge.unit).width : 0;
-            const pad = 4;
+            const pad = 6;
             const h = big ? size : 38;
             const w = big ? size : Math.min(size, Math.max(h, numW + unitW + pad * 2));
             const x = size - w;
@@ -434,12 +434,12 @@ async function _m365UpdateFavicon() {
             ctx.stroke();
             ctx.fill();
 
-            // Squeeze horizontally if text is wider than the icon
+            // Shrink text (both axes) to keep a `pad` margin from the badge edge
             const scale = Math.min(1, (w - pad * 2) / (numW + unitW));
-            const baseline = y + h / 2 + numPx * 0.36;
+            const baseline = y + h / 2 + numPx * 0.36 * scale;
             ctx.save();
             ctx.translate(x + w / 2 - ((numW + unitW) * scale) / 2, baseline);
-            ctx.scale(scale, 1);
+            ctx.scale(scale, scale);
             ctx.fillStyle = css.getPropertyValue(fgVar).trim();
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
