@@ -374,6 +374,8 @@ function _m365FaviconBadge(ev) {
 // Badge fill per level: green ≥1h, orange <1h, red ≤5m / in progress
 const _M365_FAVICON_FILL = { far: '--success', soon: '--warning', urgent: '--danger' };
 
+const _M365_FAVICON_FONT_FAMILY = 'Inter, Arial, Helvetica, sans-serif';
+
 let _m365DefaultFaviconHref = null;
 let _m365FaviconImg = null;
 
@@ -402,6 +404,8 @@ async function _m365UpdateFavicon() {
     if (badge) {
         try {
             const img = await _m365LoadFaviconImg(_m365DefaultFaviconHref);
+            // Canvas won't trigger @font-face loading itself
+            await document.fonts.load('900 46px Inter').catch(() => {});
             const size = 64;
             const canvas = document.createElement('canvas');
             canvas.width = canvas.height = size;
@@ -415,8 +419,8 @@ async function _m365UpdateFavicon() {
             // <1h: badge covers the whole icon; otherwise Gmail-style corner badge
             const big = badge.level !== 'far';
             const numPx = big ? 46 : 36;
-            const numFont = `900 ${numPx}px Arial, Helvetica, sans-serif`;
-            const unitFont = `900 ${big ? 32 : 26}px Arial, Helvetica, sans-serif`;
+            const numFont = `900 ${numPx}px ${_M365_FAVICON_FONT_FAMILY}`;
+            const unitFont = `900 ${big ? 32 : 26}px ${_M365_FAVICON_FONT_FAMILY}`;
             ctx.font = numFont;
             const numW = ctx.measureText(badge.text).width;
             ctx.font = unitFont;

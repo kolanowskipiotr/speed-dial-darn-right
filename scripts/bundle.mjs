@@ -33,7 +33,7 @@ await download('https://cdn.jsdelivr.net/npm/split.js/dist/split.min.js', 'split
 await download('https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js', 'mermaid.min.js');
 await download('https://accounts.google.com/gsi/client', 'gsi-client.js');
 
-// 2. Download Fonts (DM Sans and DM Mono)
+// 2. Download Fonts (DM Sans, DM Mono, Inter)
 const fonts = [
   { name: 'DM-Sans-300', url: 'https://fonts.gstatic.com/s/dmsans/v14/rP2Hp2ywxg089UriCZOIHTED.woff2' },
   { name: 'DM-Sans-400', url: 'https://fonts.gstatic.com/s/dmsans/v14/rP2Hp2ywxg089UriCZOIHTED.woff2' },
@@ -41,13 +41,15 @@ const fonts = [
   { name: 'DM-Sans-600', url: 'https://fonts.gstatic.com/s/dmsans/v14/rP2Fp2ywxg089UriCZOIHVPABlC6fA.woff2' },
   { name: 'DM-Mono-400', url: 'https://fonts.gstatic.com/s/dmmono/v14/n6KnRnS8c_P7al06rGfMJf9v.woff2' },
   { name: 'DM-Mono-500', url: 'https://fonts.gstatic.com/s/dmmono/v14/n6KnRnS8c_P7al06rGfMJTlvWQ.woff2' },
+  // Favicon meeting countdown (domain/calendar/m365.js)
+  { name: 'Inter-900', url: 'https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuBWYAZ9hiJ-Ek-_EeA.woff2' },
 ];
 
 let fontsCss = '';
 for (const font of fonts) {
   const filename = `${font.name}.woff2`;
   await download(font.url, filename);
-  const family = font.name.startsWith('DM-Sans') ? 'DM Sans' : 'DM Mono';
+  const family = font.name.slice(0, font.name.lastIndexOf('-')).replace('-', ' ');
   const weight = font.name.split('-').pop();
   fontsCss += `@font-face {
     font-family: '${family}';
