@@ -50,13 +50,21 @@ function _m365UnlockAudio() {
     const ctx = _m365GetAudioContext();
     if (!ctx) return;
     if (ctx.state !== 'running') ctx.resume().catch(() => {});
-    _m365LoadBell(ctx).catch(() => {}); // preload so the first knock plays instantly
+    _m365LoadSound(ctx, M365_BELL_URL).catch(() => {}); // preload so the first knock plays instantly
+    _m365LoadSound(ctx, M365_KNOCK_URL).catch(() => {});
 }
 ['pointerdown', 'keydown', 'touchstart'].forEach(type =>
     document.addEventListener(type, _m365UnlockAudio, { capture: true, passive: true })
 );
 
 const M365_BELL_URL = 'domain/calendar/bell.mp3';
+// Bursts starting inside a slot (offset from start, ms) play knock.mp3 once instead of bell.
+// `once` slots are wider than one bell period, so only their first burst knocks.
+const M365_KNOCK_URL = 'domain/calendar/knock.mp3';
+const M365_KNOCK_SLOTS = [
+    { from: -60 * 1000, until: -44 * 1000, once: true }, // ~T−0:57
+    { from: -16.9 * 1000, until: 0 },                    // last 3 bursts before start (~T−0:15, −0:09, −0:04)
+];
 const M365_BELL_KNOCKS = 2;          // knocks per burst
 const M365_BELL_KNOCK_GAP_MS = 150;  // silence between knocks within a burst
 const M365_ALERT_WINDOW_MS = 3 * 60 * 1000; // alert runs from start − 3 min to start + 3 min
@@ -70,21 +78,18 @@ const M365_BELL_PHASES = [
     { until:  60 * 1000, pauseMs: 15 * 1000 },
     { until: Infinity,   pauseMs: 60 * 1000 },
 ];
-let _m365BellBuffer = null;
-let _m365BellLoading = null;
+const _m365SoundCache = new Map(); // url → Promise<AudioBuffer>
 
 // Decode once through the shared (gesture-unlocked) AudioContext — a plain
 // <audio> element would be blocked by autoplay policy when fired from a timer.
-function _m365LoadBell(ctx) {
-    if (_m365BellBuffer) return Promise.resolve(_m365BellBuffer);
-    if (!_m365BellLoading) {
-        _m365BellLoading = fetch(M365_BELL_URL)
+function _m365LoadSound(ctx, url) {
+    if (!_m365SoundCache.has(url)) {
+        _m365SoundCache.set(url, fetch(url)
             .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
             .then(buf => ctx.decodeAudioData(buf))
-            .then(decoded => (_m365BellBuffer = decoded))
-            .catch(e => { _m365BellLoading = null; throw e; });
+            .catch(e => { _m365SoundCache.delete(url); throw e; }));
     }
-    return _m365BellLoading;
+    return _m365SoundCache.get(url);
 }
 
 const M365_AUDIO_RESUME_TIMEOUT_MS = 1000;
@@ -99,7 +104,7 @@ function _m365SetAudioBlocked(blocked) {
 // Plays one burst; resolves with its length in ms so the loop can schedule the next one,
 // or -1 when autoplay policy still blocks audio (resume() stays pending until a gesture,
 // so it is raced against a timeout instead of stalling the loop forever)
-function _m365PlayBell() {
+function _m365PlayBell(url = M365_BELL_URL, knocks = M365_BELL_KNOCKS) {
     const ctx = _m365GetAudioContext();
     if (!ctx) return Promise.resolve(0);
 
@@ -111,21 +116,21 @@ function _m365PlayBell() {
             const blocked = ctx.state !== 'running';
             _m365SetAudioBlocked(blocked);
             if (blocked) return -1;
-            return _m365LoadBell(ctx).then(buffer => _m365PlayBurst(ctx, buffer));
+            return _m365LoadSound(ctx, url).then(buffer => _m365PlayBurst(ctx, buffer, knocks));
         })
         .catch(() => 0); // audio unavailable — fail silently
 }
 
-// Schedules M365_BELL_KNOCKS knocks; returns the burst length in ms
-function _m365PlayBurst(ctx, buffer) {
+// Schedules `knocks` plays of buffer; returns the burst length in ms
+function _m365PlayBurst(ctx, buffer, knocks) {
     const step = buffer.duration + M365_BELL_KNOCK_GAP_MS / 1000;
-    for (let i = 0; i < M365_BELL_KNOCKS; i++) {
+    for (let i = 0; i < knocks; i++) {
         const src = ctx.createBufferSource();
         src.buffer = buffer;
         src.connect(ctx.destination);
         src.start(ctx.currentTime + i * step);
     }
-    return (step * (M365_BELL_KNOCKS - 1) + buffer.duration) * 1000;
+    return (step * (knocks - 1) + buffer.duration) * 1000;
 }
 
 // startTs defaults to the next event; pass one from the console to preview a phase,
@@ -136,14 +141,19 @@ function _m365StartAlertLoop(startTs) {
     if (!Number.isFinite(startTs)) return;
     const token = {};
     _m365State.alertSoundTimer = token;
+    const playedSlots = new Set();
 
     function tick() {
         if (_m365State.alertSoundTimer !== token) return;
-        if (Date.now() - startTs > M365_ALERT_WINDOW_MS) { _m365StopAlertLoop(); return; }
-        _m365PlayBell().then(durationMs => {
+        const nowOffset = Date.now() - startTs;
+        if (nowOffset > M365_ALERT_WINDOW_MS) { _m365StopAlertLoop(); return; }
+        const knockSlot = M365_KNOCK_SLOTS.find(slot =>
+            nowOffset >= slot.from && nowOffset < slot.until && !(slot.once && playedSlots.has(slot)));
+        (knockSlot ? _m365PlayBell(M365_KNOCK_URL, 1) : _m365PlayBell()).then(durationMs => {
             if (_m365State.alertSoundTimer !== token) return;
             // Audio still locked — retry soon so sound starts right after any click/keypress
             if (durationMs < 0) { token.timeout = setTimeout(tick, M365_AUDIO_RETRY_MS); return; }
+            if (knockSlot) playedSlots.add(knockSlot);
             const offset = Date.now() - startTs;
             const { pauseMs } = M365_BELL_PHASES.find(p => offset < p.until);
             token.timeout = setTimeout(tick, durationMs + pauseMs);
