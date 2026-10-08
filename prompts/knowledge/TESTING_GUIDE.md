@@ -9,6 +9,7 @@
 ```bash
 cd /Users/pkolanow/private-workspace/speed-dial-darn-right
 npm test --prefix uploader
+
 ```
 
 ## Expected Output
